@@ -15,7 +15,7 @@
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
-    adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsError: '', accountNotice: '', temporaryAccess: null,
+    adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', temporaryAccess: null,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -486,11 +486,11 @@ async function loadAccounts(){
   state.accountsLoading=true;state.accountsError='';render();
   try{
     const data=await api('/api/admin/accounts');
-    state.accountsLoaded=true;
+    state.accountsLoaded=true;state.accountsConfigured=data.configured!==false;
     state.adminAccounts=Array.isArray(data.accounts)?data.accounts:[];
     state.accountsError=data.configured===false?(data.reason||'Configuración administrativa pendiente.'):'';
     if(data.truncated)state.accountsError='El directorio muestra como máximo 200 usuarios en esta fase de prueba.';
-  }catch(e){state.accountsLoaded=true;state.adminAccounts=[];state.accountsError=e.message;}
+  }catch(e){state.accountsLoaded=true;state.accountsConfigured=null;state.adminAccounts=[];state.accountsError=e.message;}
   finally{state.accountsLoading=false;render();}
 }
   function accounts(){
@@ -505,6 +505,7 @@ async function loadAccounts(){
   return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
     <div class="account-access-toolbar"><button class="button button-outline" data-act="accounts-refresh" ${state.accountsLoading?'disabled':''}>${icon('refresh',16)} ${state.accountsLoading?'Consultando…':'Actualizar usuarios'}</button><span>${fmt(list.length)} cuentas visibles</span></div>
     ${state.accountsError?alertBlock(state.accountsError,'info'):''}
+    ${state.accountsConfigured===false?`<div class="admin-setup-guide"><strong>Activa la gestión de accesos</strong><p>En Supabase abre la configuración del proyecto → API Keys y obtén la clave de servidor <code>service_role</code>. Agrégala en Cloudflare → Worker → Variables and Secrets como secreto cifrado con el nombre <code>SUPABASE_SERVICE_ROLE_KEY</code>.</p><p>No publiques ni pegues esa clave en el chat, en GitHub ni en código del navegador. Después pulsa «Actualizar usuarios».</p></div>`:''}
     ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
     ${state.temporaryAccess?`<div class="temporary-credential" role="status"><strong>Clave temporal de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code>${clean(state.temporaryAccess.password)}</code><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar</button></div><p>Se muestra solo ahora. Envíala de forma privada y pide al cliente que la cambie en Mi cuenta.</p></div>`:''}
     ${card('Usuarios de clientes','Correos registrados en Supabase Auth',results||empty(state.accountsLoading?'Consultando cuentas…':state.accountsLoaded?'No hay cuentas de clientes disponibles.':'Pulsa Actualizar usuarios para consultar las cuentas.'))}
@@ -669,7 +670,13 @@ function sidebar(){
     if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
     if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
     const contents={overview,analytics,acquisition,campaigns,utm,audience,content,events,hotmart,reports,clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
-    root.innerHTML=`<div class="layout ${state.sidebarCollapsed?'sidebar-collapsed':''}">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${(contents[state.page]||overview)()}</main><footer class="footer"><span>© ${new Date().getFullYear()} eDigital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
+    let content;
+    try {content=(contents[state.page]||overview)();}
+    catch(error){
+      console.error('Unable to render eDigital view:',error);
+      content=`<section class="card page-render-error"><h2>No pudimos cargar esta sección</h2><p>La información de tu cuenta sigue protegida. Intenta actualizar el panel; si continúa ocurriendo, avisa al administrador.</p><button type="button" class="button button-primary" data-act="refresh">Reintentar</button></section>`;
+    }
+    root.innerHTML=`<div class="layout ${state.sidebarCollapsed?'sidebar-collapsed':''}">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${content}</main><footer class="footer"><span>© ${new Date().getFullYear()} eDigital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
   }
   async function loadAds(){
  if(isAdmin()||!state.businessId||state.adsPlatform!=='meta'){state.metaCampaigns=null;state.adsLoading=false;render();return;}
