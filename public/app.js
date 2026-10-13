@@ -10,7 +10,7 @@
     mobileOpen: false, campaignsMenuOpen: true, sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
-    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
+    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsBestOnly: false, adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
     emailBusy: false, emailError: '', emailNotice: '',
     accent: (localStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(localStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
@@ -567,6 +567,7 @@ function campaigns(){
  const toolbar='<div class="ads-toolbar ads-detail-toolbar">'+
    '<label class="form-label">Vista de resultados<select id="ads-level" class="meta-select">'+levelOptions+'</select></label>'+
    '<label class="form-label">Fechas del informe<select id="ads-period" class="meta-select">'+periodOptions+'</select></label>'+
+   '<button class="button button-outline ads-best-button '+(state.adsBestOnly?'active':'')+'" data-act="ads-best" aria-pressed="'+state.adsBestOnly+'" '+(platform!=='meta'?'disabled':'')+'>Mejores campañas</button>'+
    '<button class="button button-outline" data-act="ads-refresh" '+(state.adsLoading||(state.adsPeriod==='custom'&&(!state.adsCustomStart||!state.adsCustomEnd))?'disabled':'')+'>'+icon('refresh',16)+' Actualizar datos</button>'+
    '</div>'+
    (state.adsPeriod==='custom'?'<div class="ads-custom-dates">'+
@@ -593,7 +594,7 @@ function campaigns(){
      '<label>Cuenta publicitaria<select id="ads-account" class="simple-input">'+accountOptions+'</select></label>'+
      '<label>Estado de campaña<select id="ads-status" class="simple-input">'+opts(statusValues,state.adsStatus,'Todos los estados',metaStatusLabel)+'</select></label>'+
      '<label>Objetivo<select id="ads-objective" class="simple-input">'+opts(objectiveValues,state.adsObjective,'Todos los objetivos',metaObjectiveLabel)+'</select></label></div>';
-   const all=report.rows||[],filtered=adsFilteredRows(),fmtCost=(n,row)=>n==null?'—':money(n,row?.currency||report.currency||'');
+   const all=report.rows||[],filtered=adsFilteredRows(),ranked=state.adsBestOnly&&level==='campaign'?[...filtered].filter(r=>r.ctr!=null&&Number.isFinite(Number(r.ctr))).sort((a,b)=>Number(b.ctr)-Number(a.ctr)).slice(0,10):filtered,fmtCost=(n,row)=>n==null?'—':money(n,row?.currency||report.currency||'');
    const numberOrDash=value=>value==null?'—':fmt(value);
    const decimalOrDash=value=>value==null?'—':fmt1(value);
    const cols=[
@@ -613,11 +614,11 @@ function campaigns(){
       {key:'cpm',label:'CPM',display:fmtCost}
    ];
    result=filters+
-     '<div class="ads-detail-summary"><div><strong>'+fmt(filtered.length)+' de '+fmt(all.length)+' registros</strong><span>Fechas: '+clean(adsPeriodLabel())+' · '+(level==='campaign'?'Campañas':level==='adset'?'Conjuntos':'Anuncios')+'</span></div>'+
-     '<button type="button" class="button button-outline" data-act="download" data-report="ads" '+(!filtered.length?'disabled':'')+'>'+icon('download',16)+' Exportar CSV</button></div>'+
+     '<div class="ads-detail-summary"><div><strong>'+fmt(ranked.length)+' de '+fmt(all.length)+' registros</strong><span>Fechas: '+clean(adsPeriodLabel())+' · '+(level==='campaign'?'Campañas':level==='adset'?'Conjuntos':'Anuncios')+'</span></div>'+
+     '<button type="button" class="button button-outline" data-act="download" data-report="ads" '+(!ranked.length?'disabled':'')+'>'+icon('download',16)+' Exportar CSV</button></div>'+
      (report.partial?alertBlock('Meta devolvió un informe parcial: podría haber más registros fuera del límite de consulta.','info'):'')+
      (report.metadataPartial?'<p class="fine-print">Algunos estados u objetivos no se pudieron verificar con Meta y se muestran como «Sin informar».</p>':'')+
-     (filtered.length?dataTable(filtered,cols,200):empty('Prueba quitar filtros o cambiar el período.','No hay campañas coincidentes'))+
+     (ranked.length?dataTable(ranked,cols,200):empty('Prueba quitar filtros o cambiar el período.','No hay campañas coincidentes'))+
      '<p class="ads-metrics-note">Alcance: personas únicas. Frecuencia: impresiones promedio por persona. CPM: costo por mil impresiones. Estado y objetivo corresponden a la campaña principal, no al anuncio individual. Sin resultados inventados.</p>';
  }
  const summary=platform==='meta'&&connected?adsMetricsStrip():'';
@@ -1335,6 +1336,7 @@ function sidebar(){
       finally{state.campaignAccountSaving=false;if(state.businessId===current)render();}
     }
     else if(action==='meta-refresh')await loadMeta();
+    else if(action==='ads-best'){state.adsBestOnly=!state.adsBestOnly;state.adsLevel='campaign';if(!state.metaCampaigns||state.metaCampaigns.level!=='campaign'){state.metaCampaigns=null;render();await loadAds();}else render();}
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
     else if(action==='ads-apply-dates'){
       const start=document.getElementById('ads-start-date')?.value||'';

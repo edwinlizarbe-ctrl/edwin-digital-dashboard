@@ -886,3 +886,13 @@ input,select,textarea{max-width:100%}
 .analytic-visual-kpis .small-kpi:nth-child(4n+3) .analytic-mini-chart polyline{stroke:#0D9488}
 .analytic-visual-kpis .small-kpi:nth-child(4n+4) .analytic-mini-chart polyline{stroke:#1D4ED8}
 @media(prefers-reduced-motion:reduce){.analytic-primary-pick:hover,.analytic-metric-pick:hover{transform:none}}
+
+/* Ads compact toolbar & ranked campaigns CTA */
+.ads-detail-toolbar{display:flex;align-items:end;flex-wrap:wrap;gap:10px;padding:14px 16px}
+.ads-detail-toolbar .form-label{min-width:165px;flex:0 1 235px;font-size:12px}
+.ads-detail-toolbar .meta-select{width:100%;min-height:39px;font-size:13px;border-radius:10px}
+.ads-detail-toolbar .button{min-height:39px;padding:0 15px;border-radius:10px;white-space:nowrap;font-weight:700}
+.ads-detail-toolbar .ads-best-button{border-color:#2563EB;color:#2563EB;background:var(--surface)}
+.ads-detail-toolbar .ads-best-button.active{background:#2563EB;color:white}
+.ads-ranking-explainer{padding:12px 15px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--muted2);font-size:12px;line-height:1.55;margin-bottom:14px}
+@media(max-width:650px){.ads-detail-toolbar .form-label{flex:1 1 100%}.ads-detail-toolbar .button{flex:1 1 auto}}
