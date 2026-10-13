@@ -802,3 +802,11 @@ input,select,textarea{max-width:100%}
 [data-theme=dark] .main-content .admin-plan-option,[data-theme=dark] .main-content .admin-feature-row{background:var(--surface);border-color:var(--border)}
 [data-theme=dark] .main-content .admin-feature-header .simple-input{background:var(--surface);border-color:var(--border)}
 @media(max-width:710px){.main-content .admin-plan-option{flex-wrap:wrap;gap:12px}.main-content .admin-plan-option>.button{width:100%;justify-content:center}}
+
+/* Edwin CRM: minimalist adaptive identity and neutral account avatars. */
+.brand{display:flex;align-items:center;gap:9px}
+.crm-brand-mark{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;border-radius:9px;background:var(--accent-soft);color:var(--accent);border:1px solid var(--border)}
+.brand-word{color:var(--text)}
+.brand-word span{color:var(--accent)}
+.avatar,.top-avatar{background:var(--accent-soft);color:var(--accent);box-shadow:none;border:1px solid var(--border)}
+.avatar svg,.top-avatar svg{display:block}
