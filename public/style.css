@@ -177,3 +177,48 @@
 .ads-platform-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media(max-width:800px){.connection-overview{grid-template-columns:1fr}.ads-platform-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:370px){.connection-actions .button{flex:1}.ads-platform-tab{font-size:11px;padding:10px 6px}}
+
+/* V6: touch-first accessible mobile inputs and reduced layout jumps */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-top:85px}
+body{min-width:0;overflow-x:clip}
+button, a, input, select, textarea{touch-action:manipulation}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select,textarea{max-width:100%}
+@media (pointer:coarse){
+  .form-input input,.login-form-side input,.security-form input,.meta-search,.meta-select,.admin-search input,.select-wrap select,.search-wrap input{font-size:16px!important}
+  .button,.nav-link,.icon-button,.ads-platform-tab,.meta-account-row{min-height:44px}
+  .form-input{min-height:52px}
+}
+@media(max-width:800px){
+  .login-page,.login-form-side{min-height:100dvh;max-width:100%;overflow-x:clip}
+  .login-form-side{justify-content:flex-start;padding:max(62px,calc(env(safe-area-inset-top) + 25px)) 22px calc(24px + env(safe-area-inset-bottom));gap:20px}
+  .login-panel{margin:auto auto 0;max-width:420px}
+  .login-contact{margin:auto 0 0}
+  .login-theme{top:max(16px,env(safe-area-inset-top));right:19px}
+  .sidebar{padding-bottom:env(safe-area-inset-bottom)}
+  .sidebar-bottom{padding-bottom:16px}
+  .main-content{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+  .footer{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+  .meta-account-row{align-items:center}
+  .card,.integration-card,.client-card{min-width:0;overflow-wrap:anywhere}
+  .table-scroller{overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+}
+@media(max-width:560px){
+  .login-form-side{padding-left:20px;padding-right:20px}
+  .login-panel{width:100%;max-width:100%}
+  .login-form-side .form-input{height:54px;padding:0 14px}
+  .login-form-side .form-input input{font-size:16px!important;line-height:24px}
+  .login-panel h2{letter-spacing:-.55px}
+  .login-contact{font-size:12px;position:static}
+  .integration-card{padding:17px}
+  .meta-full{grid-column:span 1}
+  .meta-account-list{max-height:180px}
+  .meta-actions .button{white-space:normal}
+  .admin-search input{width:100%;min-width:0}
+  .client-card .button{white-space:normal}
+}
+@media(max-height:520px) and (max-width:800px){
+  .login-form-side{padding-top:45px;gap:12px}
+  .login-panel{margin:0 auto}
+  .login-contact{margin:4px 0 0}
+}
