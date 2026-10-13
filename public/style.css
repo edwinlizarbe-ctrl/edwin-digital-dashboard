@@ -657,3 +657,14 @@ input,select,textarea{max-width:100%}
 @media(max-width:900px){.connector-layout{grid-template-columns:210px minmax(0,1fr)}.connector-content{padding:17px}.connector-main{padding:18px}.connector-account-head,.connector-account-row{grid-template-columns:26px minmax(105px,1fr) minmax(135px,.9fr) 48px;gap:6px}}
 @media(max-width:680px){.ads-modal-shell.connector-windsor{width:calc(100vw - 14px);height:calc(100dvh - 18px);max-height:calc(100dvh - 18px)}.connector-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.connector-sidebar{display:flex;align-items:center;overflow:auto;gap:8px;padding:9px 12px;min-height:0}.connector-sidebar-title,.connector-provider-search,.connector-provider-group,.connector-sidebar-foot,.connector-provider.pending,.connector-selected-mark{display:none}.connector-provider.selected{padding:5px 10px;min-height:37px;white-space:nowrap;margin:0}.connector-provider.selected .provider-logo{width:29px;height:29px;flex-basis:29px}.connector-provider.selected .provider-logo img{width:22px;height:22px}.connector-provider.selected small{display:none}.connector-content{padding:13px 11px}.connector-progress-step{font-size:9px;gap:5px;padding:8px 5px}.connector-progress-step i{width:17px;height:17px;flex-basis:17px}.connector-main{padding:18px 11px}.connector-account-head,.connector-account-row{grid-template-columns:23px minmax(120px,1fr) minmax(90px,1fr);font-size:11px;gap:6px;padding:10px 7px}.connector-account-head span:last-child,.connector-account-row .connector-account-currency{display:none}.connector-account-id{font-size:10px}.connector-form-heading h3{font-size:16px}.connector-message-panel h3{font-size:18px}.connector-form-actions .button{flex:1}}
 @media(prefers-reduced-motion:reduce){.connector-windsor *{scroll-behavior:auto}}
+
+
+/* Client-owned account disconnection without leaving Campaigns Ads */
+.ads-connection-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.ads-connection-actions .button{white-space:nowrap}
+.ads-disconnect-button{border-color:var(--border);color:var(--muted2)}
+.ads-disconnect-button:hover,.connector-disconnect:hover{border-color:#d36b72;color:#ba3947;background:#fff0f2}
+.connector-account-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.connector-account-toolbar .connector-reconnect{flex-shrink:0}
+.connector-disconnect{color:var(--muted2)}
+@media(max-width:650px){.ads-connection-actions{width:100%;justify-content:stretch}.ads-connection-actions .button{flex:1}.connector-account-toolbar{gap:7px}}
