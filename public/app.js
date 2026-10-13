@@ -458,12 +458,70 @@
       '<div class="small-kpi"><span>'+clean(label)+'</span><strong>'+clean(val)+'</strong></div>').join('')+'</div></section>';
   }
 
+
+function adsConnectionStatus(value){
+ if(value!=='meta')return {label:'Próximamente',kind:'soon'};
+ if(!featureEnabled('meta_ads'))return {label:'No incluido',kind:'restricted'};
+ if(state.metaLoading)return {label:'Verificando',kind:'waiting'};
+ if(state.meta?.connected){
+  const count=(state.meta.selected_accounts||[state.meta.selected_account].filter(Boolean)).length;
+  return count?{label:'Conectado',kind:'connected'}:{label:'Elegir cuentas',kind:'waiting'};
+ }
+ return state.meta?.configured?{label:'Por conectar',kind:'waiting'}:{label:'En preparación',kind:'soon'};
+}
+function adsOverviewHero(platform){
+ const labels={meta:'Meta Ads',google:'Google Ads',tiktok:'TikTok Ads',linkedin:'LinkedIn Ads'};
+ const provider=labels[platform]||'Meta Ads',m=state.meta||{},status=adsConnectionStatus(platform);
+ const selected=platform==='meta'?(m.selected_accounts||[m.selected_account].filter(Boolean)).length:0;
+ const open=platform==='meta'&&featureEnabled('meta_ads');
+ const sub=platform!=='meta'?'La integración oficial de esta plataforma aún está en desarrollo.':
+  !featureEnabled('meta_ads')?'Esta empresa no tiene permiso para utilizar Meta Ads.':
+  status.kind==='connected'?selected+' cuenta(s) publicitarias seleccionadas · Estadísticas reales de Meta.':
+  status.label==='Elegir cuentas'?'Facebook autorizado. Selecciona las cuentas que deseas analizar.':
+  m.configured?'Conecta tu propia cuenta de Facebook y elige los anuncios que quieres analizar.':
+  'La integración todavía requiere completar su habilitación para los clientes.';
+ return '<section class="ads-overview-hero" aria-label="Estado de la plataforma">'+
+  '<div class="ads-overview-main">'+providerLogo(provider)+'<div><span class="ads-eyebrow">PLATAFORMA PUBLICITARIA</span><h2>'+clean(provider)+'</h2><p>'+clean(sub)+'</p></div></div>'+
+  '<div class="ads-overview-actions"><span class="ads-status-pill ads-status-'+status.kind+'"><span class="ads-pill-indicator"></span>'+clean(status.label)+'</span>'+
+  (open?'<button class="ads-hero-button" type="button" data-act="campaign-connect-toggle">'+(m.connected?'Administrar conexión':'Conectar mi cuenta')+icon('chevron',15)+'</button>':'')+
+  '</div></section>';
+}
+function adsGuidance(platform,connected){
+ const suggestions=[];
+ if(platform!=='meta')suggestions.push(['Antes de empezar','Cuando la integración esté disponible, podrás autorizar tu cuenta desde eDigital. No se muestran campañas de prueba.']);
+ else if(!featureEnabled('meta_ads'))suggestions.push(['Tu plan actual','Meta Ads no está habilitado para esta empresa. Revisa las integraciones disponibles de tu plan.']);
+ else if(!connected){
+  suggestions.push(['1. Conecta Facebook','Utiliza «Conectar mi cuenta» y concede únicamente los permisos que solicita Meta.']);
+  suggestions.push(['2. Elige tus cuentas','Selecciona las cuentas publicitarias de tu negocio dentro de eDigital.']);
+  suggestions.push(['3. Consulta las campañas','Elige un período y actualiza para ver inversión, clics e impresiones reales.']);
+ }else{
+  const report=state.metaCampaigns||{},summ=metaAccountSummary(),rows=report.rows||[];
+  if(state.adsLoading){
+   suggestions.push(['Consultando datos','Las cifras se mostrarán cuando Meta termine de responder. No se presentan valores estimados.']);
+  }else if(!rows.length){
+   suggestions.push(['Comprueba el período','Prueba 7 o 30 días y revisa que hayas seleccionado una cuenta publicitaria con actividad.']);
+   suggestions.push(['Revisa tu autorización','Si no aparecen campañas, comprueba en el gestor de Meta que tienes permiso para consultar la cuenta.']);
+  }else{
+   suggestions.push(['Interpreta el CTR',summ?.ctr!=null?
+     'El CTR observado es '+metaMetric(summ.ctr,2)+'%. Compara campañas con el mismo objetivo y fechas; un CTR aislado no confirma ventas.':
+     'Compara el CTR entre campañas del mismo objetivo para saber qué anuncios generan más clics.']);
+   suggestions.push(['Revisa costos',summ?.currencyMixed?
+     'Tus cuentas usan monedas distintas. Revisa la inversión y el CPC por cuenta sin sumar montos incompatibles.':
+     'Compara inversión y CPC entre campañas similares. Un costo menor no garantiza mejores clientes.']);
+   suggestions.push(['Confirma los resultados','Los clics e impresiones no son ventas. Revisa los eventos y metas de tu web antes de atribuir conversiones.']);
+   if(report.partial)suggestions.push(['Informe parcial','Meta devolvió resultados parciales. El total podría no incluir todas las campañas.']);
+  }
+ }
+ return '<section class="ads-guidance" aria-labelledby="ads-guidance-title"><div class="ads-guidance-heading"><span class="ads-guidance-icon">'+icon('lightbulb',21)+'</span><div><h3 id="ads-guidance-title">Consejos para analizar tus campañas</h3><p>Guía práctica basada en el estado de tus conexiones, sin resultados inventados.</p></div></div>'+
+  '<div class="ads-guidance-grid">'+suggestions.map(([title,body],idx)=>'<article class="ads-guidance-item"><span class="ads-guidance-num">'+String(idx+1).padStart(2,'0')+'</span><strong>'+clean(title)+'</strong><p>'+clean(body)+'</p></article>').join('')+'</div></section>';
+}
+
 function campaigns(){
  const connected=!!(state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account));
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
  const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']];
  const tabs='<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">'+choices.map(([value,label])=>
-   '<button type="button" class="ads-platform-tab '+(platform===value?'active':'')+'" data-act="ads-platform" data-platform="'+value+'" aria-pressed="'+(platform===value?'true':'false')+'">'+providerLogo(label)+'<span>'+label+'</span></button>').join('')+'</div>';
+   '<button type="button" class="ads-platform-tab '+(platform===value?'active':'')+'" data-act="ads-platform" data-platform="'+value+'" aria-pressed="'+(platform===value?'true':'false')+'">'+providerLogo(label)+'<span class="ads-tab-label">'+label+'</span><small class="ads-tab-status '+adsConnectionStatus(value).kind+'">'+clean(adsConnectionStatus(value).label)+'</small></button>').join('')+'</div>';
  const periods=[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses'],['custom','Personalizado']];
  const periodOptions=periods.map(([value,label])=>'<option value="'+value+'" '+(state.adsPeriod===value?'selected':'')+'>'+label+'</option>').join('');
  const levelOptions=[['campaign','Campañas'],['adset','Conjuntos de anuncios'],['ad','Anuncios']].map(([value,label])=>'<option value="'+value+'" '+(level===value?'selected':'')+'>'+label+'</option>').join('');
@@ -525,12 +583,13 @@ function campaigns(){
  }
  const summary=platform==='meta'&&connected?adsMetricsStrip():'';
  const settings=platform==='meta'&&connected?campaignMetaSetup():'';
- return heading('Publicidad','Campañas Ads','Analiza tus campañas publicitarias con fechas, cuentas, estados, objetivos y resultados reales.')+
-   tabs+toolbar+settings+summary+
-   card(platform==='meta'?'Detalle de campañas en Meta Ads':'Rendimiento publicitario',platform==='meta'?adsPeriodLabel():'La API oficial de esta plataforma está pendiente',result)+
-   '<div class="spacer-sm"></div>'+card('Tráfico UTM en Google Analytics','Información complementaria, independiente del gasto publicitario',
-   '<p class="fine-print">Las visitas y eventos de GA4 no equivalen necesariamente a ventas confirmadas por Meta. Puedes consultarlos por separado.</p>'+
-   '<button class="button button-outline" data-act="nav" data-page="utm">Ver tráfico UTM</button>');
+ return heading('Publicidad','Campañas Ads','Revisa el estado de tus cuentas y analiza datos publicitarios reales desde un solo lugar.')+
+   tabs+adsOverviewHero(platform)+toolbar+settings+summary+
+   card(platform==='meta'?'Resultados y campañas de Meta Ads':'Rendimiento publicitario',platform==='meta'?adsPeriodLabel():'Conexión oficial pendiente',result)+
+   adsGuidance(platform,connected)+
+   '<div class="spacer-sm"></div>'+card('Tráfico UTM en Google Analytics','Las visitas medidas por GA4 son diferentes del gasto de Meta Ads.',
+   '<p class="fine-print">Para evaluar contactos o ventas, compara los eventos configurados en GA4 con los resultados de tus campañas.</p>'+
+   '<button class="button button-outline" data-act="nav" data-page="utm">Consultar fuentes UTM</button>');
 }
     function utm(){return `${heading('Fuentes UTM · GA4','Campañas que llevan tráfico','Resultados de las campañas identificadas mediante etiquetado en Google Analytics 4.')}${statusStrip()}${alertBlock('Estas métricas corresponden al tráfico medido por GA4. No incluyen gasto publicitario, CPC, ROAS ni conversiones reportadas directamente por Meta Ads o Google Ads.', 'info')}<div class="content-grid"><div class="col-12">${card('Rendimiento por campaña','Sesiones y eventos clave atribuidos',gaReady()?dataTable(rows('campaigns'),[{key:'sessionCampaignName',label:'Campaña'},{key:'sessions',label:'Sesiones',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div><div class="col-6">${card('Campañas con más sesiones','Ranking de campañas etiquetadas',gaReady()?barList(rows('campaigns'),'sessionCampaignName','sessions',9):dataPlaceholder())}</div><div class="col-6">${card('Eventos clave por campaña','No equivale necesariamente a ventas confirmadas',gaReady()?barList([...rows('campaigns')].sort((a,b)=>number(b.keyEvents)-number(a.keyEvents)),'sessionCampaignName','keyEvents',9):dataPlaceholder())}</div></div>${flags()}`;}
   function audience(){return `${heading('Audiencia','Conoce a tus visitantes','Ubicación, dispositivos y procedencia de los usuarios.')}${statusStrip()}<div class="content-grid"><div class="col-6">${card('Países principales','Usuarios por país',gaReady()?barList(rows('countries'),'country','totalUsers',11):dataPlaceholder())}</div><div class="col-6">${card('Ciudades principales','Usuarios por ciudad',gaReady()?barList(rows('cities'),'city','totalUsers',11):dataPlaceholder())}</div><div class="col-5">${card('Dispositivos','Sesiones registradas por tipo',gaReady()?donut(rows('devices'),'deviceCategory','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Detalle geográfico','Usuarios y sesiones por país',gaReady()?dataTable(rows('countries'),[{key:'country',label:'País'},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'sessions',label:'Sesiones',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
