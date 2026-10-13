@@ -232,6 +232,45 @@ export async function handleMetaApi(req,env,s) {
       period,metrics:values?{spend:values.spend??null,clicks:values.clicks??null,impressions:values.impressions??null,
         ctr:values.ctr??null,cpc:values.cpc??null}:null});
   }
+  if(path==='/api/meta/campaigns' && method==='GET') {
+    const businessId=url.searchParams.get('business_id')||'';
+    if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    const connection=await unsealMeta(env,jar[META_COOKIE]);
+    if(!validMetaSession(connection,s,businessId)||!/^act_\d+$/.test(connection?.account||'')) {
+      return error('Conecta Meta Ads y selecciona una cuenta publicitaria.',401);
+    }
+    const period=url.searchParams.get('period')||'30';
+    if(!META_PERIODS.has(period))return error('Período no válido.');
+    const level=url.searchParams.get('level')||'campaign';
+    if(!['campaign','adset','ad'].includes(level))return error('Nivel publicitario no válido.');
+    const presets={today:'today',yesterday:'yesterday','7':'last_7d','30':'last_30d','90':'last_90d','365':'last_year'};
+    const fields=level==='campaign'?'campaign_id,campaign_name,spend,clicks,impressions,ctr,cpc':
+                 level==='adset'?'campaign_name,adset_id,adset_name,spend,clicks,impressions,ctr,cpc':
+                 'campaign_name,adset_name,ad_id,ad_name,spend,clicks,impressions,ctr,cpc';
+    const rows=[];let after='',partial=false;
+    for(let page=0;page<3;page++){
+      const params={fields,date_preset:presets[period],level,limit:100};
+      if(after)params.after=after;
+      const data=await metaGraph(env,'/'+connection.account+'/insights',connection.token,params);
+      for(const x of data.data||[])rows.push({
+        id:String(x.ad_id||x.adset_id||x.campaign_id||''),
+        name:String(x.ad_name||x.adset_name||x.campaign_name||'Sin nombre').slice(0,150),
+        campaign_name:String(x.campaign_name||'').slice(0,150),
+        spend:x.spend??null,clicks:x.clicks??null,impressions:x.impressions??null,
+        ctr:x.ctr??null,cpc:x.cpc??null
+      });
+      const next=data.paging?.next;
+      const cursor=data.paging?.cursors?.after;
+      if(!next||!cursor)break;
+      if(page===2){partial=true;break;}
+      if(cursor===after)break;
+      after=cursor;
+    }
+    const accounts=await metaAccounts(env,connection.token);
+    return reply({configured:true,connected:true,period,level,rows,partial,
+      currency:accounts.find(a=>a.id===connection.account)?.currency||'',account_id:connection.account,
+      updated_at:new Date().toISOString()});
+  }
   if(path==='/api/meta/disconnect' && method==='POST') {
     if(!metaSameOriginJson(req))return error('Solicitud no autorizada.',403);
     return reply({ok:true},200,clearMetaCookies());
