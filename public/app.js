@@ -459,7 +459,8 @@
  'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
  };
  const [slug,color]=dict[name]||['google','4285F4'];
- return `<div class="provider-logo" aria-hidden="true"><img src="https://cdn.simpleicons.org/${slug}/${color}" alt="" loading="lazy" width="30" height="30" /></div>`;
+ const src=name==='Hotmart'?'https://hotmart.com/favicon.ico':`https://cdn.simpleicons.org/${slug}/${color}`;
+ return `<div class="provider-logo" aria-hidden="true"><img src="${src}" alt="" loading="lazy" width="30" height="30" /></div>`;
 }
     function metaCard(){
  if(!metaPilotEligible())return '';
