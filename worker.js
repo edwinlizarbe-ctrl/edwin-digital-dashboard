@@ -256,6 +256,23 @@ async function handleApi(req, env) {
 
   // Solo la cuenta administradora puede ver correos o iniciar recuperaciones.
   // No existe un endpoint para consultar contraseñas en texto plano.
+  if(path==='/api/admin/accounts/email-history' && method==='GET') {
+    if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
+    const id=url.searchParams.get('user_id')||'';
+    if(!isUuid(id))return json({error:'Usuario no válido.'},400,s.cookies);
+    const key=env.SUPABASE_SERVICE_ROLE_KEY;
+    if(!key)return json({configured:false,changes:[],reason:'Configura la clave administrativa en Cloudflare.'},200,s.cookies);
+    const base=String(env.SUPABASE_URL).replace(/\/$/,'');
+    const headers={apikey:key,Authorization:'Bearer '+key,Accept:'application/json'};
+    const account=await fetch(base+'/rest/v1/profiles?select=id,role&id=eq.'+id+'&limit=1',{headers});
+    if(!account.ok)return json({error:'No se pudo confirmar el usuario.'},502,s.cookies);
+    const verified=await account.json();
+    if(!verified.length||verified[0].role==='admin')return json({error:'Usuario no autorizado para esta consulta.'},403,s.cookies);
+    const result=await fetch(base+'/rest/v1/ed_email_change_audit?select=previous_email,new_email,changed_at&user_id=eq.'+id+'&order=changed_at.desc&limit=50',{headers});
+    if(!result.ok)return json({configured:false,changes:[],reason:'La auditoría todavía no está activada en Supabase.'},200,s.cookies);
+    return json({configured:true,changes:await result.json()},200,s.cookies);
+  }
+
   if(path==='/api/admin/accounts' && method==='GET') {
     if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
     const key=env.SUPABASE_SERVICE_ROLE_KEY;
