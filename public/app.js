@@ -410,8 +410,11 @@
   const adsPeriodLabel = () => state.adsPeriod==='custom'
     ? (state.adsCustomStart&&state.adsCustomEnd?state.adsCustomStart+' al '+state.adsCustomEnd:'Fechas personalizadas')
     : ({today:'Hoy',yesterday:'Ayer','7':'Últimos 7 días','30':'Últimos 30 días','90':'Últimos 90 días','365':'Últimos 12 meses'})[state.adsPeriod]||'Últimos 30 días';
-  const adsDateQuery = () => '&period='+encodeURIComponent(state.adsPeriod)+
-    (state.adsPeriod==='custom'?'&start_date='+encodeURIComponent(state.adsCustomStart)+'&end_date='+encodeURIComponent(state.adsCustomEnd):'');
+  const adsDateQuery = () => {
+    const custom=state.adsPeriod==='custom'&&state.adsCustomStart&&state.adsCustomEnd;
+    return '&period='+encodeURIComponent(custom?'custom':state.adsPeriod==='custom'?'30':state.adsPeriod)+
+      (custom?'&start_date='+encodeURIComponent(state.adsCustomStart)+'&end_date='+encodeURIComponent(state.adsCustomEnd):'');
+  };
   const metaStatusLabel = value => ({ACTIVE:'Activa',PAUSED:'Pausada',ARCHIVED:'Archivada',
     DELETED:'Eliminada',IN_PROCESS:'En revisión',WITH_ISSUES:'Con problemas',
     CAMPAIGN_PAUSED:'Campaña pausada',ADSET_PAUSED:'Conjunto pausado',
@@ -897,7 +900,8 @@ async function loadAccounts(){
       if(info.error)state.metaError=info.error;
       if(info.connected && (info.selected_accounts?.length||info.selected_account)) {
         try {
-          state.metaReport=await api('/api/meta/report?business_id='+encodeURIComponent(current)+'&period='+encodeURIComponent(state.period));
+          state.metaReport=await api('/api/meta/report?business_id='+encodeURIComponent(current)+
+            (state.page==='campaigns'?adsDateQuery():'&period='+encodeURIComponent(state.period)));
         } catch(e) {state.metaError=e.message;}
       }
     }catch(e) {if(state.businessId===current)state.metaError=e.message;}
@@ -1004,12 +1008,12 @@ function sidebar(){
   }
   async function loadAds(){
  if(isAdmin()||!state.businessId||state.adsPlatform!=='meta'){state.metaCampaigns=null;state.adsLoading=false;render();return;}
- const businessId=state.businessId,period=state.period,level=state.adsLevel;
+ const businessId=state.businessId,period=state.adsPeriod,dates=adsDateQuery(),level=state.adsLevel;
  if(!state.meta?.connected||!(state.meta?.selected_accounts?.length||state.meta?.selected_account)){state.metaCampaigns=null;state.adsLoading=false;render();return;}
  state.adsLoading=true;state.adsError='';state.metaCampaigns=null;render();
  try{
-  const rows=await api('/api/meta/campaigns?business_id='+encodeURIComponent(businessId)+'&period='+encodeURIComponent(period)+'&level='+encodeURIComponent(level));
-  if(state.businessId===businessId&&state.period===period&&state.adsLevel===level)state.metaCampaigns=rows;
+  const rows=await api('/api/meta/campaigns?business_id='+encodeURIComponent(businessId)+dates+'&level='+encodeURIComponent(level));
+  if(state.businessId===businessId&&state.adsPeriod===period&&adsDateQuery()===dates&&state.adsLevel===level)state.metaCampaigns=rows;
  }catch(e){if(state.businessId===businessId)state.adsError=e.message;}
  finally{if(state.businessId===businessId){state.adsLoading=false;render();}}
 }
@@ -1026,7 +1030,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await loadClientEntitlements(id);await refresh();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
@@ -1053,15 +1057,24 @@ function sidebar(){
   }
   function doCsv(dataset=''){
     let list=[];
-    if(dataset==='hotmart-products')list=state.hm?.products?.map(p=>({Producto:p.name,Ventas:p.count}))||[];
+    if(dataset==='ads'){
+      list=adsFilteredRows().map(x=>({
+        Cuenta:x.account_name,Campaña:x.campaign_name||x.name,
+        Detalle:x.name,Estado:metaStatusLabel(x.effective_status),Objetivo:metaObjectiveLabel(x.objective),
+        Inicio:x.date_start||'',Fin:x.date_stop||'',Moneda:x.currency||'',
+        Inversión:x.spend,Alcance:x.reach,Impresiones:x.impressions,Frecuencia:x.frequency,
+        Clics:x.clicks,CTR:x.ctr,CPC:x.cpc,CPM:x.cpm
+      }));
+    }
+    else if(dataset==='hotmart-products')list=state.hm?.products?.map(p=>({Producto:p.name,Ventas:p.count}))||[];
     else if(dataset)list=rows(dataset);
     else if(state.page==='hotmart')list=state.hm?.products?.map(p=>({Producto:p.name,Ventas:p.count}))||[];
     else{const selection={overview:'trend',analytics:'trend',acquisition:'sources',campaigns:'campaigns',audience:'countries',content:'pages',events:'events',reports:'trend'};list=rows(selection[state.page]||'trend');}
     if(!list.length){alert('No hay datos reales disponibles para descargar.');return;}
-    const cols=Object.keys(list[0]);const quote=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+    const cols=Object.keys(list[0]);const quote=v=>{const t=String(v??'');return '"'+(/^[\s]*[=+\-@]/.test(t)?"'"+t:t).replace(/"/g,'""')+'"';};
     const content=[cols.map(quote).join(','),...list.map(item=>cols.map(k=>quote(item[k])).join(','))].join('\r\n');
     const file=new Blob(['\ufeff'+content],{type:'text/csv;charset=utf-8'});const uri=URL.createObjectURL(file);
-    const a=document.createElement('a');a.href=uri;a.download=`e-digital-${dataset||state.page}-${state.period}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(uri),800);
+    const a=document.createElement('a');a.href=uri;a.download=`e-digital-${dataset||state.page}-${dataset==='ads'?state.adsPeriod:state.period}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(uri),800);
   }
   async function readCompanyLogo(file){
  if(!file||!file.size)return null;
@@ -1227,6 +1240,19 @@ function sidebar(){
     }
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
+    else if(action==='ads-apply-dates'){
+      const start=document.getElementById('ads-start-date')?.value||'';
+      const end=document.getElementById('ads-end-date')?.value||'';
+      const from=Date.parse(start+'T00:00:00Z'),until=Date.parse(end+'T00:00:00Z');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||
+         !Number.isFinite(from)||!Number.isFinite(until)||from>until||until>Date.now()+86400000||
+         until-from>365*86400000){
+        state.adsFilterError='Selecciona fechas válidas: desde la primera hasta la última, con máximo de un año.';
+        render();return;
+      }
+      state.adsFilterError='';state.adsCustomStart=start;state.adsCustomEnd=end;state.metaCampaigns=null;
+      await loadMeta();await loadAds();
+    }
     else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
     else if(action==='meta-disconnect'){
       if(!confirm('¿Desconectar Meta Ads de este navegador? Se dejarán de mostrar sus anuncios y métricas en eDigital. Tus campañas en Meta no se borrarán.'))return;
@@ -1318,7 +1344,15 @@ function sidebar(){
     }
     else if(e.target.id==='ads-platform'){state.adsPlatform=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
     else if(e.target.id==='ads-level'){state.adsLevel=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
-    else if(e.target.id==='date-period'){state.period=e.target.value;await refresh();if(state.page==='integrations'||state.page==='campaigns')await loadMeta();if(state.page==='campaigns')await loadAds();}
+    else if(e.target.id==='ads-period'){
+      state.adsPeriod=e.target.value;state.adsFilterError='';state.metaCampaigns=null;
+      render();
+      if(state.page==='campaigns'&&state.adsPeriod!=='custom'){await loadMeta();await loadAds();}
+    }
+    else if(e.target.id==='ads-account'){state.adsAccount=e.target.value;render();}
+    else if(e.target.id==='ads-status'){state.adsStatus=e.target.value;render();}
+    else if(e.target.id==='ads-objective'){state.adsObjective=e.target.value;render();}
+    else if(e.target.id==='date-period'){state.period=e.target.value;if(state.page==='campaigns'){state.adsPeriod=e.target.value;state.adsFilterError='';}await refresh();if(state.page==='integrations'||state.page==='campaigns')await loadMeta();if(state.page==='campaigns')await loadAds();}
   });
 
   function filterIntegrations(){
@@ -1335,6 +1369,13 @@ function sidebar(){
       state.adminQuery=q;render();const input=document.getElementById('admin-client-search');if(input){input.focus();if(start!==null&&end!==null)input.setSelectionRange(start,end);}return;
     }
     if(e.target.id==='integration-search'){filterIntegrations();return;}
+    if(e.target.id==='ads-search'){
+      state.adsSearch=e.target.value;
+      const start=e.target.selectionStart,end=e.target.selectionEnd;
+      render();const input=document.getElementById('ads-search');
+      if(input){input.focus();try{input.setSelectionRange(start,end)}catch{}}
+      return;
+    }
     if(e.target.id==='campaign-provider-search'){
       const q=e.target.value.trim().toLocaleLowerCase('es');
       document.querySelectorAll('.connector-provider[data-provider-name]').forEach(item=>{item.style.display=item.dataset.providerName.includes(q)?'':'none';});
