@@ -63,3 +63,117 @@
 .meta-account-row small{color:var(--muted2);font-size:11px}
 .meta-account-result{margin-top:18px;padding:12px;border:1px solid var(--border);border-radius:12px}
 .meta-account-result>strong{color:var(--text);font-size:13px}
+
+
+/* Edwin Digital · dashboard UX: collapsible sidebar, responsive forms and clear integrations */
+.brand{min-width:0}
+.brand-word{font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.55px;line-height:1.2;white-space:nowrap}
+.login-brand .brand-word{font-size:25px;letter-spacing:-.8px}
+.sidebar-head{gap:10px}
+.sidebar-collapse-btn{display:inline-grid;flex-shrink:0;width:34px;height:34px}
+.sidebar-head .brand{flex:1}
+.sidebar,.main-column{transition:width .2s ease,min-width .2s ease}
+.layout.sidebar-collapsed .sidebar{width:76px;min-width:76px}
+.layout.sidebar-collapsed .sidebar-head{padding:16px 10px;justify-content:center}
+.layout.sidebar-collapsed .sidebar-head .brand{display:none}
+.layout.sidebar-collapsed .sidebar-collapse-btn{width:42px;height:42px}
+.layout.sidebar-collapsed .nav-wrapper{padding:0 9px 20px}
+.layout.sidebar-collapsed .nav-group-title{display:none}
+.layout.sidebar-collapsed .sidebar-workspace{justify-content:center;margin:6px 0 18px;padding:10px 0;border-color:transparent;background:transparent}
+.layout.sidebar-collapsed .sidebar-workspace>span:nth-child(2),.layout.sidebar-collapsed .sidebar-workspace>svg:last-child{display:none}
+.layout.sidebar-collapsed .nav-link{height:48px;justify-content:center;gap:0;padding:0;margin-bottom:5px}
+.layout.sidebar-collapsed .nav-link>span:nth-child(2),.layout.sidebar-collapsed .nav-link .active-indicator{display:none}
+.layout.sidebar-collapsed .nav-link svg{width:21px;height:21px}
+.layout.sidebar-collapsed .sidebar-bottom{justify-content:center;padding:14px 4px}
+.layout.sidebar-collapsed .sidebar-bottom .account,.layout.sidebar-collapsed .sidebar-bottom .logout{display:none}
+.layout.sidebar-collapsed .sidebar-bottom .avatar{margin:auto}
+.sidebar-collapse-btn:focus-visible,.nav-link:focus-visible,.button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.integration-section{margin:12px 0 32px}
+.section-caption{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.section-caption h2{font-size:15px;font-weight:800;color:var(--text)}
+.section-caption span{font-size:12px;color:var(--muted2)}
+.integration-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.integration-card{min-width:0;padding:18px;box-shadow:none}
+.integration-card .integration-head{margin-bottom:11px}
+.integration-card .integration-head strong{font-size:14px;font-weight:800}
+.integration-card h3{font-size:14px}
+.integration-card p{min-height:0;margin:5px 0 9px;line-height:1.5}
+.integration-card .integration-logo{width:37px;height:37px;border-radius:10px;font-size:17px}
+.integration-card .integration-status{margin-top:12px;padding-top:12px}
+.integration-card.meta-full{grid-column:auto}
+.integration-note{color:var(--muted2);display:block;font-size:11px;line-height:1.5}
+.integration-card .meta-account-list{max-height:205px}
+.integration-card .meta-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.admin-quick-actions{display:grid;gap:10px}
+.admin-quick-actions .button{width:100%;justify-content:flex-start;text-align:left;min-height:43px}
+.admin-status-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.admin-status-grid>div{min-width:0}
+.admin-status-grid b{font-size:13px;line-height:1.35}
+.admin-status-grid p{margin-top:8px;font-size:12px;color:var(--muted2);line-height:1.65}
+.admin-overview-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.admin-overview-kpis .small-kpi small{display:block;font-size:11px;color:var(--muted2);margin-top:8px;line-height:1.45}
+.admin-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 20px;flex-wrap:wrap}
+.admin-toolbar>span{font-size:12px;color:var(--muted2)}
+.admin-search{display:flex;gap:9px;align-items:center;border:1px solid var(--border);background:var(--surface);padding:0 13px;border-radius:11px;width:min(440px,100%);min-width:0;height:46px;color:var(--muted2)}
+.admin-search:focus-within{border-color:var(--accent)}
+.admin-search input{background:transparent;border:0;outline:0;min-width:0;width:100%;color:var(--text);font-size:14px}
+.client-grid,.content-grid,.integration-grid{min-width:0}
+@media(max-width:1120px){
+ .admin-status-grid{grid-template-columns:1fr}
+ .admin-overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:800px){
+ .layout.sidebar-collapsed .sidebar{width:255px;min-width:255px}
+ .layout.sidebar-collapsed .sidebar-head{padding:20px;justify-content:space-between}
+ .layout.sidebar-collapsed .sidebar-head .brand{display:flex}
+ .sidebar-collapse-btn{display:none}
+ .layout.sidebar-collapsed .nav-wrapper{padding:4px 13px 24px}
+ .layout.sidebar-collapsed .nav-group-title{display:block}
+ .layout.sidebar-collapsed .sidebar-workspace{justify-content:flex-start;margin:0 5px 25px;padding:12px;border-color:var(--border);background:var(--surface2)}
+ .layout.sidebar-collapsed .sidebar-workspace>span:nth-child(2),.layout.sidebar-collapsed .sidebar-workspace>svg:last-child{display:block}
+ .layout.sidebar-collapsed .nav-link{height:43px;justify-content:flex-start;gap:13px;padding:0 14px;margin-bottom:3px}
+ .layout.sidebar-collapsed .nav-link>span:nth-child(2){display:block}
+ .layout.sidebar-collapsed .nav-link .active-indicator{display:block}
+ .layout.sidebar-collapsed .sidebar-bottom{justify-content:flex-start;padding:18px 17px 30px}
+ .layout.sidebar-collapsed .sidebar-bottom .account{display:block}
+ .layout.sidebar-collapsed .sidebar-bottom .logout{display:inline-grid}
+ .layout.sidebar-collapsed .sidebar-bottom .avatar{margin:0}
+ .login-page{min-width:0}
+ .login-form-side{padding:64px 20px 52px;min-height:100dvh;min-width:0;display:flex;flex-direction:column;align-items:stretch;justify-content:center}
+ .login-panel{min-width:0;width:100%;max-width:420px;margin:auto}
+ .login-theme{top:19px;right:18px}
+ .login-contact{position:static;margin-top:18px;padding-bottom:2px;text-align:center}
+ .form-input input,.login-form-side input,.security-form input,.admin-search input,.meta-search,.meta-select{font-size:16px}
+ .form-input{height:52px}
+ .select-wrap select{font-size:16px}
+ .sidebar .brand-word{font-size:18px}
+}
+@media(max-width:560px){
+ .integration-grid{grid-template-columns:1fr}
+ .integration-card{padding:16px}
+ .admin-overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-quick-actions{gap:9px}
+ .admin-toolbar{align-items:stretch}
+ .admin-search{width:100%}
+ .login-form-side{padding:65px 18px 32px}
+ .login-panel h2{font-size:clamp(24px,7vw,29px)}
+ .login-sub{margin-bottom:20px}
+ .form-input input{font-size:16px}
+}
+
+
+/* Portfolio connections and direct campaign switching */
+.connection-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+.connection-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--border);min-width:0}
+.connection-row>div{min-width:0}
+.connection-row b,.connection-row small{display:block;overflow-wrap:anywhere}
+.connection-row b{font-size:13px}
+.connection-row small{font-size:11px;color:var(--muted2);margin-top:4px;line-height:1.45}
+.connection-row .tag{flex-shrink:0}
+.connection-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px;grid-column:1/-1}
+.ads-platform-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:7px 0 16px}
+.ads-platform-tab{padding:12px 10px;min-width:0;min-height:45px;border:1px solid var(--border);background:var(--surface);border-radius:10px;color:var(--muted2);font-weight:800;font-size:12px}
+.ads-platform-tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.ads-platform-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:800px){.connection-overview{grid-template-columns:1fr}.ads-platform-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:370px){.connection-actions .button{flex:1}.ads-platform-tab{font-size:11px;padding:10px 6px}}
