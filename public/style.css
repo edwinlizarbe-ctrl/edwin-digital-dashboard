@@ -934,3 +934,5 @@ input,select,textarea{max-width:100%}
 .chart-spot:hover,.chart-spot:focus-visible{opacity:1;stroke-width:4;filter:drop-shadow(0 0 5px rgba(37,99,235,.45))}
 .chart-spot:focus-visible{stroke:#0ea5e9}
 @media(prefers-reduced-motion:reduce){.chart-spot{transition:none}.chart-spot:hover,.chart-spot:focus-visible{filter:none}}
+
+.overview-metric-picker{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}.overview-metric-button{border:1px solid var(--border);border-radius:20px;padding:9px 13px;background:var(--surface2);color:var(--text);cursor:pointer}.overview-metric-button.selected{border-width:2;font-weight:700}.metric-users.selected{border-color:#2563eb;color:#60a5fa}.metric-sessions.selected{border-color:#0891b2;color:#22d3ee}.metric-pages.selected{border-color:#9333ea;color:#c084fc}.metric-events.selected{border-color:#059669;color:#34d399}@media(max-width:480px){.overview-metric-button{flex:1 1 44%}}
