@@ -197,9 +197,20 @@
     return `<div class="insight-list">${lines.map(x=>`<div class="insight-item"><div class="insight-icon">${icon(x.symbol,18)}</div><div><strong>${clean(x.title)}</strong><p>${clean(x.desc)}</p></div></div>`).join('')}</div><p class="fine-print">Observaciones descriptivas, no recomendaciones ni ventas atribuidas automáticamente.</p>`;
   }
 
+  function connectionOverview(){
+    const sources=[
+      ['Google Analytics 4',gaReady()?'Conectado':'Pendiente','analytics',gaReady()?'Informes web disponibles':'Sin propiedad GA4 autorizada'],
+      ['Meta Ads',state.meta?.connected?'Conectado':state.meta?.configured?'Listo para conectar':'Pendiente','campaigns',state.meta?.connected?'Campañas disponibles según las cuentas autorizadas':'Completa la conexión en Integraciones'],
+      ['Google Ads','Próximamente','campaigns','API pendiente'],
+      ['TikTok Ads','Próximamente','campaigns','API pendiente'],
+      ['LinkedIn Ads','Próximamente','campaigns','API pendiente']
+    ];
+    return `<div class="connection-overview">${sources.map(([name,status,page,detail])=>`<div class="connection-row"><div><b>${clean(name)}</b><small>${clean(detail)}</small></div>${tag(status,status==='Conectado'?'success':'neutral')}</div>`).join('')}<div class="connection-actions"><button class="button button-outline" data-act="nav" data-page="integrations">${icon('plug',16)} Gestionar integraciones</button><button class="button button-soft" data-act="nav" data-page="campaigns">${icon('megaphone',16)} Campañas Ads</button></div></div>`;
+  }
+
   function overview() {
     const ok=gaReady();
-    return `${heading('Vista general','Todo tu negocio, en una sola vista','Visualiza el rendimiento del sitio y las conversiones registradas, con datos reales.')}${statusStrip()}${mainKpis()}<div class="content-grid"><div class="col-8">${card('Rendimiento del sitio',`Usuarios y sesiones · ${periodLabel()}`,ok?chart(rows('trend'),'sessions','Sesiones','totalUsers','Usuarios'):dataPlaceholder())}</div><div class="col-4">${card('¿De dónde viene tu tráfico?','Distribución por canal de adquisición',ok?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Contenido que concentra la atención',ok?barList(rows('pages'),'pagePath','screenPageViews',6):dataPlaceholder(),`<button class="text-action" data-act="nav" data-page="content">Ver contenido ${icon('chevron',14)}</button>`)}</div><div class="col-5">${card('Lectura rápida de tus datos','Hallazgos generados con la información disponible',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}${flags()}`;
+    return `${heading('Vista general','Todo tu negocio, en una sola vista','Visualiza el rendimiento del sitio y las conversiones registradas, con datos reales.')}${statusStrip()}${mainKpis()}<div class="content-grid"><div class="col-8">${card('Rendimiento del sitio',`Usuarios y sesiones · ${periodLabel()}`,ok?chart(rows('trend'),'sessions','Sesiones','totalUsers','Usuarios'):dataPlaceholder())}</div><div class="col-4">${card('¿De dónde viene tu tráfico?','Distribución por canal de adquisición',ok?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Contenido que concentra la atención',ok?barList(rows('pages'),'pagePath','screenPageViews',6):dataPlaceholder(),`<button class="text-action" data-act="nav" data-page="content">Ver contenido ${icon('chevron',14)}</button>`)}</div><div class="col-5">${card('Lectura rápida de tus datos','Hallazgos generados con la información disponible',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${flags()}`;
   }
   function heading(kicker,title,subtitle){return `<div class="page-title"><div><div class="eyebrow">${clean(kicker)}</div><h1>${clean(title)}</h1><p>${clean(subtitle)}</p></div><button class="button button-outline title-export" data-act="csv">${icon('download',17)} Exportar CSV</button></div>`;}
   function detailKpis() {
@@ -212,7 +223,7 @@
  const connected=state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account);
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
  const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']];
- const controls=`<div class="ads-toolbar"><label class="form-label">Plataforma<select id="ads-platform" class="meta-select">${choices.map(([value,label])=>`<option value="${value}" ${platform===value?'selected':''}>${label}</option>`).join('')}</select></label><label class="form-label">Detalle<select id="ads-level" class="meta-select">${[['campaign','Campañas'],['adset','Conjuntos'],['ad','Anuncios']].map(([value,label])=>`<option value="${value}" ${level===value?'selected':''}>${label}</option>`).join('')}</select></label><button class="button button-outline" data-act="ads-refresh">${icon('refresh',16)} Actualizar</button></div>`;
+ const controls=`<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">${choices.map(([value,label])=>`<button type="button" class="ads-platform-tab ${platform===value?'active':''}" data-act="ads-platform" data-platform="${value}" aria-pressed="${platform===value}" >${label}</button>`).join('')}</div><div class="ads-toolbar"><label class="form-label">Detalle<select id="ads-level" class="meta-select">${[['campaign','Campañas'],['adset','Conjuntos'],['ad','Anuncios']].map(([value,label])=>`<option value="${value}" ${level===value?'selected':''}>${label}</option>`).join('')}</select></label><button class="button button-outline" data-act="ads-refresh">${icon('refresh',16)} Actualizar</button></div>`;
  let result='';
  if(platform!=='meta')result=empty('Esta plataforma aún necesita autorización de la API oficial.','Integración pendiente');
  else if(!connected)result=empty('Conecta tu cuenta de Facebook desde Integraciones y selecciona una cuenta publicitaria.','Cuenta pendiente');
@@ -459,6 +470,7 @@ function sidebar(){
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
+    else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
     else if(action==='meta-disconnect'){
       if(confirm('¿Desconectar Meta Ads de este navegador? Puedes volver a autorizarla.')){
         try{await api('/api/meta/disconnect',{method:'POST',body:'{}'});await loadMeta();}
