@@ -130,6 +130,14 @@
    const previous=state.messages.filter(x=>x!==initial).slice(-6).map(x=>({role:x.role,content:x.content}));
    state.messages.push({role:'user',content:q});state.busy=true;render();
    let answer='';
+   // Simple integration navigation can respond without waiting for an AI network round-trip.
+   const normalized=q.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+   const quickNavigation=/^(donde|como|en que seccion|abre|ir a|mostrar|ver)\b/.test(normalized)&&/integracion|conectar|configurar|vincular|menu|seccion/.test(normalized)&&!/metric|datos|resultado|cuanto|campan|venta|usuario|sesion/.test(normalized);
+   if(quickNavigation){
+     const answer=localAnswer(q,c);
+     state.messages.push({role:'assistant',content:answer.slice(0,2500)});
+     state.messages=state.messages.slice(-14);state.busy=false;render();return;
+   }
    const frame=await contextualFrame(q,c);
    if(state.aiReady&&c.businessId&&!frame.missingPeriodData){
      try{
