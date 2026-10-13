@@ -16,7 +16,7 @@
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
-    adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', temporaryAccess: null,
+    adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -664,7 +664,7 @@ async function loadAccounts(){
   const results=list.map(u=>`<div class="client-site-row account-access-row">
     <div class="client-avatar compact">${icon('users',19)}</div>
     <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Rol: ${clean(u.role||'Cliente')} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
-    <div class="account-access-actions"><button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button></div>
+    <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button><button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button></div>
   </div>`).join('');
   return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
     <div class="account-access-toolbar"><button class="button button-outline" data-act="accounts-refresh" ${state.accountsLoading?'disabled':''}>${icon('refresh',16)} ${state.accountsLoading?'Consultando…':'Actualizar usuarios'}</button><span>${fmt(list.length)} cuentas visibles</span></div>
@@ -673,6 +673,13 @@ async function loadAccounts(){
     ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
     ${state.temporaryAccess?`<div class="temporary-credential" role="status"><strong>Clave temporal de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code>${clean(state.temporaryAccess.password)}</code><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar</button></div><p>Se muestra solo ahora. Envíala de forma privada y pide al cliente que la cambie en Mi cuenta.</p></div>`:''}
     ${card('Usuarios de clientes','Correos registrados en Supabase Auth',results||empty(state.accountsLoading?'Consultando cuentas…':state.accountsLoaded?'No hay cuentas de clientes disponibles.':'Pulsa Actualizar usuarios para consultar las cuentas.'))}
+    ${state.emailHistoryUserId?card('Historial de cambios de correo','Solo registra cambios realizados después de activar la auditoría de Supabase',
+      (state.emailHistoryLoading?'<p>Cargando historial…</p>':'')+
+      (state.emailHistoryError?alertBlock(state.emailHistoryError,'info'):'')+
+      (!state.emailHistoryLoading&&!state.emailHistoryError?(state.emailHistoryData.length?
+        state.emailHistoryData.map(x=>'<div class="client-site-row"><div><strong>'+clean(x.previous_email||'Sin correo anterior')+' → '+clean(x.new_email||'Sin correo nuevo')+'</strong><small>'+clean(x.changed_at?new Date(x.changed_at).toLocaleString('es-PE'):'Sin fecha')+'</small></div></div>').join(''):'<p class="fine-print">No se han registrado cambios de correo desde la activación del historial.</p>'):'')+
+      '<button type="button" class="button button-outline" data-act="account-email-hide">Cerrar historial</button>'
+    ):''}
     <p class="fine-print">Las contraseñas no se almacenan ni pueden consultarse aquí. El administrador puede generar una clave temporal y entregarla al cliente de forma privada. Los accesos a empresas siguen sujetos a permisos.</p>`;
 }
   function clients(){
@@ -998,6 +1005,14 @@ function sidebar(){
     else if(action==='admin-set-premium'&&isAdmin()){
       await saveAdminFeature('',null,'premium');
     }
+    else if(action==='account-email-history'&&isAdmin()){
+      const userId=b.dataset.id||'';
+      state.emailHistoryUserId=userId;state.emailHistoryData=[];state.emailHistoryError='';state.emailHistoryLoading=true;render();
+      try{const result=await api('/api/admin/accounts/email-history?user_id='+encodeURIComponent(userId));if(state.emailHistoryUserId===userId){state.emailHistoryData=result.changes||[];if(!result.configured)state.emailHistoryError=result.reason||'Auditoría no configurada.';}}
+      catch(e){if(state.emailHistoryUserId===userId)state.emailHistoryError=e.message;}
+      finally{if(state.emailHistoryUserId===userId){state.emailHistoryLoading=false;render();}}
+    }
+    else if(action==='account-email-hide'){state.emailHistoryUserId='';state.emailHistoryData=[];render();}
     else if(action==='accounts-refresh'&&isAdmin()){state.temporaryAccess=null;await loadAccounts();}
     else if(action==='account-copy-temp'&&isAdmin()&&state.temporaryAccess){
       try{await navigator.clipboard.writeText(state.temporaryAccess.password);state.accountNotice='Clave copiada al portapapeles. Compártela por un canal privado.';}
