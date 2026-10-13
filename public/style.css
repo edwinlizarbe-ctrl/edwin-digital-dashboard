@@ -773,3 +773,32 @@ input,select,textarea{max-width:100%}
 @media(max-width:1020px){.ads-overview-hero{flex-direction:column;align-items:flex-start}.ads-guidance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ads-overview-actions{flex-wrap:wrap}.ads-platform-tabs .ads-platform-tab{min-height:74px}}
 @media(max-width:780px){.ads-platform-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.ads-platform-tabs .ads-platform-tab{min-height:58px!important}.ads-guidance-grid{grid-template-columns:1fr}}
 @media(max-width:540px){.ads-overview-hero{padding:18px 15px;gap:14px}.ads-overview-main>.provider-logo{width:49px;height:49px;flex-basis:49px}.ads-overview-main>.provider-logo img{width:32px;height:32px}.ads-overview-main h2{font-size:18px}.ads-overview-actions{width:100%;gap:9px}.ads-overview-actions>.ads-hero-button{flex:1}.ads-platform-tab .ads-tab-label{font-size:11px}.ads-platform-tab .ads-tab-status{font-size:9px}.ads-platform-tabs .ads-platform-tab .provider-logo{width:26px;height:26px;flex-basis:26px}.ads-platform-tabs .ads-platform-tab .provider-logo img{width:20px;height:20px}.ads-guidance{padding:16px 14px}}
+
+
+/* Stronger superadministrator hierarchy without exposing private client data. */
+.main-content .admin-plan-options{gap:16px;margin:18px 0 20px}
+.main-content .admin-plan-option{position:relative;min-height:124px;padding:21px;border:1px solid #d6e1ed;background:var(--surface);box-shadow:0 3px 13px rgba(29,54,87,.055)}
+.main-content .admin-plan-option.selected{border:2px solid var(--accent);background:var(--accent-soft);box-shadow:0 7px 18px color-mix(in srgb,var(--accent) 10%,transparent)}
+.main-content .admin-plan-option:first-child:not(.selected){border-top:3px solid #6e8bb0}
+.main-content .admin-plan-option:last-child:not(.selected){border-top:3px solid #193f70}
+.main-content .admin-plan-option b{display:block;font-size:16px;letter-spacing:-.2px;font-weight:850;color:var(--text)}
+.main-content .admin-plan-option p{font-size:12px;line-height:1.65;color:var(--muted2);max-width:360px}
+.main-content .admin-plan-option .button{min-height:41px;font-size:11.5px;font-weight:850}
+.main-content .admin-feature-header .simple-input{font-size:15px;font-weight:750;border:1px solid #cad8e8;background:var(--surface);color:var(--text)}
+.main-content .admin-feature-header .form-label{font-size:12px;font-weight:850;color:var(--text)}
+.main-content .admin-feature-row{background:var(--surface);border-color:#dce6f0;min-height:84px}
+.main-content .admin-feature-name strong{font-size:12.4px;font-weight:850}
+.main-content .admin-feature-name small{font-size:10.8px}
+.main-content .admin-permissions-heading{border-top:1px solid var(--border);padding-top:20px}
+.main-content .admin-permissions-heading h3{font-size:16px;font-weight:850}
+.main-content .admin-permissions-heading p{line-height:1.5}
+.main-content .admin-feature-state{color:var(--text);font-weight:850}
+.main-content .client-card{border:1px solid var(--border);box-shadow:0 3px 14px rgba(25,43,73,.045)}
+.main-content .client-card h3{font-weight:850;color:var(--text);font-size:14px}
+.main-content .client-plan-tag{display:inline-flex;padding:6px 9px;border-radius:9px;background:var(--accent-soft);color:var(--accent);font-size:10.5px;font-weight:800;margin:10px 0}
+.main-content .account-access-row{padding:15px 7px;border-bottom:1px solid var(--border)}
+.main-content .account-access-info strong{font-size:12.5px;color:var(--text)}
+.main-content .account-access-info small{font-size:11px;line-height:1.5}
+[data-theme=dark] .main-content .admin-plan-option,[data-theme=dark] .main-content .admin-feature-row{background:var(--surface);border-color:var(--border)}
+[data-theme=dark] .main-content .admin-feature-header .simple-input{background:var(--surface);border-color:var(--border)}
+@media(max-width:710px){.main-content .admin-plan-option{flex-wrap:wrap;gap:12px}.main-content .admin-plan-option>.button{width:100%;justify-content:center}}
