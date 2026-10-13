@@ -726,11 +726,12 @@ function campaigns(){
  <div class="small-kpi"><span>Empresas visibles</span><strong>${fmt(items.length)}</strong><small>Según permisos de Supabase</small></div>
  <div class="small-kpi"><span>Sitios visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(Object.values(state.adminSiteStats).reduce((t,x)=>t+(x.count||0),0)):'—'}</strong><small>Según tus permisos</small></div>
  <div class="small-kpi"><span>Propiedades GA4 visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(Object.values(state.adminSiteStats).reduce((t,x)=>t+(x.ga4||0),0)):'—'}</strong><small>Con propiedad asignada</small></div>
- <div class="small-kpi"><span>Premium (manual)</span><strong>${state.adminPlansLoaded?fmt(Object.values(state.adminPlans).filter(x=>x==='premium').length):'—'}</strong><small>Free todavía no disponible</small></div><div class="small-kpi"><span>Verificación</span><strong>${fmt(Object.values(state.adminSiteStats).filter(x=>!x.error).length)} / ${fmt(items.length)}</strong><small>Empresas revisadas</small></div></div>
+ <div class="small-kpi"><span>Planes asignados</span><strong>${state.adminPlansLoaded?fmt(Object.values(state.adminPlans).filter(x=>x==='premium'||x==='free').length):'—'}</strong><small>${state.adminPlansLoaded?'Premium: '+fmt(Object.values(state.adminPlans).filter(x=>x==='premium').length)+' · Free: '+fmt(Object.values(state.adminPlans).filter(x=>x==='free').length):'Según permisos de Supabase'}</small></div><div class="small-kpi"><span>Verificación</span><strong>${fmt(Object.values(state.adminSiteStats).filter(x=>!x.error).length)} / ${fmt(items.length)}</strong><small>Empresas revisadas</small></div></div>
  <div class="content-grid">
  <div class="col-8">${card('Cartera de empresas','Abre una ficha para consultar sus propiedades autorizadas',rows||empty('No hay empresas visibles para esta cuenta.'))}</div>
  <div class="col-4">${card('Gestión rápida','Acciones disponibles para tu rol',`<div class="admin-quick-actions">
  <button class="button button-primary" data-act="nav" data-page="clients">${icon('building',16)} Gestionar empresas</button>
+ <button class="button button-outline" data-act="nav" data-page="accounts">${icon('users',16)} Accesos y correos de clientes</button>
  <button class="button button-outline" data-act="nav" data-page="adminOperations">${icon('activity',16)} Supervisión de clientes</button>
  <button class="button button-outline" data-act="nav" data-page="adminIntegrations">${icon('plug',16)} Catálogo de integraciones</button>
  <button class="button button-outline" data-act="admin-check" ${state.adminStatsLoading?'disabled':''}>${icon('refresh',16)} Comprobar sitios</button>
@@ -738,7 +739,7 @@ function campaigns(){
  <div class="col-12">${card('Control de la plataforma','Acceso y estado de las funcionalidades',`<div class="admin-status-grid">
  <div><b>Accesos independientes</b><p>Las fichas se consultan con los permisos de tu cuenta; no se usan las sesiones de tus clientes.</p></div>
  <div><b>Fuentes autorizadas</b><p>GA4 y Meta muestran datos únicamente cuando existe una conexión válida. Los demás proveedores indican que están pendientes.</p></div>
- <div><b>Altas, invitaciones y planes</b><p>Puedes asignar Premium manualmente y activar integraciones por empresa. Free, pagos y suscripciones automáticas quedan para después.</p></div>
+ <div><b>Planes y acceso por empresa</b><p>Asigna Premium con todos los permisos o Free con integraciones ON/OFF. Requiere habilitar el almacenamiento en Supabase. Los cobros automáticos aún no están disponibles.</p></div>
  </div>`)}</div></div>`;
 }
 
