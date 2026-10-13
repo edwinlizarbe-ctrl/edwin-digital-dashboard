@@ -78,8 +78,27 @@ async function session(req, env) {
   if (!user) return { invalid: true, cookies: clearCookies() };
   const profile = await supaRest(env, `profiles?select=id,email,role&id=eq.${encodeURIComponent(user.id)}&limit=1`, access);
   if (!profile.length) return { invalid: true, cookies: clearCookies() };
-  return { user: { id: user.id, email: user.email, role: profile[0].role }, access, cookies };
+  return { user: { id: user.id, email: user.email, role: profile[0].role, business_preferences: user.user_metadata?.ed_business_preferences_v1||{} }, metadata: user.user_metadata||{}, access, cookies };
 }
+
+function companyJsonRequest(req,limit=120000){
+  return !corsPostDenied(req) && (req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json') &&
+    (!req.headers.get('Content-Length')||Number(req.headers.get('Content-Length'))<=limit);
+}
+async function companyParse(req,limit=120000){
+  const body=await req.text();if(body.length>limit)throw Error('Archivo demasiado grande.');
+  return JSON.parse(body);
+}
+async function companyPatch(env,session,table,filter,changes){
+  const endpoint=String(env.SUPABASE_URL).replace(/\/$/,'')+'/rest/v1/'+table+'?'+filter;
+  const res=await fetch(endpoint,{method:'PATCH',headers:{...supaHeaders(env,session.access),
+    'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(changes)});
+  if(!res.ok)throw Error('Supabase no permite editar este registro (HTTP '+res.status+').');
+  const rows=await res.json().catch(()=>[]);
+  if(!rows.length)throw Error('No se encontró un registro editable; revisa los permisos de tu empresa.');
+  return rows[0];
+}
+
 function requestedPeriod(url) {
   const p = url.searchParams.get('period');
   if (['today','yesterday','7','30','90','365'].includes(p)) return p;
@@ -162,6 +181,83 @@ async function handleApi(req, env) {
     // Force a new login with the newly chosen password; cookies remain HttpOnly.
     return json({ok:true,login_required:true},200,clearCookies());
   }
+
+
+  if(path==='/api/auth/change-email' && method==='POST') {
+    if(!companyJsonRequest(req,3000))return json({error:'Solicitud no permitida.'},403,s.cookies);
+    let input;try{input=await companyParse(req,3000);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
+    const email=String(input.email||'').trim().toLowerCase(),password=input.currentPassword;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||typeof password!=='string'||password.length<1||password.length>512)
+      return json({error:'Ingresa un correo válido y tu contraseña actual.'},400,s.cookies);
+    if(email===s.user.email.toLowerCase())return json({error:'El correo nuevo debe ser diferente del actual.'},400,s.cookies);
+    const checked=await supaAuth(env,'token?grant_type=password',{
+      method:'POST',body:JSON.stringify({email:s.user.email,password})
+    });
+    if(!checked.ok)return json({error:'La contraseña actual no es correcta.'},403,s.cookies);
+    const verified=await checked.json();
+    if(verified.user?.id!==s.user.id)return json({error:'No se pudo verificar tu identidad.'},403,s.cookies);
+    const changed=await supaAuth(env,'user',{method:'PUT',
+      headers:{Authorization:'Bearer '+s.access},body:JSON.stringify({email})});
+    if(!changed.ok)return json({error:'Supabase no pudo tramitar el cambio de correo. Comprueba la configuración de confirmación.'},400,s.cookies);
+    return json({ok:true,message:'Revisa tu nuevo correo y confirma el cambio si Supabase lo solicita.'},200,s.cookies);
+  }
+
+  if(path==='/api/company/preferences' && method==='POST') {
+    if(!companyJsonRequest(req))return json({error:'Solicitud no autorizada o demasiado grande.'},403,s.cookies);
+    let input;try{input=await companyParse(req);}catch{return json({error:'Perfil inválido.'},400,s.cookies);}
+    const id=input?.business_id;
+    if(s.user.role==='admin'||!isUuid(id))return json({error:'Empresa no autorizada.'},403,s.cookies);
+    const businesses=await supaRest(env,'businesses?select=id&id=eq.'+id+'&limit=1',s.access);
+    if(!businesses.length)return json({error:'No tienes acceso a esta empresa.'},403,s.cookies);
+    const display_name=String(input.display_name||'').trim(),
+      category=String(input.category||'').trim(),country=String(input.country||'').trim();
+    if(display_name.length<2||display_name.length>80||category.length>80||country.length>80)
+      return json({error:'El nombre, sector o país tienen un formato incorrecto.'},400,s.cookies);
+    const old=s.user.business_preferences && typeof s.user.business_preferences==='object'?
+      s.user.business_preferences:{};
+    // Logo bytes must never enter Supabase Auth metadata: the resulting JWT must fit browser cookies.
+    const preferences={...old,[id]:{display_name,category,country}};
+    if(Object.keys(preferences).length>30)return json({error:'Se alcanzó el límite de perfiles personalizados.'},400,s.cookies);
+    const changed=await supaAuth(env,'user',{method:'PUT',headers:{Authorization:'Bearer '+s.access},
+      body:JSON.stringify({data:{...s.metadata,ed_business_preferences_v1:preferences}})});
+    if(!changed.ok)return json({error:'No se pudo guardar el perfil de esta cuenta.'},502,s.cookies);
+    return json({ok:true,profile:preferences[id],scope:'user'},200,s.cookies);
+  }
+  if(path==='/api/company/name' && method==='PATCH') {
+    if(!companyJsonRequest(req,3000))return json({error:'Solicitud no permitida.'},403,s.cookies);
+    let x;try{x=await companyParse(req,3000);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
+    const id=x.business_id,name=String(x.name||'').trim();
+    if(s.user.role==='admin'||!isUuid(id)||name.length<2||name.length>80)
+      return json({error:'Nombre de empresa inválido.'},400,s.cookies);
+    const valid=await supaRest(env,'businesses?select=id&id=eq.'+id+'&limit=1',s.access);
+    if(!valid.length)return json({error:'No tienes acceso a este negocio.'},403,s.cookies);
+    try{const row=await companyPatch(env,s,'businesses','id=eq.'+id,{name});
+      return json({ok:true,name:row.name},200,s.cookies);
+    }catch(e){return json({error:e.message},403,s.cookies);}
+  }
+  if(path==='/api/sites/edit' && method==='PATCH') {
+    if(!companyJsonRequest(req,3000))return json({error:'Solicitud no permitida.'},403,s.cookies);
+    let x;try{x=await companyParse(req,3000);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
+    const id=x.business_id,sid=x.site_id,name=String(x.name||'').trim(),website=String(x.url||'').trim();
+    let validURL=false;try{const u=new URL(website);validURL=['http:','https:'].includes(u.protocol)&&
+      !!u.hostname.includes('.')&&!u.username&&!u.password&&website.length<=300;}catch{}
+    if(s.user.role==='admin'||!isUuid(id)||!isUuid(sid)||name.length<2||name.length>100||!validURL)
+      return json({error:'Comprueba el nombre y la dirección URL del sitio.'},400,s.cookies);
+    const allowed=await supaRest(env,'sites?select=id&business_id=eq.'+id+'&id=eq.'+sid+'&limit=1',s.access);
+    if(!allowed.length)return json({error:'No tienes acceso a este sitio.'},403,s.cookies);
+    try{const row=await companyPatch(env,s,'sites','id=eq.'+sid+'&business_id=eq.'+id,{name,url:website});
+      return json({ok:true,site:{id:row.id,name:row.name,url:row.url}},200,s.cookies);
+    }catch(e){return json({error:e.message},403,s.cookies);}
+  }
+  if(path==='/api/admin/integrations/health' && method==='GET') {
+    if(s.user.role!=='admin')return json({error:'Acceso exclusivo del administrador.'},403,s.cookies);
+    let callback=false;
+    try{const u=new URL(env.META_REDIRECT_URI||'');callback=u.protocol==='https:'&&u.pathname==='/api/meta/callback'&&!u.search&&!u.hash;}catch{}
+    const checks={app_id:!!env.META_APP_ID,app_secret:!!env.META_APP_SECRET,
+      session_key:/^[0-9a-fA-F]{64}$/.test(env.META_SESSION_KEY||''),redirect:callback};
+    return json({meta:{configured:Object.values(checks).every(Boolean),checks},ga4:{service_account:!!env.GOOGLE_SERVICE_ACCOUNT_JSON}},200,s.cookies);
+  }
+
   if (path === '/api/businesses' && method === 'GET') {
     const businesses = await supaRest(env, 'businesses?select=id,name,slug,created_at&order=name.asc', s.access);
     return json({ businesses }, 200, s.cookies);

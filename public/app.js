@@ -11,6 +11,10 @@
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
     metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign',
+    companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
+    emailBusy: false, emailError: '', emailNotice: '',
+    accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
+    adminHealth: null, adminHealthError: '',
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -21,6 +25,14 @@
   const money = (v, code) => { try { return new Intl.NumberFormat('es-PE', { style:'currency', currency:code, maximumFractionDigits:2 }).format(number(v)); } catch { return `${fmt1(v)} ${clean(code)}`; } };
   const duration = s => `${Math.floor(number(s) / 60)}m ${Math.round(number(s) % 60)}s`;
   const business = () => state.businesses.find(b => b.id === state.businessId);
+  const companyPrefs = () => state.user?.business_preferences?.[state.businessId] || {};
+  const logoStoreKey = () => 'ed-company-logo-v7:'+state.user?.id+':'+state.businessId;
+  const getCompanyLogo = () => {try{return localStorage.getItem(logoStoreKey())||'';}catch{return '';}};
+  const displayBusiness = () => !isAdmin() && companyPrefs().display_name || business()?.name || 'Mi empresa';
+  const companyImage = (size=34) => {
+    const logo=getCompanyLogo();
+    return logo.startsWith('data:image/')?`<img class="company-logo-image" src="${clean(logo)}" alt="Logotipo de la empresa" width="${size}" height="${size}" />`:icon('building',Math.round(size*.59));
+  };
   const periodLabel = () => ({ today:'Hoy', yesterday:'Ayer', '7':'Últimos 7 días', '30':'Últimos 30 días', '90':'Últimos 90 días', '365':'Últimos 12 meses' })[state.period] || 'Últimos 30 días';
   const site = () => state.sites.find(s => s.id === state.siteId);
   const isAdmin = () => state.user?.role === 'admin';
@@ -89,7 +101,7 @@
     link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2m3 6a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2"/>',
   };
   const icon = (name, size=19) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.activity}</svg>`;
-  const brand = large => `<div class="brand ${large ? 'brand-large' : ''}"><div class="brand-word">Edwin Digital</div></div>`;
+  const brand = large => `<div class="brand ${large ? 'brand-large' : ''}" aria-label="Edwin Digital"><div class="brand-word">Edwin Digital</div></div>`;
 
   async function api(path, options={}) {
     const res = await fetch(path, { credentials:'same-origin', headers:{ 'Content-Type':'application/json' }, ...options });
@@ -97,7 +109,10 @@
     if (!res.ok) { const error = new Error(data.error || `Error de servidor: ${res.status}`); error.status = res.status; throw error; }
     return data;
   }
-  function setTheme() { document.documentElement.dataset.theme = state.theme; }
+  function setTheme() { document.documentElement.dataset.theme = state.theme;
+    document.documentElement.dataset.accent = state.accent;
+    document.documentElement.dataset.sidebarTone = state.sidebarTone;
+  }
   const tag = (label, type='neutral') => `<span class="tag tag-${type}"><span class="tag-dot"></span>${clean(label)}</span>`;
   const alertBlock = (text, type='warning') => `<div class="alert-block ${type}">${icon(type==='warning'?'alert':'info',18)}<div>${clean(text)}</div></div>`;
   const empty = (text, title='Aún no hay datos') => `<div class="empty-data"><span class="empty-icon">${icon('activity',25)}</span><strong>${clean(title)}</strong><span>${clean(text)}</span></div>`;
@@ -229,7 +244,7 @@
     const ok=gaReady();
     return `${heading('Vista general','Todo tu negocio, en una sola vista','Visualiza el rendimiento del sitio y las conversiones registradas, con datos reales.')}${statusStrip()}${mainKpis()}<div class="content-grid"><div class="col-8">${card('Rendimiento del sitio',`Usuarios y sesiones · ${periodLabel()}`,ok?chart(rows('trend'),'sessions','Sesiones','totalUsers','Usuarios'):dataPlaceholder())}</div><div class="col-4">${card('¿De dónde viene tu tráfico?','Distribución por canal de adquisición',ok?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Contenido que concentra la atención',ok?barList(rows('pages'),'pagePath','screenPageViews',6):dataPlaceholder(),`<button class="text-action" data-act="nav" data-page="content">Ver contenido ${icon('chevron',14)}</button>`)}</div><div class="col-5">${card('Lectura rápida de tus datos','Hallazgos generados con la información disponible',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${connectedAdsOverview()}${flags()}`;
   }
-  function heading(kicker,title,subtitle){return `<div class="page-title"><div><div class="eyebrow">${clean(kicker)}</div><h1>${clean(title)}</h1><p>${clean(subtitle)}</p></div><button class="button button-outline title-export" data-act="csv">${icon('download',17)} Exportar CSV</button></div>`;}
+  function heading(kicker,title,subtitle){const downloadable=['overview','analytics','acquisition','utm','audience','content','events','reports'].includes(state.page);return `<div class="page-title"><div><div class="eyebrow">${clean(kicker)}</div><h1>${clean(title)}</h1><p>${clean(subtitle)}</p></div>${downloadable?`<button class="button button-outline title-export" data-act="csv">${icon('download',17)} Exportar CSV</button>`:''}</div>`;}
   function detailKpis() {
     const v=m(), ok=gaReady();
     return `<div class="small-kpis">${[['Usuarios activos','activeUsers',fmt],['Usuarios nuevos','newUsers',fmt],['Sesiones con interacción','engagedSessions',fmt],['Tasa de interacción','engagementRate',pc],['Rebote','bounceRate',pc],['Eventos totales','eventCount',fmt],['Tiempo medio de sesión','averageSessionDuration',duration],['Tasa de sesión con evento clave','sessionKeyEventRate',pc]].map(x=>`<div class="small-kpi"><span>${x[0]}</span><strong>${ok?x[2](v[x[1]]):'—'}</strong>${trendFor(x[1],x[2]===pc)}</div>`).join('')}</div>`;
@@ -276,10 +291,54 @@
     const kinds=[['Resumen del sitio','overview','trend'],['Adquisición','acquisition','sources'],['Campañas UTM','campaigns','campaigns'],['Audiencia','audience','countries'],['Contenido','content','pages'],['Eventos y conversiones','events','events']];
     return `${heading('Centro de reportes','Tus informes, listos para analizar','Descarga archivos CSV con las métricas que realmente devuelve tu propiedad.')}${statusStrip()}<div class="report-grid">${kinds.map(([name,page,key])=>`<div class="report-item"><div class="report-icon">${icon('file-bar-chart',22)}</div><div><h3>${name}</h3><p>${gaReady()?`${fmt(rows(key).length)} registros · ${periodLabel()}`:'Esperando conexión GA4'}</p></div><button class="button button-soft" data-act="download" data-report="${key}" ${!gaReady()||!rows(key).length?'disabled':''}>${icon('download',17)} CSV</button></div>`).join('')}${selectedBusinessIsHotmart()?`<div class="report-item"><div class="report-icon rose">${icon('shopping-bag',22)}</div><div><h3>Productos vendidos · Hotmart</h3><p>${state.hm?`${fmt(state.hm.products?.length)} productos`:state.hmLoading?'Consultando…':'Sin conexión'}</p></div><button class="button button-soft" data-act="download" data-report="hotmart-products" ${!state.hm?'disabled':''}>${icon('download',17)} CSV</button></div>`:''}</div>${alertBlock('Los CSV contienen las filas que entrega la API en el período seleccionado. El panel no genera cifras sintéticas, ni incluye el costo de las campañas publicitarias.','info')}`;
   }
-function company(){
- const b=business(),items=state.sites.map(x=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(x.name)}</strong><small>${clean(x.url||'Sin URL')}</small></div><span class="client-site-badge">${x.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
- return `${heading('Mi negocio','Mi empresa','Consulta tus datos de empresa y las fuentes autorizadas.')}
- <div class="content-grid"><div class="col-7">${card('Datos de mi empresa','Información actualmente registrada',`<div class="settings-line"><span>Empresa</span><b>${clean(b?.name||'Pendiente')}</b></div><div class="settings-line"><span>Identificador</span><b>${clean(b?.slug||'—')}</b></div><div class="settings-line"><span>Usuario</span><b>${clean(state.user?.email||'')}</b></div><p class="fine-print">La edición del logotipo, nombre comercial y datos de la empresa necesita almacenamiento y permisos de actualización separados por cliente.</p>`)}</div><div class="col-5">${card('Fuentes de mi empresa','El estado se refleja al autorizar una conexión',connectionOverview())}</div><div class="col-12">${card('Mis sitios',fmt(state.sites.length)+' registrados',items||empty('No hay sitios asignados.'))}</div></div>`;
+  function company(){
+ const b=business(),prefs=companyPrefs();
+ const sites=state.sites.map(x=>`<div class="client-site-row">
+   <div class="client-avatar compact">${icon('globe',19)}</div>
+   <div><strong>${clean(x.name)}</strong><small>${clean(x.url||'Dirección sin asignar')}</small><small>${x.ga4_property_id?'Propiedad GA4 asignada':'Sin propiedad GA4 asignada'}</small></div>
+   <button class="button button-outline" data-act="edit-site" data-id="${clean(x.id)}">${icon('settings',15)} Editar sitio</button>
+ </div>${state.editSiteId===x.id?`<form id="site-edit-form" class="company-edit-panel">
+    <input type="hidden" name="siteId" value="${clean(x.id)}">
+    <label class="form-label">Nombre del sitio<input class="simple-input" name="siteName" maxlength="100" required value="${clean(x.name)}"></label>
+    <label class="form-label">Dirección web<input class="simple-input" type="url" name="siteUrl" maxlength="300" required value="${clean(x.url)}"></label>
+    ${state.siteError?alertBlock(state.siteError):''}
+    <div class="company-form-actions"><button class="button button-primary" type="submit" ${state.siteBusy?'disabled':''}>${state.siteBusy?'Guardando…':'Guardar sitio'}</button><button class="button button-outline" type="button" data-act="edit-site-cancel">Cancelar</button></div>
+    <p class="fine-print">El cambio solo se aplica cuando Supabase confirma permisos de edición para este sitio.</p>
+    </form>`:''}`).join('');
+ return `${heading('Perfil del negocio','Mi empresa','Personaliza la información que ves al entrar y administra tus sitios autorizados.')}
+ ${state.companyNotice?`<div class="company-message">${icon('check',17)} ${clean(state.companyNotice)}</div>`:''}
+ <div class="company-header-panel">
+  <div class="company-logo-preview">${companyImage(72)}</div>
+  <div><h2>${clean(displayBusiness())}</h2><p>${clean(prefs.category||'Selecciona un sector')} · ${clean(prefs.country||'Indica tu país')}</p><span class="company-subline">Nombre registrado: ${clean(b?.name||'Sin registrar')}</span></div>
+ </div>
+ <div class="content-grid">
+ <div class="col-7">${card('Identidad de tu empresa','Nombre, sector, país y logotipo',`
+ <form id="company-profile-form" class="company-profile-form">
+ <label class="form-label">Nombre comercial
+  <input class="simple-input" name="displayName" type="text" maxlength="80" required minlength="2" value="${clean(prefs.display_name||b?.name||'')}" placeholder="Ej. Mi Agencia Creativa" />
+ </label>
+ <div class="company-form-grid">
+  <label class="form-label">Sector o categoría
+   <input class="simple-input" name="category" list="business-categories" maxlength="80" value="${clean(prefs.category||'')}" placeholder="Selecciona o escribe tu sector"/>
+  </label>
+  <label class="form-label">País
+   <input class="simple-input" name="country" maxlength="80" value="${clean(prefs.country||'Perú')}" placeholder="Perú"/>
+  </label>
+ </div>
+ <datalist id="business-categories"><option value="Marketing y publicidad"><option value="Comercio electrónico"><option value="Finanzas"><option value="Educación"><option value="Tecnología"><option value="Retail"><option value="Servicios profesionales"><option value="Restaurantes y gastronomía"><option value="Otros"></datalist>
+ <label class="form-label" for="company-logo-file">Logotipo de tu empresa</label>
+ <input id="company-logo-file" class="company-file-input" type="file" name="logo" accept="image/png,image/jpeg,image/webp" aria-describedby="logo-note"/>
+ <p id="logo-note" class="fine-print">PNG, JPG o WebP. Se optimiza antes de guardar. No necesitas crear un logotipo para Edwin Digital.</p>
+ ${getCompanyLogo()?`<button class="button button-outline" type="button" data-act="company-logo-clear">${icon('close',14)} Quitar mi logotipo</button>`:''}
+ ${state.companyLogoClear?'<p class="fine-print">El logotipo se quitará al guardar.</p>':''}
+ <label class="company-checkbox"><input type="checkbox" name="sharedName" checked/> Intentar actualizar también el nombre oficial de la empresa para todos (según permisos)</label>
+ ${state.companyError?alertBlock(state.companyError):''}
+ <button type="submit" class="button button-primary" ${state.companyBusy?'disabled':''}>${icon('check',17)} ${state.companyBusy?'Guardando…':'Guardar cambios'}</button>
+ <p class="fine-print">Sector, país y nombre visual se guardan en tu usuario de acceso; el logotipo se guarda solo en este navegador. Un logotipo compartido con el equipo necesita almacenamiento privado por empresa. El nombre oficial requiere permisos de edición.</p>
+ </form>`)}</div>
+ <div class="col-5">${card('Conexiones de mi empresa','Al conectar una fuente, aparecerá en sus reportes',connectionOverview())}</div>
+ <div class="col-12">${card('Mis sitios web',`${fmt(state.sites.length)} sitios visibles para tu usuario`,`${state.siteNotice?`<div class="company-message">${icon('check',15)} ${clean(state.siteNotice)}</div>`:''}${sites||empty('No hay sitios web registrados para este negocio.')}<p class="fine-print">Aquí puedes modificar el nombre y la URL de un sitio autorizado. La creación de nuevos sitios requiere permisos y configuración de propiedad GA4.</p>`)}</div>
+ </div>`;
 }
   function adminStatusFor(b){
  const x=state.adminSiteStats[b.id];
@@ -343,16 +402,33 @@ function company(){
  </div>`)}</div></div>`;
 }
 
-  function adminIntegrations(){
- const sections=[
- ['Publicidad',[['Meta Ads','Piloto de conexión directa por empresa; el acceso externo depende de Meta.'],['Google Ads','OAuth por empresa pendiente.'],['TikTok Ads','API publicitaria pendiente.'],['LinkedIn Ads','Autorización publicitaria pendiente.']]],
- ['Analítica y contenidos',[['Google Analytics 4','Consultas GA4 disponibles con propiedades autorizadas.'],['Google Search Console','Conector pendiente.'],['Facebook / Instagram orgánico','Permisos de páginas y perfiles pendientes.']]],
- ['Ventas y comercio',[['Hotmart','Cada cliente requerirá su propia autorización.'],['Shopify','Conector de tienda pendiente.']]]
- ];
- return `${heading('Plataforma','Proveedores e integraciones','Consulta qué conexiones están operativas y cuáles necesitan autorización, sin mezclar cuentas de distintas empresas.')}
- ${sections.map(([title,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${fmt(providers.length)} proveedores</span></div><div class="integration-grid">${providers.map(([name,desc])=>`<article class="integration-card"><div class="integration-head"><strong>${clean(name)}</strong>${tag(name==='Meta Ads'?'Piloto':name==='Google Analytics 4'?'Consulta GA4':'Pendiente',name==='Google Analytics 4'?'success':'neutral')}</div><p>${clean(desc)}</p></article>`).join('')}</div></section>`).join('')}`;
+    function adminIntegrations(){
+ const health=state.adminHealth||{},m=health.meta||{},checks=m.checks||{};
+ const failed=[['app_id','META_APP_ID'],['app_secret','META_APP_SECRET'],['redirect','META_REDIRECT_URI'],['session_key','META_SESSION_KEY']].filter(([key])=>!checks[key]).map(([,name])=>name);
+ const metaLabel=!state.adminHealth?'Sin verificar':m.configured?'Configuración detectada':'Configuración incompleta';
+ const services=[['Analítica y contenidos',[
+  ['Google Analytics 4','Consultas disponibles si existe propiedad y cuenta de servicio autorizada.'],
+  ['Google Search Console','Autorización oficial pendiente.'],['Facebook / Instagram orgánico','Autorización de páginas y perfiles pendiente.']]],
+  ['Ventas y e-commerce', [['Hotmart','Autorización individual pendiente.'],['Shopify','Conexión de tienda pendiente.']]],
+  ['Publicidad', [['Meta Ads','Conexión piloto directa con Meta for Developers; los clientes requieren acceso autorizado en la app.'],
+  ['Google Ads','OAuth y permisos oficiales pendientes.'],['TikTok Ads','API pendiente.'],['LinkedIn Ads','Permisos oficiales pendientes.']]]];
+ return `${heading('Plataforma','Integraciones SaaS','Revisa el estado técnico sin exponer credenciales ni consultar datos privados de clientes.')}
+ ${card('Diagnóstico de Meta Ads','Comprobación del Worker activo: nunca se muestran los valores de secretos',`
+ <div class="integration-compact-footer">${tag(metaLabel,m.configured?'success':'neutral')}
+ <button type="button" class="button button-outline" data-act="admin-health-refresh">${icon('refresh',16)} Comprobar conexión</button></div>
+ ${state.adminHealthError?alertBlock(state.adminHealthError):''}
+ ${state.adminHealth&&!m.configured?`<p class="fine-print">Configuración pendiente o no válida: ${clean(failed.join(', '))}. Comprueba estas variables en Cloudflare → Worker → Production → Variables and Secrets. No compartas sus valores.</p>`:''}
+ ${m.configured?'<p class="fine-print">La configuración local está completa. Eso no confirma que la app de Meta tenga permisos para todos los clientes externos.</p>':''}
+ `)}
+ ${services.map(([title,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${providers.length} plataformas</span></div>
+ <div class="integration-grid">${providers.map(([name,description])=>`<article class="integration-card provider-card"><div class="integration-head">${providerLogo(name)}${tag(name==='Meta Ads'?metaLabel:name==='Google Analytics 4'?'Disponible por propiedad':'Próximamente',name==='Meta Ads'&&m.configured?'success':'neutral')}</div><h3>${clean(name)}</h3><p>${clean(description)}</p></article>`).join('')}</div></section>`).join('')}`;
 }
-
+  async function loadAdminHealth(){
+ if(!isAdmin())return;
+ try{state.adminHealth=await api('/api/admin/integrations/health');state.adminHealthError='';}
+ catch(e){state.adminHealthError=e.message;state.adminHealth=null;}
+ if(isAdmin())render();
+}
   function clients(){
  if(!isAdmin())return overview();
  const query=state.adminQuery.trim().toLowerCase(), filtered=state.businesses.filter(b=>(b.name+' '+(b.slug||'')).toLowerCase().includes(query));
@@ -376,7 +452,17 @@ function company(){
     return value===null || value===undefined || !Number.isFinite(n) ? '—' :
       new Intl.NumberFormat('es-PE',{maximumFractionDigits:digits}).format(n);
   }
-  function metaCard(){
+  function providerLogo(name){
+ const dict={
+ 'Meta Ads':['meta','0866FF'],'Google Ads':['googleads','4285F4'],'TikTok Ads':['tiktok','111111'],'LinkedIn Ads':['linkedin','0A66C2'],
+ 'Google Analytics 4':['googleanalytics','E37400'],'Google Search Console':['googlesearchconsole','4285F4'],
+ 'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
+ };
+ const [slug,color]=dict[name]||['google','4285F4'];
+ const src=name==='Hotmart'?'https://hotmart.com/favicon.ico':`https://cdn.simpleicons.org/${slug}/${color}`;
+ return `<div class="provider-logo" aria-hidden="true"><img src="${src}" alt="" loading="lazy" width="30" height="30" /></div>`;
+}
+    function metaCard(){
  if(!metaPilotEligible())return '';
  const m=state.meta||{},list=m.accounts||[],selected=m.selected_accounts||[m.selected_account].filter(Boolean);
  const accounts=list.map(x=>`<label class="meta-account-row"><input class="meta-account-check" type="checkbox" value="${clean(x.id)}" ${selected.includes(x.id)?'checked':''}/><span><strong>${clean(x.name)}</strong><small>${clean(x.id)} · ${clean(x.currency)}</small></span></label>`).join('');
@@ -392,7 +478,7 @@ function company(){
  <div class="meta-account-list">${accounts||'<p>No se encontraron cuentas autorizadas.</p>'}</div>
  <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh">${icon('refresh',16)} Actualizar datos</button><button class="button button-soft" data-act="meta-disconnect">Desconectar</button><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas ${icon('chevron',15)}</button></div>
  <p class="fine-print">Consulta las estadísticas desde Resumen y Campañas Ads.</p>`;
- return `<article class="integration-card"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(m.connected?'Conectado':m.configured?'Disponible':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Publicidad de Facebook e Instagram.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${m.connected&&!state.metaPanelOpen?`<div class="integration-compact-footer"><span>${selected.length} cuenta(s) seleccionadas</span><button class="button button-outline" data-act="meta-panel-toggle">Administrar cuentas</button></div>`:body}${m.connected&&state.metaPanelOpen?`<button class="button button-soft" data-act="meta-panel-toggle">Cerrar detalles</button>`:''}</div>${state.metaLoading?'<span class="fine-print">Consultando conexión…</span>':''}</article>`;
+ return `<article class="integration-card provider-card" data-connected="${m.connected?'true':'false'}"><div class="integration-head">${providerLogo('Meta Ads')}${tag(m.connected?'Conectado':m.configured?'Disponible':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Publicidad de Facebook e Instagram.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${m.connected&&!state.metaPanelOpen?`<div class="integration-compact-footer"><span>${selected.length} cuenta(s) seleccionadas</span><button class="button button-outline" data-act="meta-panel-toggle">Administrar cuentas</button></div>`:body}${m.connected&&state.metaPanelOpen?`<button class="button button-soft" data-act="meta-panel-toggle">Cerrar detalles</button>`:''}</div>${state.metaLoading?'<span class="fine-print">Consultando conexión…</span>':''}</article>`;
 }
     async function loadMeta() {
     if(!metaPilotEligible()) {state.meta=null;state.metaReport=null;state.metaError='';render();return;}
@@ -411,43 +497,78 @@ function company(){
     }catch(e) {if(state.businessId===current)state.metaError=e.message;}
     finally {if(state.businessId===current){state.metaLoading=false;render();}}
   }
-  function integrations(){
- const connected=gaReady();
- const groups=[
- ['Publicidad',[['Google Ads','A','Campañas de búsqueda y display.','Próximamente','OAuth oficial pendiente.'],['TikTok Ads','T','Campañas y resultados publicitarios.','Próximamente','API oficial pendiente.'],['LinkedIn Ads','L','Campañas profesionales B2B.','Próximamente','Autorización oficial pendiente.']]],
- ['Analítica y contenidos',[['Google Analytics 4','G','Usuarios, sesiones y eventos.',connected?'Conectado':'Sin conexión',connected?'Propiedad autorizada.':'Asigna una propiedad GA4 autorizada.'],['Google Search Console','G','Consultas y posicionamiento orgánico.','Próximamente','Autorización de Google pendiente.'],['Facebook / Instagram orgánico','F','Publicaciones y alcance orgánico.','Próximamente','Permisos de páginas pendientes.']]],
- ['Ventas y comercio',[['Hotmart','H','Ingresos, productos y reembolsos.','Próximamente','Falta OAuth individual por cliente.'],['Shopify','S','Pedidos y ventas de tienda.','Próximamente','Acceso por tienda pendiente.']]]
+    function integrations(){
+ const ga=gaReady(),lookup=[
+  ['Analítica y contenidos',[
+   {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Consulta al administrador del sitio para habilitar la propiedad GA4.'},
+   {name:'Google Search Console',info:'Consultas y posicionamiento SEO.',status:'Próximamente',details:'Necesita autorización de Google.'},
+   {name:'Facebook / Instagram orgánico',info:'Alcance y estadísticas de perfiles sociales.',status:'Próximamente',details:'Pendiente de permisos de páginas y perfiles.'}] ],
+  ['Ventas y e-commerce',[
+   {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'},
+   {name:'Shopify',info:'Pedidos, catálogo y ventas de tienda.',status:'Próximamente',details:'Pendiente de conexión individual por tienda.'}] ],
+  ['Publicidad',[
+   {name:'Meta Ads',info:'Facebook e Instagram Ads.'},
+   {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'Próximamente',details:'API oficial y OAuth pendientes.'},
+   {name:'TikTok Ads',info:'Anuncios y campañas en TikTok.',status:'Próximamente',details:'Permisos de TikTok Ads pendientes.'},
+   {name:'LinkedIn Ads',info:'Publicidad profesional en LinkedIn.',status:'Próximamente',details:'Autorización de LinkedIn pendiente.'}] ]
  ];
- const renderProvider=a=>`<article class="integration-card"><div class="integration-head"><div class="integration-logo google">${clean(a[1])}</div>${tag(a[3],a[3]==='Conectado'?'success':'neutral')}</div><h3>${clean(a[0])}</h3><p>${clean(a[2])}</p><small class="integration-note">${clean(a[4])}</small></article>`;
- return `${heading('Mis conexiones','Integraciones de mi empresa','Conecta proveedores desde aquí. Cuando haya datos autorizados, aparecerán en sus reportes correspondientes.')}
- <section class="integration-section"><div class="section-caption"><h2>Publicidad</h2><span>4 plataformas</span></div><div class="integration-grid">${metaCard()}${groups[0][1].map(renderProvider).join('')}</div></section>
- ${groups.slice(1).map(([title,items])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${fmt(items.length)} integraciones</span></div><div class="integration-grid">${items.map(renderProvider).join('')}</div></section>`).join('')}
- <p class="fine-print">Solo las conexiones autorizadas ofrecen métricas. Meta Ads continúa en fase piloto; otros proveedores requieren autorización oficial.</p>`;
+ const cardFor=(p)=>{
+  if(p.name==='Meta Ads')return metaCard();
+  return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
+   <div class="integration-head">${providerLogo(p.name)}${tag(p.status,p.connected?'success':'neutral')}</div>
+   <h3>${clean(p.name)}</h3><p>${clean(p.info)}</p>
+   <div class="integration-status"><span>${clean(p.details||'')}</span>${p.connected?`<button class="button button-outline" data-act="nav" data-page="analytics">Ver datos</button>`:''}</div>
+  </article>`;
+ };
+ return `${heading('Mis conexiones','Integraciones de mi empresa','Conecta tus plataformas una vez y consulta los datos autorizados en sus paneles.')}
+ <div class="integration-filter-bar"><label class="admin-search">${icon('search',18)}<input type="search" id="integration-search" placeholder="Buscar plataforma…" aria-label="Buscar integración"/></label>
+ <label class="company-checkbox"><input id="integration-only-connected" type="checkbox"/> Solo conectadas</label></div>
+ ${lookup.map(([group,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(group)}</h2><span>${providers.length} plataformas</span></div>
+ <div class="integration-grid">${providers.map(cardFor).join('')}</div></section>`).join('')}
+ <p class="fine-print">Las conexiones marcadas «Próximamente» todavía no tienen acceso a su API y no mostrarán datos ficticios. Meta Ads requiere que la plataforma esté autorizada en Cloudflare y Meta for Developers.</p>`;
 }
 
   function settings(){
-    return `${heading('Preferencias','Mi cuenta y seguridad','Gestiona tu acceso y personaliza tu espacio de trabajo.')}
-      ${card('Información de sesión','Cuenta autenticada con Supabase',`<div class="settings-line"><span>Correo electrónico</span><b>${clean(state.user.email)}</b></div><div class="settings-line"><span>Tipo de acceso</span><b>${isAdmin()?'Administrador':'Cliente'}</b></div><div class="settings-line"><span>Negocio activo</span><b>${clean(business()?.name||'Sin seleccionar')}</b></div><div class="settings-line"><span>Sitio activo</span><b>${clean(site()?.name||'Sin seleccionar')}</b></div>`)}
-      <div class="spacer-lg"></div>
-      ${card('Cambiar contraseña','Disponible tanto para administradores como para clientes',`<form id="change-password-form" class="security-form" autocomplete="off">
-        <p class="fine-print">Por seguridad, escribe tu contraseña actual y elige una nueva de al menos 10 caracteres. Después del cambio tendrás que volver a iniciar sesión.</p>
-        <label class="form-label" for="current-pass">Contraseña actual</label><div class="form-input">${icon('lock',17)}<input id="current-pass" type="password" name="currentPassword" autocomplete="current-password" required maxlength="512"/></div>
-        <label class="form-label" for="next-pass">Nueva contraseña</label><div class="form-input">${icon('lock',17)}<input id="next-pass" type="password" name="newPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
-        <label class="form-label" for="confirm-pass">Confirmar contraseña nueva</label><div class="form-input">${icon('check',17)}<input id="confirm-pass" type="password" name="confirmPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
-        ${state.passwordError?alertBlock(state.passwordError):''}
-        <button class="button button-primary security-submit" type="submit" ${state.passwordBusy?'disabled':''}>${state.passwordBusy?'<span class="spinner"></span> Actualizando…':`${icon('lock',17)} Guardar contraseña nueva`}</button>
-      </form>`)}
-      <div class="spacer-lg"></div>
-      ${card('Apariencia','Cambiar entre interfaz clara y oscura',`<div class="settings-line"><span>Tema</span><button class="button button-outline" data-act="theme">${icon(state.theme==='dark'?'sun':'moon',17)} ${state.theme==='dark'?'Usar modo claro':'Usar modo oscuro'}</button></div>`)}`;
-  }
+ const theme=[['light','Claro'],['dark','Oscuro']];
+ const palettes=[['purple','Violeta'],['blue','Azul'],['teal','Turquesa']];
+ const sidebar=[['auto','Según tema'],['white','Blanco'],['blue','Azul oscuro']];
+ const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${t}</button>`).join('')}</div>`;
+ return `${heading('Preferencias','Mi cuenta y seguridad','Acceso, contraseña y colores del panel en un mismo lugar.')}
+ <div class="content-grid account-grid">
+ <div class="col-7">${card('Cambiar mi contraseña','Tu seguridad, siempre a la vista',`<form id="change-password-form" class="security-form" autocomplete="off">
+  <label class="form-label" for="current-pass">Contraseña actual</label><div class="form-input">${icon('lock',17)}<input id="current-pass" type="password" name="currentPassword" autocomplete="current-password" required maxlength="512"/></div>
+  <label class="form-label" for="next-pass">Nueva contraseña</label><div class="form-input">${icon('lock',17)}<input id="next-pass" type="password" name="newPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
+  <label class="form-label" for="confirm-pass">Confirmar nueva contraseña</label><div class="form-input">${icon('check',17)}<input id="confirm-pass" type="password" name="confirmPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
+  ${state.passwordError?alertBlock(state.passwordError):''}
+  <button class="button button-primary security-submit" type="submit" ${state.passwordBusy?'disabled':''}>${state.passwordBusy?'Actualizando…':`${icon('lock',16)} Actualizar contraseña`}</button>
+  <p class="fine-print">Usa al menos 10 caracteres. Tendrás que iniciar sesión de nuevo cuando se guarde.</p>
+ </form>`)}</div>
+ <div class="col-5">${card('Información de mi cuenta','Identidad de acceso',`<div class="settings-line"><span>Correo</span><b>${clean(state.user.email)}</b></div>
+ <div class="settings-line"><span>Acceso</span><b>${isAdmin()?'Superadministrador':'Cliente'}</b></div>
+ <div class="settings-line"><span>Mi empresa</span><b>${isAdmin()?'Plataforma':clean(displayBusiness())}</b></div>
+ ${!isAdmin()?`<button class="button button-outline" data-act="nav" data-page="company">${icon('building',15)} Editar mi empresa</button>`:''}
+ <details class="account-email-change"><summary>Cambiar correo electrónico</summary>
+ <form id="change-email-form" autocomplete="off">
+ <label class="form-label" for="account-next-email">Nuevo correo</label><input class="simple-input" id="account-next-email" type="email" name="email" maxlength="254" required/>
+ <label class="form-label" for="account-email-pass">Contraseña actual</label><div class="form-input">${icon('lock',16)}<input id="account-email-pass" type="password" name="currentPassword" autocomplete="current-password" required/></div>
+ ${state.emailError?alertBlock(state.emailError):''}
+ ${state.emailNotice?`<p class="company-message">${clean(state.emailNotice)}</p>`:''}
+ <button type="submit" class="button button-outline" ${state.emailBusy?'disabled':''}>${state.emailBusy?'Solicitando…':'Solicitar cambio de correo'}</button>
+ </form></details>
+ <p class="fine-print">Cambiar el correo requiere confirmar tu identidad y puede necesitar una confirmación enviada por Supabase.</p>`)}</div>
+ <div class="col-12">${card('Personalización de colores','Una apariencia discreta para tu panel',`
+ <div class="appearance-grid"><div><h4>Apariencia general</h4>${picker('theme',theme,state.theme)}</div>
+ <div><h4>Color de acento</h4>${picker('accent',palettes,state.accent)}</div>
+ <div><h4>Menú lateral</h4>${picker('sidebar',sidebar,state.sidebarTone)}</div></div>
+ <p class="fine-print">Estas preferencias se guardan en este navegador.</p>`)}</div></div>`;
+}
 
-
-  const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
+    const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}" title="${clean(pages[id][0])}" aria-label="${clean(pages[id][0])}" ${state.page===id?'aria-current="page"':''}>${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
  `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition','campaigns','audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['hotmart','reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
- return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('menu',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><div class="sidebar-workspace"><span class="workspace-symbol">${icon('building',20)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(business()?.name||'Mi empresa')}</b><small>${isAdmin()?'Superadministrador':'Espacio de análisis'}</small></span>${icon('chevronDown',16)}</div>${menu}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Superadministrador':'Usuario de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
+ return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('menu',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><div class="sidebar-workspace"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Superadministrador':'Espacio de análisis'}</small></span>${icon('chevronDown',16)}</div>${menu}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Superadministrador':'Usuario de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
 }
     function topbar(){
  const places=!isAdmin()&&state.businesses.length>1?`<label class="select-wrap company-select">${icon('building',16)}<select id="business-selector">${state.businesses.map(x=>`<option value="${clean(x.id)}" ${state.businessId===x.id?'selected':''}>${clean(x.name)}</option>`).join('')}</select>${icon('chevronDown',14)}</label>`:'';
@@ -516,16 +637,89 @@ function sidebar(){
     const file=new Blob(['\ufeff'+content],{type:'text/csv;charset=utf-8'});const uri=URL.createObjectURL(file);
     const a=document.createElement('a');a.href=uri;a.download=`edwin-digital-${dataset||state.page}-${state.period}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(uri),800);
   }
+  async function readCompanyLogo(file){
+ if(!file||!file.size)return null;
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>3000000)
+   throw Error('Selecciona una imagen PNG, JPG o WebP de hasta 3 MB.');
+ const bitmap=await createImageBitmap(file);
+ try{
+  const width=bitmap.width,height=bitmap.height;
+  if(!width||!height||width>10000||height>10000)throw Error('Imagen no válida.');
+  const canvas=document.createElement('canvas'),scale=Math.min(240/width,240/height,1);
+  canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
+  const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  let result=canvas.toDataURL('image/webp',.77);
+  if(!result.startsWith('data:image/webp;'))result=canvas.toDataURL('image/jpeg',.7);
+  if(result.length>90000)throw Error('El logotipo es demasiado grande incluso después de optimizarlo.');
+  return result;
+ }finally{bitmap.close?.();}
+}
+  async function saveCompany(form){
+ if(!state.businessId||state.companyBusy)return;
+ const input=new FormData(form),id=state.businessId;
+ const display_name=String(input.get('displayName')||'').trim(),
+ category=String(input.get('category')||'').trim(),country=String(input.get('country')||'').trim();
+ if(display_name.length<2||display_name.length>80){state.companyError='Ingresa un nombre comercial de 2 a 80 caracteres.';render();return;}
+ const selected=input.get('logo');
+ state.companyBusy=true;state.companyError='';state.companyNotice='';
+ try{
+  let logo_data=state.companyLogoClear?'':getCompanyLogo();
+  if(selected&&selected.size)logo_data=await readCompanyLogo(selected);
+  const result=await api('/api/company/preferences',{method:'POST',
+    body:JSON.stringify({business_id:id,display_name,category,country})});
+  if(state.businessId!==id)return;
+  state.user.business_preferences={...(state.user.business_preferences||{}),[id]:result.profile};
+  try{if(logo_data)localStorage.setItem(logoStoreKey(),logo_data);else localStorage.removeItem(logoStoreKey());}
+  catch{throw Error('El perfil se guardó, pero el navegador no pudo conservar el logotipo.');}
+  let shared=false,message='';
+  if(input.get('sharedName')){
+   try{
+    const changed=await api('/api/company/name',{method:'PATCH',body:JSON.stringify({business_id:id,name:display_name})});
+    const target=state.businesses.find(b=>b.id===id);if(target)target.name=changed.name;
+    shared=true;
+   }catch(e){message=' El nombre oficial no se pudo modificar para todo el equipo porque faltan permisos de edición.';}
+  }
+  state.companyLogoClear=false;
+  state.companyNotice=(shared?'Nombre oficial actualizado.':'Nombre visual, sector y país guardados en tu cuenta.')+(logo_data?' El logotipo se guardó solo en este navegador.':'')+message;
+ }catch(e){state.companyError=e.message||'No se pudieron guardar los cambios.';}
+ finally{state.companyBusy=false;render();}
+}
+  async function saveSite(form){
+ if(!state.businessId||state.siteBusy)return;
+ const data=new FormData(form),businessId=state.businessId,siteId=String(data.get('siteId')||'');
+ state.siteBusy=true;state.siteError='';state.siteNotice='';
+ try{
+  const changed=await api('/api/sites/edit',{method:'PATCH',
+    body:JSON.stringify({business_id:businessId,site_id:siteId,
+      name:String(data.get('siteName')||'').trim(),url:String(data.get('siteUrl')||'').trim()})});
+  if(state.businessId!==businessId)return;
+  const item=state.sites.find(x=>x.id===siteId);
+  if(item)Object.assign(item,changed.site);
+  state.editSiteId='';state.siteNotice='Sitio actualizado en tu empresa.';
+ }catch(e){state.siteError=e.message||'No se pudo guardar el sitio.';}
+ finally{state.siteBusy=false;render();}
+}
   document.addEventListener('click', async e=>{
     const b=e.target.closest('[data-act]');if(!b)return;
     const action=b.dataset.act;
     if(action==='theme'){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('ed-theme-v3',state.theme);render();}
+    else if(action==='set-pref'){
+      const key=b.dataset.key,value=b.dataset.value;
+      if(key==='theme'&&['light','dark'].includes(value)){state.theme=value;localStorage.setItem('ed-theme-v3',value);}
+      else if(key==='accent'&&['purple','blue','teal'].includes(value)){state.accent=value;localStorage.setItem('ed-accent-v7',value);}
+      else if(key==='sidebar'&&['auto','white','blue'].includes(value)){state.sidebarTone=value;localStorage.setItem('ed-sidebar-v7',value);}
+      render();
+    }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
-    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin())await loadAdminHealth();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
+    else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
+    else if(action==='edit-site'){state.editSiteId=b.dataset.id;state.siteError='';state.siteNotice='';render();}
+    else if(action==='edit-site-cancel'){state.editSiteId='';state.siteError='';render();}
+    else if(action==='company-logo-clear'){state.companyLogoClear=true;state.companyNotice='';render();}
     else if(action==='meta-panel-toggle'){state.metaPanelOpen=!state.metaPanelOpen;render();}
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
@@ -554,6 +748,7 @@ function sidebar(){
     }
   });
   document.addEventListener('change', async e=>{
+    if(e.target.id==='integration-only-connected'){filterIntegrations();return;}
     if(e.target.id==='business-selector')await chooseBusiness(e.target.value);
     else if(e.target.id==='site-selector'){state.siteId=e.target.value;await refresh();}
     else if(e.target.classList?.contains('meta-account-check')){
@@ -566,11 +761,21 @@ function sidebar(){
     else if(e.target.id==='ads-level'){state.adsLevel=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
     else if(e.target.id==='date-period'){state.period=e.target.value;await refresh();if(state.page==='integrations'||state.page==='campaigns')await loadMeta();if(state.page==='campaigns')await loadAds();}
   });
+
+  function filterIntegrations(){
+    const text=(document.getElementById('integration-search')?.value||'').trim().toLowerCase();
+    const only=!!document.getElementById('integration-only-connected')?.checked;
+    document.querySelectorAll('.provider-card').forEach(card=>{
+      card.hidden=!!(text&&!card.textContent.toLowerCase().includes(text)) || (only&&card.dataset.connected!=='true');
+    });
+  }
+
   document.addEventListener('input',e=>{
     if(e.target.id==='admin-client-search'){
       const q=e.target.value, start=e.target.selectionStart, end=e.target.selectionEnd;
       state.adminQuery=q;render();const input=document.getElementById('admin-client-search');if(input){input.focus();if(start!==null&&end!==null)input.setSelectionRange(start,end);}return;
     }
+    if(e.target.id==='integration-search'){filterIntegrations();return;}
     if(e.target.id==='meta-account-search'){
       const q=e.target.value.trim().toLowerCase();
       document.querySelectorAll('.meta-account-row').forEach(row=>{row.style.display=row.textContent.toLowerCase().includes(q)?'':'none';});
@@ -581,6 +786,18 @@ function sidebar(){
     state.search=q;render();const input=document.getElementById('global-search');if(input){input.focus();input.setSelectionRange(selStart,selEnd);}
   });
   document.addEventListener('submit',async e=>{
+    if(e.target.id==='change-email-form'){
+      e.preventDefault();if(state.emailBusy)return;
+      const data=new FormData(e.target);state.emailBusy=true;state.emailError='';state.emailNotice='';
+      try{const response=await api('/api/auth/change-email',{method:'POST',body:JSON.stringify({
+        email:String(data.get('email')||'').trim(),currentPassword:String(data.get('currentPassword')||'')})});
+        state.emailNotice=response.message||'Solicitud enviada. Revisa el correo para confirmar.';
+      }catch(err){state.emailError=err.message;}
+      finally{state.emailBusy=false;render();}
+      return;
+    }
+    if(e.target.id==='company-profile-form'){e.preventDefault();await saveCompany(e.target);return;}
+    if(e.target.id==='site-edit-form'){e.preventDefault();await saveSite(e.target);return;}
     if(e.target.id==='change-password-form'){
       e.preventDefault(); if(!state.user || state.passwordBusy)return;
       const form=new FormData(e.target),currentPassword=String(form.get('currentPassword')||''),newPassword=String(form.get('newPassword')||''),confirmPassword=String(form.get('confirmPassword')||'');
