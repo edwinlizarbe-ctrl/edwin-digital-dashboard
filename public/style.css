@@ -302,3 +302,17 @@ input,select,textarea{max-width:100%}
 @media(max-width:1180px){.integration-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.appearance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.company-form-grid{grid-template-columns:1fr}.appearance-grid{grid-template-columns:1fr}.simple-input{font-size:16px}.integration-filter-bar .admin-search{width:100%;min-width:0}}
 @media(max-width:620px){.integration-grid{grid-template-columns:1fr}.company-header-panel{padding:16px;gap:12px;align-items:flex-start}.company-logo-preview{flex-basis:65px;height:65px}.company-header-panel h2{font-size:18px}.provider-card{padding:16px}.company-edit-panel .button{flex:1}}
+
+
+/* Administrador: credenciales de clientes y recuperación segura */
+.account-access-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 18px;flex-wrap:wrap;color:var(--muted2);font-size:12px}
+.account-access-row{flex-wrap:wrap;gap:14px;align-items:center}
+.account-access-info{flex:1;min-width:200px;overflow-wrap:anywhere}
+.account-access-info small{display:block;margin-top:5px;color:var(--muted2)}
+.account-access-actions{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.temporary-credential{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin:0 0 18px;box-shadow:var(--shadow)}
+.temporary-credential>strong{display:block;font-size:13px;margin-bottom:12px}
+.temporary-credential-content{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.temporary-credential code{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:14px;letter-spacing:.35px;overflow-wrap:anywhere;flex:1;user-select:all;min-width:190px}
+.temporary-credential p{color:var(--muted2);font-size:12px;margin-top:12px;line-height:1.5}
+@media(max-width:620px){.account-access-actions{margin-left:0;width:100%}.account-access-actions .button{flex:1}}
