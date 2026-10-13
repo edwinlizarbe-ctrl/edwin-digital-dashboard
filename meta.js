@@ -225,18 +225,26 @@ export async function handleMetaApi(req,env,s) {
     const businessId=url.searchParams.get('business_id')||'';
     if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
     const connection=await unsealMeta(env,jar[META_COOKIE]);
-    if(!validMetaSession(connection,s,businessId)||!/^act_\d+$/.test(connection?.account||''))return error('Primero conecta Meta y selecciona una cuenta.',401);
-    // Dates use Meta's account-level timezone and aggregate at account level.
+    if(!validMetaSession(connection,s,businessId))return error('Vuelve a conectar Meta Ads.',401);
+    const ids=(connection.accounts||[connection.account]).filter(id=>/^act_\d+$/.test(id||'')).slice(0,5);
+    if(!ids.length)return error('Selecciona al menos una cuenta publicitaria.',400);
     const period=url.searchParams.get('period')||'30';
     if(!META_PERIODS.has(period))return error('Período no válido.');
     const presets={today:'today',yesterday:'yesterday','7':'last_7d','30':'last_30d','90':'last_90d','365':'last_year'};
-    const report=await metaGraph(env,'/'+connection.account+'/insights',connection.token,{
-      fields:'spend,clicks,impressions,ctr,cpc',date_preset:presets[period],level:'account',limit:1,
-    });
-    const values=(report.data||[])[0];
-    return reply({configured:true,account_id:connection.account,currency:(await metaAccounts(env,connection.token)).find(a=>a.id===connection.account)?.currency||'',
-      period,metrics:values?{spend:values.spend??null,clicks:values.clicks??null,impressions:values.impressions??null,
-        ctr:values.ctr??null,cpc:values.cpc??null}:null});
+    const accounts=await metaAccounts(env,connection.token);
+    const account_reports=await Promise.all(ids.map(async id=>{
+      const report=await metaGraph(env,'/'+id+'/insights',connection.token,{
+        fields:'spend,clicks,impressions,ctr,cpc',date_preset:presets[period],level:'account',limit:1
+      });
+      const x=(report.data||[])[0]||null;
+      const acc=accounts.find(a=>a.id===id);
+      return {account_id:id,name:acc?.name||id,currency:acc?.currency||'',
+        metrics:x?{spend:x.spend??null,clicks:x.clicks??null,impressions:x.impressions??null,
+          ctr:x.ctr??null,cpc:x.cpc??null}:null};
+    }));
+    const first=account_reports.length===1?account_reports[0]:null;
+    return reply({configured:true,period,account_reports,account_id:first?.account_id||null,
+      currency:first?.currency||'',metrics:first?.metrics||null,updated_at:new Date().toISOString()});
   }
   if(path==='/api/meta/campaigns' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
