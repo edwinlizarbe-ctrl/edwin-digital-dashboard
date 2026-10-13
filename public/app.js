@@ -15,7 +15,7 @@
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
-    adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null,
+    adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', temporaryAccess: null,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null,
   };
@@ -511,13 +511,13 @@ function campaigns(){
 }
     function adminHome(){
  const items=state.businesses||[];
- const rows=items.map(b=>`<div class="client-site-row"><div class="client-avatar compact">${icon('building',19)}</div><div><strong>${clean(b.name)}</strong><small>${clean(b.slug)} · ${clean(adminStatusFor(b))}</small></div><button class="button button-soft" data-act="client-detail" data-id="${clean(b.id)}">Ver ficha</button></div>`).join('');
+ const rows=items.map(b=>`<div class="client-site-row"><div class="client-avatar compact">${icon('building',19)}</div><div><strong>${clean(b.name)}</strong><small>${clean(b.slug)} · ${clean(state.adminPlans[b.id]||'Plan sin asignar')} · ${clean(adminStatusFor(b))}</small></div><button class="button button-soft" data-act="client-detail" data-id="${clean(b.id)}">Ver ficha</button></div>`).join('');
  return `${heading('Superadministrador','Centro de administración','Gestiona las empresas autorizadas y revisa las conexiones de la plataforma sin acceder a las credenciales de los clientes.')}
  <div class="small-kpis admin-overview-kpis">
  <div class="small-kpi"><span>Empresas visibles</span><strong>${fmt(items.length)}</strong><small>Según permisos de Supabase</small></div>
  <div class="small-kpi"><span>Sitios visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(Object.values(state.adminSiteStats).reduce((t,x)=>t+(x.count||0),0)):'—'}</strong><small>Según tus permisos</small></div>
  <div class="small-kpi"><span>Propiedades GA4 visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(Object.values(state.adminSiteStats).reduce((t,x)=>t+(x.ga4||0),0)):'—'}</strong><small>Con propiedad asignada</small></div>
- <div class="small-kpi"><span>Verificación</span><strong>${fmt(Object.values(state.adminSiteStats).filter(x=>!x.error).length)} / ${fmt(items.length)}</strong><small>Empresas revisadas</small></div></div>
+ <div class="small-kpi"><span>Premium (manual)</span><strong>${state.adminPlansLoaded?fmt(Object.values(state.adminPlans).filter(x=>x==='premium').length):'—'}</strong><small>Free todavía no disponible</small></div><div class="small-kpi"><span>Verificación</span><strong>${fmt(Object.values(state.adminSiteStats).filter(x=>!x.error).length)} / ${fmt(items.length)}</strong><small>Empresas revisadas</small></div></div>
  <div class="content-grid">
  <div class="col-8">${card('Cartera de empresas','Abre una ficha para consultar sus propiedades autorizadas',rows||empty('No hay empresas visibles para esta cuenta.'))}</div>
  <div class="col-4">${card('Gestión rápida','Acciones disponibles para tu rol',`<div class="admin-quick-actions">
@@ -529,7 +529,7 @@ function campaigns(){
  <div class="col-12">${card('Control de la plataforma','Acceso y estado de las funcionalidades',`<div class="admin-status-grid">
  <div><b>Accesos independientes</b><p>Las fichas se consultan con los permisos de tu cuenta; no se usan las sesiones de tus clientes.</p></div>
  <div><b>Fuentes autorizadas</b><p>GA4 y Meta muestran datos únicamente cuando existe una conexión válida. Los demás proveedores indican que están pendientes.</p></div>
- <div><b>Altas, invitaciones y planes</b><p>La gestión de usuarios, suscripciones y facturación aún requiere procesos administrativos seguros en el servidor.</p></div>
+ <div><b>Altas, invitaciones y planes</b><p>Puedes asignar Premium manualmente y activar integraciones por empresa. Free, pagos y suscripciones automáticas quedan para después.</p></div>
  </div>`)}</div></div>`;
 }
 
@@ -556,6 +556,7 @@ async function saveAdminFeature(feature,enabled,plan){
   })});
   if(state.adminFeatureBusiness===id){
     state.adminEntitlements=data;
+    if(data.plan)state.adminPlans[id]=data.plan;
     state.adminFeatureNotice=plan?'Plan Premium asignado para esta empresa.':'Permiso de integración guardado para esta empresa.';
   }
  }catch(e){if(state.adminFeatureBusiness===id)state.adminFeatureError=e.message;}
@@ -568,6 +569,18 @@ async function loadClientEntitlements(id){
   if(state.businessId===id){state.clientEntitlements=data;render();}
  }catch{if(state.businessId===id){state.clientEntitlements=null;render();}}
 }
+async function loadAdminPlans(){
+ if(!isAdmin())return;
+ try{
+  const data=await api('/api/admin/business-features?list=1');
+  if(!isAdmin())return;
+  state.adminPlans={};
+  for(const x of data.plans||[]){if(state.businesses.some(b=>b.id===x.business_id))state.adminPlans[x.business_id]=x.plan;}
+  state.adminPlansLoaded=!!data.configured;
+ }catch{state.adminPlans={};state.adminPlansLoaded=false;}
+ render();
+}
+
 async function loadAdminEntitlements(id){
  if(!isAdmin()||!state.businesses.some(b=>b.id===id))return;
  state.adminFeatureBusiness=id;state.adminEntitlements=null;state.adminFeatureLoading=true;state.adminFeatureError='';state.adminFeatureNotice='';render();
@@ -667,7 +680,7 @@ async function loadAccounts(){
  const query=state.adminQuery.trim().toLowerCase(), filtered=state.businesses.filter(b=>(b.name+' '+(b.slug||'')).toLowerCase().includes(query));
  return `${heading('Administración','Mis clientes','Empresas a las que tienes acceso por Supabase. Las cuentas publicitarias y ventas siguen siendo privadas de cada negocio.')}
  <div class="admin-toolbar"><label class="admin-search">${icon('search',18)}<input id="admin-client-search" type="search" value="${clean(state.adminQuery)}" placeholder="Buscar empresa o identificador" aria-label="Buscar clientes"/></label><span>${fmt(filtered.length)} de ${fmt(state.businesses.length)} empresas</span></div>
- <div class="client-grid">${filtered.map(b=>`<article class="client-card client-card-clickable" data-act="client-detail" data-id="${clean(b.id)}" role="button" tabindex="0"><div class="client-avatar">${icon('building',27)}</div><h3>${clean(b.name)}</h3><p>${clean(b.slug)}</p><div class="client-line">${icon('lock',14)} ${clean(adminStatusFor(b))} · Aislamiento por empresa</div><span class="button button-outline">Ver ficha ${icon('chevron',15)}</span></article>`).join('')||empty(query?'No hay clientes que coincidan con la búsqueda.':'No hay negocios autorizados.')}</div>`;
+ <div class="client-grid">${filtered.map(b=>`<article class="client-card client-card-clickable" data-act="client-detail" data-id="${clean(b.id)}" role="button" tabindex="0"><div class="client-avatar">${icon('building',27)}</div><h3>${clean(b.name)}</h3><p>${clean(b.slug)}</p><div class="client-plan-tag">${clean(state.adminPlans[b.id]||'Plan sin asignar')}</div><div class="client-line">${icon('lock',14)} ${clean(adminStatusFor(b))} · Aislamiento por empresa</div><span class="button button-outline">Ver ficha ${icon('chevron',15)}</span></article>`).join('')||empty(query?'No hay clientes que coincidan con la búsqueda.':'No hay negocios autorizados.')}</div>`;
 }
 
   function clientDetail(){
@@ -675,7 +688,7 @@ async function loadAccounts(){
  const b=business();if(!b)return clients();
  const sites=state.sites.map(s=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(s.name)}</strong><small>${clean(s.url||'URL no registrada')}</small></div><span class="client-site-badge">${s.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
  return `${heading('Cliente',b.name,'Consulta administrativa: sin usar sus tokens ni mezclar sus datos con otras empresas.')}
- <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">${icon('chevron',16)} Volver</button></div>
+ <div class="client-detail-actions"><button class="button button-primary" data-act="admin-manage-features" data-id="${clean(b.id)}">Configurar permisos y plan</button><button class="button button-outline" data-act="nav" data-page="clients">${icon('chevron',16)} Volver</button></div>
  <div class="content-grid"><div class="col-7">${card('Sitios visibles',fmt(state.sites.length)+' registros accesibles',sites||empty('No hay sitios visibles con tu rol actual; esto no confirma que el cliente no tenga sitios.'))}</div>
  <div class="col-5">${card('Privacidad','Gestión de la plataforma',`<p>Las campañas y conexiones se consultan desde la sesión del cliente. No se muestran contraseñas ni secretos.</p><p class="fine-print">Invitaciones, planes y facturación requieren flujos administrativos propios antes de habilitar acciones de escritura.</p>`)}</div></div>`;
 }
@@ -874,7 +887,7 @@ function sidebar(){
         if(parameters.get('meta')==='cancelled')state.metaError='Se canceló la autorización con Facebook.';
         history.replaceState({},'',location.pathname+location.hash);
       }state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
-      if(isAdmin()){await loadAdminStats();}
+      if(isAdmin()){await loadAdminStats();await loadAdminPlans();}
       else if(state.businesses.length){
         const targetBusiness=state.businesses.find(x=>x.id===returnBusiness)?.id||state.businesses[0].id;
         await chooseBusiness(targetBusiness);if(state.page==='campaigns')await loadAds();
@@ -978,6 +991,9 @@ function sidebar(){
       try{await navigator.clipboard.writeText(callback);state.adminSetupNotice='URL copiada. Agrégala en Cloudflare y en Meta for Developers.';}
       catch{state.adminSetupNotice='Copia manualmente la URL que aparece arriba.';}
       render();
+    }
+    else if(action==='admin-manage-features'&&isAdmin()){
+      state.page='adminIntegrations';render();await loadAdminHealth();await loadAdminEntitlements(b.dataset.id);
     }
     else if(action==='admin-set-premium'&&isAdmin()){
       await saveAdminFeature('',null,'premium');
