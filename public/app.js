@@ -334,41 +334,76 @@
   function acquisition(){return `${heading('Adquisición','Descubre cómo te encuentran','Analiza canales, fuentes y medios de tráfico, sin confundir visitas con conversiones de anuncios.')}${statusStrip()}<div class="content-grid"><div class="col-5">${card('Mezcla de canales','Sesiones por categoría de adquisición',gaReady()?donut(rows('channels').map(r=>({...r,channelLabel:friendlyChannel(r.sessionDefaultChannelGroup)})),'channelLabel','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Principales fuentes y medios','Origen de las visitas · datos reales de Google Analytics',gaReady()?barList(rows('sources').map(r=>({...r,sourceLabel:friendlyTrafficSource(r.sessionSourceMedium),rawSource:r.sessionSourceMedium})),'sourceLabel','sessions',10)+'<p class="traffic-glossary">Publicidad pagada = anuncios. Acceso directo = no se identificó otro origen. Enlace desde otra web = visitas procedentes de otra página. Pasa el cursor sobre una fuente para ver su código original de GA4.</p>':dataPlaceholder())}</div><div class="col-12">${card('Detalle de canales','Usuarios, sesiones y eventos clave por canal',gaReady()?dataTable(rows('channels'),[{key:'sessionDefaultChannelGroup',label:'Canal',display:friendlyChannel},{key:'sessions',label:'Sesiones',display:fmt},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
   
   function campaignMetaSetup(){
-    if(!featureEnabled('meta_ads'))return `<div class="ads-connected-compact"><span class="ads-connected-dot pending"></span><div><strong>Meta Ads no está incluido</strong><small>Esta conexión no está habilitada para ${clean(displayBusiness())}.</small></div></div>`;
-    const m=state.meta||{},isReady=!!m.configured,connected=!!m.connected;
-    const selected=m.selected_accounts||[m.selected_account].filter(Boolean);
-    const accounts=m.accounts||[],expanded=state.campaignConnectionOpen;
-    if(!expanded)
-      return '<div class="ads-connected-compact"><span class="ads-connected-dot '+(connected?'':'pending')+'" aria-hidden="true"></span><div><strong>'+(connected?'Meta Ads conectado':'Conectar Meta Ads')+'</strong><small>'+(connected?selected.length+' cuenta(s) seleccionadas':'Autoriza Facebook y elige tus cuentas desde el dashboard')+'</small></div><button type="button" class="button '+(connected?'button-outline':'button-primary')+'" data-act="campaign-connect-toggle">'+(connected?'Administrar cuentas':'Configurar conexión')+'</button></div>';
-    const step=(n,title,done)=>'<span class="ads-wizard-step '+(done?'completed':'')+'"><b>'+n+'</b>'+title+'</span>';
-    let details='';
-    if(state.metaLoading)details='<div class="ads-wizard-loading"><span class="spinner"></span><span>Verificando el acceso a Meta Ads…</span></div>';
-    else if(!isReady){
-      details='<h3>Conecta tus campañas de Meta desde aquí</h3><p>La conexión está en preparación. Cuando esté activada podrás iniciar sesión con Facebook y elegir tus cuentas publicitarias sin pedir acceso manual ni salir a la sección Integraciones.</p>'+
-        '<button class="button button-primary" type="button" disabled>Conectar con Facebook · en preparación</button>';
-    }else if(!connected){
-      details='<h3>Conecta tus campañas de Meta desde aquí</h3><p>Inicia sesión con Facebook y autoriza únicamente la lectura de las cuentas publicitarias que elijas. E Digital.IA no modificará tus anuncios.</p>'+
-        '<button class="button button-primary" type="button" data-act="meta-connect" data-return="campaigns">Conectar con Facebook</button>'+
-        '<p class="fine-print">Facebook pedirá tu consentimiento oficial y volverás automáticamente a Campañas Ads.</p>';
-    }else{
-      const accountRows=accounts.map(a=>
-        '<label class="meta-account-row ads-account-choice"><input class="campaign-meta-account-check" type="checkbox" value="'+clean(a.id)+'" '+(selected.includes(a.id)?'checked':'')+' />'+
-        '<span><strong>'+clean(a.name)+'</strong><small>'+clean(a.id)+' · '+clean(a.currency)+'</small></span></label>').join('');
-      details='<h3>Elige tus cuentas publicitarias</h3><p>Puedes seleccionar hasta cinco cuentas que Facebook te haya autorizado.</p>'+
-        '<input type="search" id="campaign-meta-search" class="meta-search" placeholder="Buscar una cuenta publicitaria…" autocomplete="off" aria-label="Buscar cuenta publicitaria">'+
-        '<div class="ads-account-list">'+(accountRows||'<p class="fine-print">Facebook no devolvió cuentas. Comprueba que tu usuario tenga acceso a una cuenta publicitaria.</p>')+'</div>'+
-        '<div class="ads-wizard-actions"><button type="button" class="button button-primary" data-act="campaign-meta-save" '+(state.campaignAccountSaving?'disabled':'')+'>'+
-        (state.campaignAccountSaving?'Guardando selección…':'Guardar y ver campañas')+'</button>'+
-        '<button type="button" class="button button-outline" data-act="meta-connect" data-return="campaigns">Cambiar acceso de Facebook</button></div>';
+    if(!featureEnabled('meta_ads'))return '<div class="ads-connected-compact"><span class="ads-connected-dot pending"></span><div><strong>Meta Ads no incluido</strong><small>Esta conexión no está habilitada para '+clean(displayBusiness())+'.</small></div></div>';
+    const m=state.meta||{},ready=!!m.configured,connected=!!m.connected;
+    const saved=m.selected_accounts||[m.selected_account].filter(Boolean),accounts=m.accounts||[];
+    const isOpen=state.campaignConnectionOpen;
+    if(!isOpen){
+      return '<div class="ads-connected-compact"><span class="ads-connected-dot '+(connected?'':'pending')+'" aria-hidden="true"></span><div><strong>'+(connected?'Meta Ads conectado':'Conecta Meta Ads desde aquí')+'</strong><small>'+(connected?saved.length+' cuenta(s) autorizadas para '+clean(displayBusiness()):'Conecta Facebook y selecciona tus cuentas sin salir del dashboard')+'</small></div><button type="button" class="button '+(connected?'button-outline':'button-primary')+'" data-act="campaign-connect-toggle">'+(connected?'Administrar cuentas':'Conectar Meta Ads')+'</button></div>';
     }
-    const close='<button type="button" class="ads-wizard-close" data-act="campaign-connect-toggle" aria-label="Cerrar asistente de conexión">'+icon('close',18)+'</button>';
-    return '<div class="ads-modal-backdrop" data-act="campaign-connect-toggle" aria-hidden="true"></div><div class="ads-modal-shell" role="dialog" aria-modal="true" aria-label="Conectar Meta Ads"><section class="ads-connection-panel" aria-label="Configuración de Meta Ads">'+
-      '<div class="ads-connection-top"><div class="ads-connection-brand">'+providerLogo('Meta Ads')+
-      '<div><strong>Meta Ads · '+clean(displayBusiness())+'</strong><small>Conexión directa en Campañas Ads</small></div></div>'+close+'</div>'+
-      '<div class="ads-wizard-steps">'+step(1,'Conectar Facebook',connected)+step(2,'Seleccionar cuentas',selected.length>0)+step(3,'Consultar campañas',selected.length>0)+'</div>'+
-      (state.metaError?alertBlock(state.metaError):'')+
-      (state.campaignAccountNotice?'<div class="company-message" role="status">'+clean(state.campaignAccountNotice)+'</div>':'')+
-      '<div class="ads-wizard-body">'+details+'</div></section></div>';
+    const stage=state.campaignWizardStage==='confirm'&&connected?'confirm':connected?'accounts':'authorize';
+    const chosen=state.campaignWizardSelectedIds||saved;
+    const providerItems=[
+      {name:'Meta Ads',logo:'Meta Ads',active:true,sub:'Facebook e Instagram'},
+      {name:'Google Ads',logo:'Google Ads',sub:'Próximamente'},
+      {name:'TikTok Ads',logo:'TikTok Ads',sub:'Próximamente'},
+      {name:'LinkedIn Ads',logo:'LinkedIn Ads',sub:'Próximamente'},
+      {name:'Google Analytics 4',logo:'Google Analytics 4',sub:'Desde Integraciones'}
+    ];
+    const catalogue='<aside class="connector-sidebar"><div class="connector-sidebar-title">Conexiones</div>'+
+      '<label class="connector-provider-search"><span>'+icon('search',17)+'</span><input id="campaign-provider-search" type="search" placeholder="Buscar plataformas" aria-label="Buscar plataforma"/></label>'+
+      '<div class="connector-provider-group">PUBLICIDAD</div>'+
+      providerItems.slice(0,4).map(p=>'<div class="connector-provider '+(p.active?'selected':'pending')+'" data-provider-name="'+clean(p.name.toLowerCase())+'">'+providerLogo(p.logo)+'<span><b>'+clean(p.name)+'</b><small>'+clean(p.sub)+'</small></span>'+(p.active?'<span class="connector-selected-mark" aria-hidden="true">✓</span>':'')+'</div>').join('')+
+      '<div class="connector-provider-group">ANALÍTICA</div>'+
+      providerItems.slice(4).map(p=>'<div class="connector-provider pending" data-provider-name="'+clean(p.name.toLowerCase())+'">'+providerLogo(p.logo)+'<span><b>'+clean(p.name)+'</b><small>'+clean(p.sub)+'</small></span></div>').join('')+
+      '<p class="connector-sidebar-foot">Las demás plataformas se conectarán cuando estén disponibles sus APIs oficiales.</p></aside>';
+    const progress='<div class="connector-progress">'+
+      [['1','Autorizar Facebook',connected],['2','Elegir cuentas',stage==='confirm'||saved.length>0],['3','Confirmar conexión',stage==='confirm'||saved.length>0]].map(([n,t,done],i)=>
+       '<span class="connector-progress-step '+(done?'done':((stage==='authorize'&&i===0)||(stage==='accounts'&&i===1)||(stage==='confirm'&&i===2)?'current':''))+'"><i>'+n+'</i>'+t+'</span>').join('')+
+      '</div>';
+    let content='';
+    if(state.metaLoading){
+      content='<div class="connector-loader" role="status"><span class="spinner"></span><strong>Consultando tu conexión con Meta…</strong><p>Solo cargaremos las cuentas que Facebook haya autorizado.</p></div>';
+    }else if(!ready){
+      content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('Meta Ads')+'</div><h3>Conectar tu cuenta de Facebook</h3>'+
+        '<p>La aplicación de Meta todavía no está habilitada. Cuando termine su activación, podrás autorizar tu Facebook directamente desde esta ventana.</p><button class="button button-primary" type="button" disabled>Conectar Facebook · próximamente</button></div>';
+    }else if(!connected){
+      content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('Meta Ads')+'</div>'+
+        '<h3>Conectar tu cuenta de Facebook</h3><p>Conecta tu cuenta para ver las campañas y los anuncios de Facebook e Instagram en E Digital.IA.</p>'+
+        '<button class="button button-primary connector-primary" type="button" data-act="meta-connect" data-return="campaigns">'+icon('link',17)+' Autorizar con Facebook</button>'+
+        '<p class="connector-small-note">Se abrirá una ventana oficial de Meta para iniciar sesión y autorizar el acceso. Este panel permanecerá abierto.</p></div>';
+    }else if(stage==='confirm'){
+      const chosenAccounts=accounts.filter(a=>chosen.includes(a.id));
+      content='<div class="connector-form-heading"><div><h3>Confirmar cuentas seleccionadas</h3><p>Comprueba las cuentas antes de cargar sus campañas.</p></div><span class="connector-account-total">'+chosen.length+' de 5 cuentas</span></div>'+
+        '<div class="connector-confirm-accounts">'+chosenAccounts.map(a=>'<div class="connector-confirm-account">'+providerLogo('Meta Ads')+'<span><b>'+clean(a.name)+'</b><small>'+clean(a.id)+' · '+clean(a.currency||'')+'</small></span><span class="connector-ok">✓</span></div>').join('')+'</div>'+
+        '<div class="connector-privacy"><b>Solo lectura</b><p>E Digital.IA consultará los resultados de las cuentas seleccionadas. No publicará anuncios ni cambiará sus presupuestos.</p></div>'+
+        '<div class="connector-form-actions"><button class="button button-outline" type="button" data-act="campaign-meta-back">Atrás</button><button class="button button-primary" type="button" data-act="campaign-meta-save" '+(state.campaignAccountSaving?'disabled':'')+'>'+(state.campaignAccountSaving?'Guardando…':'Guardar conexión y ver campañas')+' '+icon('chevron',16)+'</button></div>';
+    }else{
+      const selectedIds=state.campaignWizardSelectedIds||saved;
+      const tableRows=accounts.map(a=>'<label class="connector-account-row" data-account-search="'+clean((a.name+' '+a.id).toLowerCase())+'">'+
+        '<span class="connector-account-check"><input type="checkbox" class="campaign-meta-account-check" value="'+clean(a.id)+'" '+(selectedIds.includes(a.id)?'checked':'')+' aria-label="Seleccionar '+clean(a.name)+'"/></span>'+
+        '<span class="connector-account-name">'+clean(a.name||'Cuenta sin nombre')+'</span><span class="connector-account-id">'+clean(a.id)+'</span>'+
+        '<span class="connector-account-currency">'+clean(a.currency||'—')+'</span></label>').join('');
+      content='<div class="connector-form-heading"><div><h3>Seleccionar cuentas publicitarias</h3><p>Selecciona hasta cinco cuentas de Facebook. Puedes buscar por nombre o identificador.</p></div>'+
+        '<span class="connector-account-total" id="connector-account-total">'+selectedIds.length+' seleccionada(s)</span></div>'+
+        '<button class="connector-reconnect" type="button" data-act="meta-connect" data-return="campaigns">'+icon('refresh',14)+' Volver a autorizar Facebook</button>'+
+        '<label class="connector-search"><span>'+icon('search',17)+'</span><input id="campaign-meta-search" type="search" placeholder="Buscar cuentas" autocomplete="off" aria-label="Buscar cuentas publicitarias"/></label>'+
+        '<div class="connector-account-table"><div class="connector-account-head"><label class="connector-account-check"><input type="checkbox" id="campaign-meta-select-all" aria-label="Seleccionar hasta cinco cuentas visibles"/></label>'+
+          '<span>Nombre de la cuenta</span><span>ID de cuenta</span><span>Moneda</span></div>'+
+        '<div class="connector-account-results">'+(tableRows||'<p class="connector-no-accounts">Facebook no devolvió cuentas disponibles. Comprueba que tu usuario tenga permisos sobre alguna cuenta publicitaria.</p>')+'</div></div>'+
+        '<div class="connector-privacy"><b>Tu privacidad está protegida</b><p>Las cuentas pertenecen a la empresa seleccionada. Solo se consultarán los datos que Meta autorice.</p></div>'+
+        '<div class="connector-form-actions"><span class="connector-limit">Máximo cinco cuentas</span><button class="button button-primary" type="button" data-act="campaign-meta-next">Siguiente '+icon('chevron',16)+'</button></div>';
+    }
+    const body='<div class="connector-content"><div class="connector-context"><span>INTEGRACIONES / PUBLICIDAD</span>'+
+       '<button type="button" class="connector-close" data-act="campaign-connect-toggle" aria-label="Cerrar conexión">'+icon('close',20)+'</button></div>'+
+       '<div class="connector-topline">'+providerLogo('Meta Ads')+'<span><b>Meta Ads</b><small>'+clean(displayBusiness())+'</small></span></div>'+
+       progress+
+       (state.metaError?alertBlock(state.metaError):'')+
+       (state.campaignAccountNotice?'<div class="company-message" role="status">'+clean(state.campaignAccountNotice)+'</div>':'')+
+       '<div class="connector-main">'+content+'</div></div>';
+    return '<div class="ads-modal-backdrop" data-act="campaign-connect-toggle" aria-hidden="true"></div>'+
+     '<div class="ads-modal-shell connector-windsor" role="dialog" aria-modal="true" aria-label="Conectar Meta Ads">'+
+     '<div class="connector-layout">'+catalogue+body+'</div></div>';
   }
 
 function campaigns(){
