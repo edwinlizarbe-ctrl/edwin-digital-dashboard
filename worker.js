@@ -190,14 +190,13 @@ async function handleApi(req, env) {
     const businesses=await supaRest(env,'businesses?select=id&id=eq.'+id+'&limit=1',s.access);
     if(!businesses.length)return json({error:'No tienes acceso a esta empresa.'},403,s.cookies);
     const display_name=String(input.display_name||'').trim(),
-      category=String(input.category||'').trim(),country=String(input.country||'').trim(),
-      logo_data=String(input.logo_data||'');
-    if(display_name.length<2||display_name.length>80||category.length>80||country.length>80||
-      logo_data.length>90000||(logo_data!==''&&!/^data:image\/(?:png|jpeg|webp);base64,[a-zA-Z0-9+/]+={0,2}$/.test(logo_data)))
-      return json({error:'Revisa el nombre, sector y logotipo. La imagen debe ser PNG/JPG/WebP y menor de 65 KB.'},400,s.cookies);
+      category=String(input.category||'').trim(),country=String(input.country||'').trim();
+    if(display_name.length<2||display_name.length>80||category.length>80||country.length>80)
+      return json({error:'El nombre, sector o país tienen un formato incorrecto.'},400,s.cookies);
     const old=s.user.business_preferences && typeof s.user.business_preferences==='object'?
       s.user.business_preferences:{};
-    const preferences={...old,[id]:{display_name,category,country,logo_data}};
+    // Logo bytes must never enter Supabase Auth metadata: the resulting JWT must fit browser cookies.
+    const preferences={...old,[id]:{display_name,category,country}};
     if(Object.keys(preferences).length>30)return json({error:'Se alcanzó el límite de perfiles personalizados.'},400,s.cookies);
     const changed=await supaAuth(env,'user',{method:'PUT',headers:{Authorization:'Bearer '+s.access},
       body:JSON.stringify({data:{...s.metadata,ed_business_preferences_v1:preferences}})});
