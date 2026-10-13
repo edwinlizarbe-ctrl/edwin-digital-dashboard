@@ -188,22 +188,8 @@ async function handleApi(req, env) {
     return json({ ...report, configured: true, site: { id: site.id, name: site.name }, period }, 200, s.cookies);
   }
   if (path === '/api/hotmart/summary' && method === 'GET') {
-    // Pilot credentials belong ONLY to Edwin Digital. No customer may query them.
-    if (s.user.role !== 'admin') return json({ error: 'Acceso restringido al administrador.' }, 403, s.cookies);
-    if (!env.HOTMART_CLIENT_ID || !env.HOTMART_CLIENT_SECRET || !env.HOTMART_BASIC) {
-      return json({ error: 'Faltan las credenciales privadas de Hotmart en Cloudflare.' }, 503, s.cookies);
-    }
-    const businessId = url.searchParams.get('business_id') || '';
-    const period = requestedPeriod(url);
-    if (!isUuid(businessId)) return json({ error: 'Selecciona un negocio válido.' }, 400, s.cookies);
-    const allowed = await supaRest(env, `businesses?select=id,slug&id=eq.${businessId}&limit=1`, s.access);
-    // Pilot credentials are strictly linked to the Edwin Digital business.
-    if (!allowed.length || allowed[0].slug !== 'edwin-digital') return json({ error: 'Hotmart aún no está conectado a este negocio.' }, 403, s.cookies);
-    const credentials = await hotmartAccessToken(env);
-    if (!credentials.ok) return json({ error: `Hotmart no autorizó las credenciales (HTTP ${credentials.status}). Revisa las variables en Cloudflare.` }, 502, s.cookies);
-    const data = await hotmartRecentSales(credentials.access_token, period);
-    if (!data.ok) return json({ error: `Hotmart rechazó la consulta de ventas (HTTP ${data.status}). Verifica el acceso a la API de Ventas.` }, 502, s.cookies);
-    return json(data.summary, 200, s.cookies);
+    // The previous Hotmart pilot used global credentials and cannot be attributed to a customer.
+    return json({ error: 'Hotmart requiere una conexión autorizada e independiente por empresa. El piloto anterior está deshabilitado.' }, 409, s.cookies);
   }
   return json({ error: 'Ruta no encontrada.' }, 404, s.cookies);
 }

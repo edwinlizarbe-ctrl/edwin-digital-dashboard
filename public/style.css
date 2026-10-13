@@ -40,3 +40,26 @@
 .meta-kpi-grid small{color:var(--muted2);font-size:10px;margin-bottom:7px}
 .meta-kpi-grid strong{color:var(--text);font-size:17px;overflow-wrap:anywhere}
 @media(max-width:560px){.meta-full{grid-column:span 1}.meta-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* SaaS role-specific navigation and platform/ads filters */
+.ads-toolbar{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:8px 0 18px}
+.ads-toolbar .form-label{min-width:175px;flex:0 1 230px}
+.ads-toolbar .meta-select{width:100%;max-width:none;margin:8px 0 0}
+.ads-toolbar>.button{margin-bottom:1px}
+.sidebar-workspace b{overflow-wrap:anywhere}
+.client-site-row>.button{margin-left:auto}
+.integration-card .fine-print{font-size:12px}
+@media(max-width:620px){.ads-toolbar{flex-direction:column;align-items:stretch}.ads-toolbar .form-label{width:100%;flex:unset}.ads-toolbar>.button{align-self:stretch}.client-site-row{flex-wrap:wrap}}
+
+/* Self-service account chooser, Windsor-inspired but powered directly by Meta */
+.meta-search{display:block;width:100%;max-width:560px;margin:10px 0;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font:inherit}
+.meta-account-list{max-width:700px;max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.meta-account-row{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border)}
+.meta-account-row:last-child{border-bottom:0}
+.meta-account-row:hover{background:var(--surface2)}
+.meta-account-row input{width:17px;height:17px;accent-color:#7b5cf4}
+.meta-account-row span{display:flex;flex-direction:column;gap:4px}
+.meta-account-row strong{color:var(--text);font-size:13px;font-weight:600}
+.meta-account-row small{color:var(--muted2);font-size:11px}
+.meta-account-result{margin-top:18px;padding:12px;border:1px solid var(--border);border-radius:12px}
+.meta-account-result>strong{color:var(--text);font-size:13px}

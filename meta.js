@@ -1,8 +1,9 @@
 /**
- * Meta Ads per authorized business — read-only OAuth connection.
+ * Meta Ads pilot — per-tenant, per-user session, read-only.
  * OAuth handled entirely on Cloudflare Worker. No third-party intermediary.
  * Encrypted HttpOnly cookies avoid database/schema changes for the first test.
- * Session tradeoff: one connection per browser at a time; tokens expire and are not shared across businesses.
+ * Pilot tradeoff: one encrypted browser connection per signed-in user and authorized business.
+ * Development-mode Meta apps require explicitly permitted testers/admins.
  */
 const META_COOKIE = 'ed_meta_pilot';
 const META_PENDING = 'ed_meta_pending';
@@ -92,18 +93,17 @@ function metaSameOriginJson(req) {
 function metaValidBusinessId(id) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
-async function metaAuthorizedBusiness(env, session, businessId) {
-  if (!session?.user?.id || !metaValidBusinessId(businessId)) return false;
-  // Supabase JWT + RLS restrict businesses to the authenticated account.
-  // No service-role credentials are used to bypass per-business visibility.
+async function metaPilotBusiness(env, session, businessId) {
+  if (session.user.role==='admin' || !metaValidBusinessId(businessId)) return false;
+  // Use the user's JWT; Supabase RLS must authorize the business.
   const endpoint = String(env.SUPABASE_URL).replace(/\/$/,'') +
-    '/rest/v1/businesses?select=id&id=eq.'+encodeURIComponent(businessId)+'&limit=1';
+    '/rest/v1/businesses?select=id,slug&id=eq.'+encodeURIComponent(businessId)+'&limit=1';
   const r=await fetch(endpoint,{headers:{
     apikey:env.SUPABASE_ANON_KEY, Authorization:'Bearer '+session.access, Accept:'application/json',
   }});
   if(!r.ok)return false;
   const rows=await r.json();
-  return Array.isArray(rows) && rows.length===1 && rows[0].id===businessId;
+  return rows.length===1 && rows[0].id===businessId;
 }
 async function metaGraph(env, urlPath, token, fields) {
   const config=metaConfig(env);
@@ -136,20 +136,20 @@ export async function handleMetaApi(req,env,s) {
   const error=(message,status=400)=>reply({error:message},status);
   if(path==='/api/meta/status' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
-    if(!await metaAuthorizedBusiness(env,s,businessId))return error('No tienes acceso a Meta Ads para este negocio autorizado.',403);
+    if(!await metaPilotBusiness(env,s,businessId))return error('No tienes acceso a este negocio.',403);
     if(!config.ready)return reply({configured:false,connected:false,reason:'Meta Ads todavía no está configurado en los secretos de Cloudflare.'});
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId))return reply({configured:true,connected:false});
     try {
       const accounts=await metaAccounts(env,connection.token);
-      return reply({configured:true,connected:true,accounts,selected_account:accounts.some(x=>x.id===connection.account)?connection.account:null,expires_at:new Date(connection.expires).toISOString()});
+      return reply({configured:true,connected:true,accounts,selected_account:accounts.some(x=>x.id===connection.account)?connection.account:null,selected_accounts:accounts.filter(x=>(connection.accounts||[connection.account]).includes(x.id)).map(x=>x.id),expires_at:new Date(connection.expires).toISOString()});
     }catch(e){return reply({configured:true,connected:false,error:String(e.message).slice(0,180)});}
   }
   if(path==='/api/meta/connect' && method==='GET') {
-    if(!config.ready)return error('Configura primero META_APP_ID, META_APP_SECRET, META_REDIRECT_URI y META_SESSION_KEY en Cloudflare.',503);
+    if(!config.ready)return error('La integración Meta Ads aún necesita configuración del proveedor.',503);
     if(url.origin!==new URL(config.redirect).origin)return error('El dominio no coincide con el dominio configurado para Meta.',403);
     const businessId=url.searchParams.get('business_id')||'';
-    if(!await metaAuthorizedBusiness(env,s,businessId))return error('No tienes acceso a Meta Ads para este negocio.',403);
+    if(!await metaPilotBusiness(env,s,businessId))return error('No tienes acceso a esta conexión piloto.',403);
     const state=metaBytesTo64(crypto.getRandomValues(new Uint8Array(24)));
     const pending=await sealMeta(env,{state,business:businessId,user:s.user.id,expires:Date.now()+10*60*1000});
     const authorize=new URL('https://www.facebook.com/'+config.version+'/dialog/oauth');
@@ -167,7 +167,7 @@ export async function handleMetaApi(req,env,s) {
     const expired=!pending || pending.expires<Date.now() || pending.user!==s.user.id ||
       pending.state!==url.searchParams.get('state');
     if(expired)return error('La autorización ha caducado o no coincide con esta sesión. Vuelve a conectar Meta.',403);
-    if(!await metaAuthorizedBusiness(env,s,pending.business))return error('Acceso a negocio no autorizado.',403);
+    if(!await metaPilotBusiness(env,s,pending.business))return error('Acceso a negocio no autorizado.',403);
     if(url.searchParams.has('error'))return metaRedirect(metaResultUrl(env,'cancelled'),cookies,[metaCookie(META_PENDING,'',0)]);
     const code=url.searchParams.get('code')||'';
     if(!code || code.length>2000)return error('Meta no devolvió un código de autorización válido.');
@@ -192,7 +192,7 @@ export async function handleMetaApi(req,env,s) {
     const seconds=Math.max(300,Math.min(86400,Number(info.expires_in)||3600)-120);
     const connection=await sealMeta(env,{
       user:s.user.id,business:pending.business,token:info.access_token,
-      account:null,expires:Date.now()+seconds*1000,
+      account:null,accounts:[],expires:Date.now()+seconds*1000,
     });
     return metaRedirect(metaResultUrl(env,'connected'),cookies,[
       metaCookie(META_PENDING,'',0),metaCookie(META_COOKIE,connection,seconds)
@@ -201,68 +201,94 @@ export async function handleMetaApi(req,env,s) {
   if(path==='/api/meta/select' && method==='POST') {
     if(!metaSameOriginJson(req))return error('Solicitud de origen o contenido no autorizado.',403);
     const raw=await req.text();
-    if(raw.length>1024)return error('Solicitud demasiado grande.',413);
+    if(raw.length>2048)return error('Solicitud demasiado grande.',413);
     let input;try{input=JSON.parse(raw);}catch{return error('Solicitud no válida.');}
-    const businessId=input?.business_id||'', accountId=input?.account_id||'';
-    if(!await metaAuthorizedBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
-    if(!/^act_\d+$/.test(accountId))return error('Selecciona una cuenta publicitaria válida.');
+    const businessId=input?.business_id||'';
+    if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    const accountIds=Array.isArray(input?.account_ids)?input.account_ids:
+      (input?.account_id?[input.account_id]:[]);
+    if(accountIds.length>5||new Set(accountIds).size!==accountIds.length||
+      accountIds.some(id=>typeof id!=='string'||!/^act_\d+$/.test(id))) {
+      return error('Puedes elegir hasta cinco cuentas publicitarias válidas sin repetir.');
+    }
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId))return error('Necesitas conectar Meta Ads nuevamente.',401);
     const accounts=await metaAccounts(env,connection.token);
-    if(!accounts.some(x=>x.id===accountId))return error('No tienes autorización para esa cuenta publicitaria.',403);
-    connection.account=accountId;
+    if(accountIds.some(id=>!accounts.some(x=>x.id===id)))return error('No tienes autorización para una de las cuentas seleccionadas.',403);
+    connection.accounts=accountIds;
+    connection.account=accountIds[0]||null;
     const updated=await sealMeta(env,connection);
     const seconds=Math.max(60,Math.floor((connection.expires-Date.now())/1000));
-    return reply({ok:true,account_id:accountId},200,[metaCookie(META_COOKIE,updated,seconds)]);
+    return reply({ok:true,account_ids:accountIds},200,[metaCookie(META_COOKIE,updated,seconds)]);
   }
   if(path==='/api/meta/report' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
-    if(!await metaAuthorizedBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
     const connection=await unsealMeta(env,jar[META_COOKIE]);
-    if(!validMetaSession(connection,s,businessId)||!/^act_\d+$/.test(connection?.account||''))return error('Primero conecta Meta y selecciona una cuenta.',401);
-    // Dates use Meta's account-level timezone and aggregate at account level.
+    if(!validMetaSession(connection,s,businessId))return error('Vuelve a conectar Meta Ads.',401);
+    const ids=(connection.accounts||[connection.account]).filter(id=>/^act_\d+$/.test(id||'')).slice(0,5);
+    if(!ids.length)return error('Selecciona al menos una cuenta publicitaria.',400);
     const period=url.searchParams.get('period')||'30';
     if(!META_PERIODS.has(period))return error('Período no válido.');
     const presets={today:'today',yesterday:'yesterday','7':'last_7d','30':'last_30d','90':'last_90d','365':'last_year'};
-    const report=await metaGraph(env,'/'+connection.account+'/insights',connection.token,{
-      fields:'spend,clicks,impressions,ctr,cpc',date_preset:presets[period],level:'account',limit:1,
-    });
-    const values=(report.data||[])[0];
-    return reply({configured:true,account_id:connection.account,currency:(await metaAccounts(env,connection.token)).find(a=>a.id===connection.account)?.currency||'',
-      period,metrics:values?{spend:values.spend??null,clicks:values.clicks??null,impressions:values.impressions??null,
-        ctr:values.ctr??null,cpc:values.cpc??null}:null});
+    const accounts=await metaAccounts(env,connection.token);
+    const account_reports=await Promise.all(ids.map(async id=>{
+      const report=await metaGraph(env,'/'+id+'/insights',connection.token,{
+        fields:'spend,clicks,impressions,ctr,cpc',date_preset:presets[period],level:'account',limit:1
+      });
+      const x=(report.data||[])[0]||null;
+      const acc=accounts.find(a=>a.id===id);
+      return {account_id:id,name:acc?.name||id,currency:acc?.currency||'',
+        metrics:x?{spend:x.spend??null,clicks:x.clicks??null,impressions:x.impressions??null,
+          ctr:x.ctr??null,cpc:x.cpc??null}:null};
+    }));
+    const first=account_reports.length===1?account_reports[0]:null;
+    return reply({configured:true,period,account_reports,account_id:first?.account_id||null,
+      currency:first?.currency||'',metrics:first?.metrics||null,updated_at:new Date().toISOString()});
   }
   if(path==='/api/meta/campaigns' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
-    if(!await metaAuthorizedBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
     const connection=await unsealMeta(env,jar[META_COOKIE]);
-    if(!validMetaSession(connection,s,businessId)||!/^act_\d+$/.test(connection?.account||''))
-      return error('Conecta Meta Ads y selecciona una cuenta publicitaria.',401);
-    const period=url.searchParams.get('period')||'30';
-    if(!META_PERIODS.has(period))return error('Período no válido.');
-    const level=url.searchParams.get('level')||'campaign';
-    if(!['campaign','adset','ad'].includes(level))return error('Nivel de anuncios no válido.');
+    if(!validMetaSession(connection,s,businessId))return error('Conecta Meta Ads nuevamente.',401);
+    const ids=(connection.accounts||[connection.account]).filter(id=>/^act_\d+$/.test(id||'')).slice(0,5);
+    if(!ids.length)return error('Selecciona una cuenta publicitaria.',400);
+    const period=url.searchParams.get('period')||'30',level=url.searchParams.get('level')||'campaign';
+    if(!META_PERIODS.has(period)||!['campaign','adset','ad'].includes(level))return error('Filtro de anuncios no válido.');
     const presets={today:'today',yesterday:'yesterday','7':'last_7d','30':'last_30d','90':'last_90d','365':'last_year'};
-    // Only data from the account previously selected and checked against /me/adaccounts.
-    const account=await metaAccounts(env,connection.token);
-    const selected=account.find(a=>a.id===connection.account);
-    if(!selected)return error('Esta cuenta publicitaria ya no está autorizada.',403);
-    const fields=level==='campaign'?'campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc':
-      level==='adset'?'campaign_name,adset_id,adset_name,spend,impressions,clicks,ctr,cpc':
-      'campaign_name,adset_name,ad_id,ad_name,spend,impressions,clicks,ctr,cpc';
-    const report=await metaGraph(env,'/'+connection.account+'/insights',connection.token,{
-      fields,date_preset:presets[period],level,limit:100,
-    });
-    const results=(report.data||[]).map(row=>({
-      id:String(row.ad_id||row.adset_id||row.campaign_id||''),
-      name:String(row.ad_name||row.adset_name||row.campaign_name||'Sin nombre'),
-      campaign_name:String(row.campaign_name||''),
-      adset_name:String(row.adset_name||''),
-      spend:row.spend??null,impressions:row.impressions??null,clicks:row.clicks??null,
-      ctr:row.ctr??null,cpc:row.cpc??null,
-    }));
-    return reply({account_id:connection.account,currency:selected.currency||'',period,level,
-      rows:results,has_more:!!report.paging?.next});
+    const fields=level==='campaign'?'campaign_id,campaign_name,spend,clicks,impressions,ctr,cpc':
+      level==='adset'?'campaign_name,adset_id,adset_name,spend,clicks,impressions,ctr,cpc':
+      'campaign_name,adset_name,ad_id,ad_name,spend,clicks,impressions,ctr,cpc';
+    const accounts=await metaAccounts(env,connection.token);
+    if(ids.some(id=>!accounts.some(account=>account.id===id)))return error('Ya no tienes acceso a una cuenta seleccionada. Vuelve a autorizar Meta.',403);
+    const rows=[];let partial=false;
+    for(const id of ids){
+      const account=accounts.find(a=>a.id===id);
+      if(!account)continue;
+      let after='';
+      for(let page=0;page<2;page++){
+        const params={fields,date_preset:presets[period],level,limit:100};
+        if(after)params.after=after;
+        const data=await metaGraph(env,'/'+id+'/insights',connection.token,params);
+        for(const x of data.data||[])rows.push({
+          id:String(x.ad_id||x.adset_id||x.campaign_id||''),
+          name:String(x.ad_name||x.adset_name||x.campaign_name||'Sin nombre').slice(0,150),
+          account_id:id,account_name:account.name,currency:account.currency,
+          campaign_name:String(x.campaign_name||'').slice(0,150),
+          spend:x.spend??null,clicks:x.clicks??null,impressions:x.impressions??null,
+          ctr:x.ctr??null,cpc:x.cpc??null
+        });
+        const next=data.paging?.next,cursor=data.paging?.cursors?.after;
+        if(!next||!cursor)break;
+        if(page===1){partial=true;break;}
+        if(cursor===after)break;
+        after=cursor;
+      }
+    }
+    const currencies=new Set(rows.map(x=>x.currency));
+    return reply({configured:true,connected:true,period,level,rows,partial,
+      currency:currencies.size===1?[...currencies][0]:'',account_ids:ids,
+      updated_at:new Date().toISOString()});
   }
   if(path==='/api/meta/disconnect' && method==='POST') {
     if(!metaSameOriginJson(req))return error('Solicitud no autorizada.',403);

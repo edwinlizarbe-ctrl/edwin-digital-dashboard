@@ -10,6 +10,7 @@
     mobileOpen: false, search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
+    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -26,12 +27,16 @@
   const rows = name => state.ga?.reports?.[name] || [];
   const m = () => gaReady() ? state.ga.metrics || {} : {};
   const prev = () => state.ga?.previous_metrics || null;
-  const selectedBusinessIsHotmart = () => isAdmin() && business()?.slug === 'edwin-digital';
+  // Never attribute global Hotmart pilot credentials to the test customer's business.
+  const selectedBusinessIsHotmart = () => false;
   const pages = {
     overview: ['Resumen general', 'layout-dashboard'],
     analytics: ['Analítica web', 'activity'],
     acquisition: ['Adquisición', 'mouse-pointer'],
-    campaigns: ['Campañas UTM', 'megaphone'],
+    campaigns: ['Campañas Ads', 'megaphone'],
+    utm: ['Fuentes UTM de GA4', 'mouse-pointer'],
+    adminHome: ['Panel administrador', 'layout-dashboard'],
+    adminIntegrations: ['Integraciones SaaS', 'plug'],
     audience: ['Audiencia', 'users'],
     content: ['Contenido web', 'file-text'],
     events: ['Eventos y metas', 'target'],
@@ -41,6 +46,7 @@
     clientDetail: ['Ficha del cliente', 'building'],
     integrations: ['Integraciones', 'plug'],
     settings: ['Configuración', 'settings'],
+    company: ['Mi empresa', 'building'],
   };
   const paths = {
     'layout-dashboard':'<rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/>',
@@ -202,7 +208,28 @@
   }
   function analytics(){return `${heading('Analítica web','Así está rindiendo tu web','Visitas, interacción, permanencia y evolución histórica de GA4.')}${statusStrip()}${mainKpis()}${detailKpis()}<div class="content-grid"><div class="col-12">${card('Tráfico y visualizaciones','Compara el comportamiento del sitio a lo largo del período',gaReady()?chart(rows('trend'),'screenPageViews','Vistas de página','sessions','Sesiones',310):dataPlaceholder())}</div><div class="col-6">${card('Sesiones por dispositivo','Tráfico desde computadora, celular y tablet',gaReady()?donut(rows('devices'),'deviceCategory','sessions'):dataPlaceholder())}</div><div class="col-6">${card('Navegadores de tus usuarios','Distribución por tecnología',gaReady()?barList(rows('browsers'),'browser','totalUsers'):dataPlaceholder())}</div></div>${flags()}`;}
   function acquisition(){return `${heading('Adquisición','Descubre cómo te encuentran','Analiza canales, fuentes y medios de tráfico, sin confundir visitas con conversiones de anuncios.')}${statusStrip()}<div class="content-grid"><div class="col-5">${card('Mezcla de canales','Sesiones por categoría de adquisición',gaReady()?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Principales fuentes y medios','Sesiones atribuidas en GA4',gaReady()?barList(rows('sources'),'sessionSourceMedium','sessions',10):dataPlaceholder())}</div><div class="col-12">${card('Detalle de canales','Usuarios, sesiones y eventos clave por canal',gaReady()?dataTable(rows('channels'),[{key:'sessionDefaultChannelGroup',label:'Canal'},{key:'sessions',label:'Sesiones',display:fmt},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
-  function campaigns(){return `${heading('Campañas UTM','Campañas que llevan tráfico','Resultados de las campañas identificadas mediante etiquetado en Google Analytics 4.')}${statusStrip()}${alertBlock('Estas métricas corresponden al tráfico medido por GA4. No incluyen gasto publicitario, CPC, ROAS ni conversiones reportadas directamente por Meta Ads o Google Ads.', 'info')}<div class="content-grid"><div class="col-12">${card('Rendimiento por campaña','Sesiones y eventos clave atribuidos',gaReady()?dataTable(rows('campaigns'),[{key:'sessionCampaignName',label:'Campaña'},{key:'sessions',label:'Sesiones',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div><div class="col-6">${card('Campañas con más sesiones','Ranking de campañas etiquetadas',gaReady()?barList(rows('campaigns'),'sessionCampaignName','sessions',9):dataPlaceholder())}</div><div class="col-6">${card('Eventos clave por campaña','No equivale necesariamente a ventas confirmadas',gaReady()?barList([...rows('campaigns')].sort((a,b)=>number(b.keyEvents)-number(a.keyEvents)),'sessionCampaignName','keyEvents',9):dataPlaceholder())}</div></div>${flags()}`;}
+  function campaigns(){
+ const connected=state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account);
+ const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
+ const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads'],['microsoft','Microsoft Ads'],['pinterest','Pinterest Ads']];
+ const controls=`<div class="ads-toolbar"><label class="form-label">Plataforma<select id="ads-platform" class="meta-select">${choices.map(([value,label])=>`<option value="${value}" ${platform===value?'selected':''}>${label}</option>`).join('')}</select></label><label class="form-label">Detalle<select id="ads-level" class="meta-select">${[['campaign','Campañas'],['adset','Conjuntos'],['ad','Anuncios']].map(([value,label])=>`<option value="${value}" ${level===value?'selected':''}>${label}</option>`).join('')}</select></label><button class="button button-outline" data-act="ads-refresh">${icon('refresh',16)} Actualizar</button></div>`;
+ let result='';
+ if(platform!=='meta')result=empty('Esta plataforma aún necesita autorización de la API oficial.','Integración pendiente');
+ else if(!connected)result=empty('Conecta tu cuenta de Facebook desde Integraciones y selecciona una cuenta publicitaria.','Cuenta pendiente');
+ else if(state.adsLoading)result='<div class="loading-state"><span class="spinner"></span>Consultando campañas…</div>';
+ else if(state.adsError)result=alertBlock(state.adsError);
+ else if(!report)result=empty('Pulsa Actualizar para cargar las campañas autorizadas.','Sin datos');
+ else{
+  const c=report.currency||'',fmtCost=(n,row)=>n==null?'—':money(n,row?.currency||c);
+  const columns=[{key:'account_name',label:'Cuenta'},{key:'name',label:'Nombre'},{key:'spend',label:'Inversión',display:fmtCost},{key:'impressions',label:'Impresiones',display:v=>v==null?'—':fmt(v)},{key:'clicks',label:'Clics',display:v=>v==null?'—':fmt(v)},{key:'ctr',label:'CTR',display:v=>v==null?'—':fmt1(v)+'%'},{key:'cpc',label:'CPC',display:fmtCost}];
+  result=`${report.partial?alertBlock('La consulta contiene resultados parciales; hay más filas por recuperar.','info'):''}${report.rows?.length?dataTable(report.rows,columns,100):empty('No hay resultados registrados para este período.','Sin resultados')}`;
+ }
+ const m=state.metaReport?.metrics,curr=state.metaReport?.currency||'';
+ const kpis=platform==='meta'&&connected&&m?`<div class="small-kpis"><div class="small-kpi"><span>Inversión ${clean(curr)}</span><strong>${metaMetric(m.spend,2)}</strong></div><div class="small-kpi"><span>Clics</span><strong>${metaMetric(m.clicks)}</strong></div><div class="small-kpi"><span>Impresiones</span><strong>${metaMetric(m.impressions)}</strong></div><div class="small-kpi"><span>CTR</span><strong>${metaMetric(m.ctr,2)}%</strong></div><div class="small-kpi"><span>CPC</span><strong>${metaMetric(m.cpc,2)}</strong></div></div>`:'';
+ return `${heading('Publicidad','Campañas Ads','Campañas, conjuntos y anuncios de tus plataformas autorizadas; sin mezclar las cifras de GA4.')}${controls}${kpis}${card('Rendimiento de la cuenta',periodLabel(),result)}
+ <div class="spacer-lg"></div>${card('Atribución UTM de Analytics','Es información diferente del costo publicitario',`<p class="fine-print">Los clics, sesiones y eventos de GA4 no equivalen necesariamente a ventas pagadas.</p><button class="button button-outline" data-act="nav" data-page="utm">Ver tráfico UTM</button>`)}`;
+}
+    function utm(){return `${heading('Fuentes UTM · GA4','Campañas que llevan tráfico','Resultados de las campañas identificadas mediante etiquetado en Google Analytics 4.')}${statusStrip()}${alertBlock('Estas métricas corresponden al tráfico medido por GA4. No incluyen gasto publicitario, CPC, ROAS ni conversiones reportadas directamente por Meta Ads o Google Ads.', 'info')}<div class="content-grid"><div class="col-12">${card('Rendimiento por campaña','Sesiones y eventos clave atribuidos',gaReady()?dataTable(rows('campaigns'),[{key:'sessionCampaignName',label:'Campaña'},{key:'sessions',label:'Sesiones',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div><div class="col-6">${card('Campañas con más sesiones','Ranking de campañas etiquetadas',gaReady()?barList(rows('campaigns'),'sessionCampaignName','sessions',9):dataPlaceholder())}</div><div class="col-6">${card('Eventos clave por campaña','No equivale necesariamente a ventas confirmadas',gaReady()?barList([...rows('campaigns')].sort((a,b)=>number(b.keyEvents)-number(a.keyEvents)),'sessionCampaignName','keyEvents',9):dataPlaceholder())}</div></div>${flags()}`;}
   function audience(){return `${heading('Audiencia','Conoce a tus visitantes','Ubicación, dispositivos y procedencia de los usuarios.')}${statusStrip()}<div class="content-grid"><div class="col-6">${card('Países principales','Usuarios por país',gaReady()?barList(rows('countries'),'country','totalUsers',11):dataPlaceholder())}</div><div class="col-6">${card('Ciudades principales','Usuarios por ciudad',gaReady()?barList(rows('cities'),'city','totalUsers',11):dataPlaceholder())}</div><div class="col-5">${card('Dispositivos','Sesiones registradas por tipo',gaReady()?donut(rows('devices'),'deviceCategory','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Detalle geográfico','Usuarios y sesiones por país',gaReady()?dataTable(rows('countries'),[{key:'country',label:'País'},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'sessions',label:'Sesiones',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
   function content(){return `${heading('Contenido web','Tu contenido, con resultados','Identifica páginas populares y las que están atrayendo sesiones.')}${statusStrip()}<div class="content-grid"><div class="col-7">${card('Páginas más vistas','Visualizaciones por ruta de URL',gaReady()?barList(rows('pages'),'pagePath','screenPageViews',12):dataPlaceholder())}</div><div class="col-5">${card('Páginas de entrada','Sesiones iniciadas en cada página',gaReady()?barList(rows('landing'),'landingPage','sessions',10):dataPlaceholder())}</div><div class="col-12">${card('Rendimiento de páginas','Detalle que podrás exportar a CSV',gaReady()?dataTable(rows('pages'),[{key:'pagePath',label:'Ruta de página'},{key:'screenPageViews',label:'Visualizaciones',display:fmt},{key:'totalUsers',label:'Usuarios',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
   function events(){return `${heading('Eventos y objetivos','¿Qué acciones realizan?','Actividad, eventos clave y tasas de conversión registradas en Analytics.')}${statusStrip()}${detailKpis()}<div class="content-grid"><div class="col-8">${card('Evolución de eventos clave','Tendencia temporal de los eventos marcados como clave',gaReady()?chart(rows('trend'),'keyEvents','Eventos clave', '', '',280):dataPlaceholder())}</div><div class="col-4">${card('Tipos de eventos','Cantidad de eventos registrados',gaReady()?barList(rows('events'),'eventName','eventCount',10):dataPlaceholder())}</div><div class="col-12">${card('Detalle de eventos','Los eventos clave son los señalados en la propiedad GA4',gaReady()?dataTable(rows('events'),[{key:'eventName',label:'Nombre del evento'},{key:'eventCount',label:'Cantidad',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
@@ -215,61 +242,71 @@
     const allowed=selectedBusinessIsHotmart(),h=state.hm, ok=allowed&&!!h;
     const placeholder=state.hmLoading?`<div class="loading-state"><span class="spinner"></span>Consultando Hotmart…</div>`:empty(allowed?(state.hmError||'Verifica las variables privadas HOTMART_CLIENT_ID, HOTMART_CLIENT_SECRET y HOTMART_BASIC en Cloudflare.'):'Este negocio no tiene su propia conexión autorizada a Hotmart. Las credenciales del administrador no se comparten.','Integración no disponible');
     const stats=[['Ventas aprobadas',ok?fmt(h.approved):'—'],['Reembolsos / contracargos',ok&&h.refunded!==null?fmt(h.refunded):'—'],['Movimientos revisados',ok?fmt(h.transactions_examined):'—'],['Productos vendidos',ok?fmt(h.products?.length):'—']];
-    return `${heading('Comercio digital','Ventas de Hotmart','Movimientos reales de la cuenta piloto autorizada. No se procesan cobros desde este panel.')}${allowed?tag('Cuenta Edwin Digital · lectura', 'success'):alertBlock('Hotmart solo está habilitado para el administrador y el negocio Edwin Digital.')}<div class="small-kpis hotmart-stats">${stats.map(x=>`<div class="small-kpi"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('')}</div><div class="content-grid"><div class="col-8">${card('Ventas aprobadas por día','Transacciones encontradas en la API de Hotmart',ok?chart(h.trend,'count','Ventas'):placeholder)}</div><div class="col-4">${card('Ingresos brutos por moneda','No se combinan BRL, PEN y USD',ok?Object.keys(h.gross_by_currency||{}).length?`<div class="currency-list">${Object.entries(h.gross_by_currency).map(([cur,amount])=>`<div><span>${clean(cur)}</span><strong>${clean(money(amount,cur))}</strong></div>`).join('')}</div>`:empty('No hay importes reportados.'):placeholder)}</div><div class="col-6">${card('Productos más vendidos','Unidades aprobadas por producto',ok?barList((h.products||[]).map(p=>({name:p.name,count:p.count})),'name','count',12):placeholder)}</div><div class="col-6">${card('Métodos de pago','Operaciones por método',ok?barList(h.methods,'name','value',12):placeholder)}</div></div>${ok?alertBlock(`${h.note||'Cifras de consulta, no utilidad neta.'}${h.incomplete?' La paginación o ciertos estados pueden estar incompletos.':''}`,'info'):''}`;
+    return `${heading('Comercio digital','Ventas de Hotmart','Movimientos reales de la cuenta piloto autorizada. No se procesan cobros desde este panel.')}${allowed?tag('Cuenta Edwin Digital · lectura', 'success'):alertBlock('Hotmart todavía necesita una autorización independiente desde la cuenta de tu empresa.')}<div class="small-kpis hotmart-stats">${stats.map(x=>`<div class="small-kpi"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('')}</div><div class="content-grid"><div class="col-8">${card('Ventas aprobadas por día','Transacciones encontradas en la API de Hotmart',ok?chart(h.trend,'count','Ventas'):placeholder)}</div><div class="col-4">${card('Ingresos brutos por moneda','No se combinan BRL, PEN y USD',ok?Object.keys(h.gross_by_currency||{}).length?`<div class="currency-list">${Object.entries(h.gross_by_currency).map(([cur,amount])=>`<div><span>${clean(cur)}</span><strong>${clean(money(amount,cur))}</strong></div>`).join('')}</div>`:empty('No hay importes reportados.'):placeholder)}</div><div class="col-6">${card('Productos más vendidos','Unidades aprobadas por producto',ok?barList((h.products||[]).map(p=>({name:p.name,count:p.count})),'name','count',12):placeholder)}</div><div class="col-6">${card('Métodos de pago','Operaciones por método',ok?barList(h.methods,'name','value',12):placeholder)}</div></div>${ok?alertBlock(`${h.note||'Cifras de consulta, no utilidad neta.'}${h.incomplete?' La paginación o ciertos estados pueden estar incompletos.':''}`,'info'):''}`;
   }
   function reports(){
     const kinds=[['Resumen del sitio','overview','trend'],['Adquisición','acquisition','sources'],['Campañas UTM','campaigns','campaigns'],['Audiencia','audience','countries'],['Contenido','content','pages'],['Eventos y conversiones','events','events']];
     return `${heading('Centro de reportes','Tus informes, listos para analizar','Descarga archivos CSV con las métricas que realmente devuelve tu propiedad.')}${statusStrip()}<div class="report-grid">${kinds.map(([name,page,key])=>`<div class="report-item"><div class="report-icon">${icon('file-bar-chart',22)}</div><div><h3>${name}</h3><p>${gaReady()?`${fmt(rows(key).length)} registros · ${periodLabel()}`:'Esperando conexión GA4'}</p></div><button class="button button-soft" data-act="download" data-report="${key}" ${!gaReady()||!rows(key).length?'disabled':''}>${icon('download',17)} CSV</button></div>`).join('')}${selectedBusinessIsHotmart()?`<div class="report-item"><div class="report-icon rose">${icon('shopping-bag',22)}</div><div><h3>Productos vendidos · Hotmart</h3><p>${state.hm?`${fmt(state.hm.products?.length)} productos`:state.hmLoading?'Consultando…':'Sin conexión'}</p></div><button class="button button-soft" data-act="download" data-report="hotmart-products" ${!state.hm?'disabled':''}>${icon('download',17)} CSV</button></div>`:''}</div>${alertBlock('Los CSV contienen las filas que entrega la API en el período seleccionado. El panel no genera cifras sintéticas, ni incluye el costo de las campañas publicitarias.','info')}`;
   }
-  function clients(){
-    if(!isAdmin())return overview();
-    return `${heading('Administración','Tus negocios y clientes','Selecciona un negocio para ver su ficha, propiedades GA4 y estadísticas autorizadas.')}
-      <div class="client-grid">${state.businesses.map(b=>`<article class="client-card client-card-clickable" data-act="client-detail" data-id="${clean(b.id)}" role="button" tabindex="0" aria-label="Abrir ficha de ${clean(b.name)}">
-        <div class="client-avatar">${icon('building',27)}</div>
-        <h3>${clean(b.name)}</h3><p>${clean(b.slug)}</p>
-        <div class="client-line">${icon('lock',14)} Acceso privado protegido por Supabase RLS</div>
-        <span class="button button-outline">Ver ficha del cliente ${icon('chevron',15)}</span>
-      </article>`).join('')||dataPlaceholder()}</div>`;
-  }
-  function clientDetail(){
-    if(!isAdmin())return overview();
-    const b=business(); if(!b)return clients();
-    const siteRows=state.sites.map(s=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(s.name)}</strong><small>${clean(s.url||'Sin URL registrada')}</small></div><div class="client-site-badge">${s.ga4_property_id?'GA4 vinculado':'GA4 pendiente'}</div><button class="button button-soft" data-act="client-site" data-id="${clean(s.id)}">Consultar</button></div>`).join('');
-    return `${heading('Ficha del cliente',b.name,'Propiedades disponibles y datos del negocio autorizado.')}
-      <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">${icon('chevron',16)} Volver a clientes</button><button class="button button-primary" data-act="nav" data-page="analytics">${icon('activity',16)} Abrir analítica</button><button class="button button-outline" data-act="nav" data-page="reports">${icon('download',16)} Ver reportes</button></div>
-      ${statusStrip()}${mainKpis()}
-      <div class="content-grid"><div class="col-7">${card('Sitios del cliente','Selecciona una propiedad para ver sus estadísticas',siteRows||empty('Todavía no hay sitios registrados para este negocio.'))}</div><div class="col-5">${card('Estado de acceso','Resumen de la configuración autorizada',`<div class="settings-line"><span>Negocio</span><b>${clean(b.name)}</b></div><div class="settings-line"><span>Propiedades</span><b>${fmt(state.sites.length)}</b></div><div class="settings-line"><span>Sitio seleccionado</span><b>${clean(site()?.name||'Sin sitio')}</b></div><div class="settings-line"><span>Acceso</span><b>Según permisos RLS</b></div><p class="fine-print">Esta ficha no muestra datos personales de otros usuarios ni permite cambiar permisos sin autorización.</p>`)}</div></div>`;
-  }
+function company(){
+ const b=business(),items=state.sites.map(x=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(x.name)}</strong><small>${clean(x.url||'Sin URL')}</small></div><span class="client-site-badge">${x.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
+ return `${heading('Mi negocio','Mi empresa','Consulta tus datos de empresa y administra tus fuentes autorizadas.')}
+ <div class="content-grid"><div class="col-7">${card('Datos de mi empresa','Información actualmente registrada',`<div class="settings-line"><span>Empresa</span><b>${clean(b?.name||'Pendiente')}</b></div><div class="settings-line"><span>Identificador</span><b>${clean(b?.slug||'—')}</b></div><div class="settings-line"><span>Usuario</span><b>${clean(state.user?.email||'')}</b></div><p class="fine-print">La edición del logotipo, nombre comercial y datos de la empresa necesita almacenamiento y permisos de actualización separados por cliente.</p>`)}</div><div class="col-5">${card('Conecta tus cuentas','Tus accesos no se comparten con otras empresas',`<p>Desde Integraciones puedes autorizar Meta Ads y consultar las fuentes que realmente están conectadas.</p><button class="button button-primary" data-act="nav" data-page="integrations">${icon('plug',17)} Mis integraciones</button>`)}</div><div class="col-12">${card('Mis sitios',fmt(state.sites.length)+' registrados',items||empty('No hay sitios asignados.'))}</div></div>`;
+}
+  function adminHome(){
+ const items=state.businesses||[];
+ return `${heading('Superadministrador','Administración de Edwin Digital Analytics','Este panel controla la plataforma; las cuentas publicitarias y ventas pertenecen a cada cliente.')}
+ <div class="small-kpis"><div class="small-kpi"><span>Negocios visibles</span><strong>${fmt(items.length)}</strong></div><div class="small-kpi"><span>Separación</span><strong>Por empresa</strong></div><div class="small-kpi"><span>Meta Ads</span><strong>OAuth por cliente</strong></div></div>
+ <div class="content-grid"><div class="col-8">${card('Mis clientes','Empresas autorizadas por Supabase',items.map(b=>`<div class="client-site-row"><div class="client-avatar compact">${icon('building',19)}</div><div><strong>${clean(b.name)}</strong><small>${clean(b.slug)}</small></div><button class="button button-soft" data-act="client-detail" data-id="${clean(b.id)}">Ver ficha</button></div>`).join('')||empty('Sin clientes visibles.'))}</div><div class="col-4">${card('Panel de plataforma','Separado del negocio de cada cliente',`<p>Las integraciones de los clientes no pertenecen al superadministrador. Cada usuario se autentica y concede acceso a sus propias cuentas.</p><button class="button button-outline" data-act="nav" data-page="adminIntegrations">${icon('plug',16)} Centro de integraciones</button>`)}</div></div>`;
+}
 
-  function metaPilotEligible() { return isAdmin() && business()?.slug === 'edwin-digital'; }
+  function adminIntegrations(){
+ const rows=[['Meta Ads','Piloto: conexión directa de solo lectura por empresa. App Meta en desarrollo: únicamente usuarios autorizados.'],['Google Analytics 4','Consultas GA4 existentes. OAuth de autoservicio aún pendiente.'],['Google Ads','Pendiente de permisos y conexión OAuth por empresa.'],['Hotmart','Pendiente de acceso individual; las claves de una cuenta no se reutilizan para otra.'],['Shopify','Pendiente de acceso de tienda y API.'],['TikTok Ads','Pendiente de permisos oficiales.'],['Instagram / Facebook orgánico','Pendiente de permisos de páginas y perfiles.'],['Google Search Console / LinkedIn Ads','Pendientes de conectores autorizados.']];
+ return `${heading('Plataforma','Integraciones disponibles y pendientes','Estados reales de conectores sin atribuir cuentas de clientes al administrador.')}
+ <div class="integration-grid">${rows.map((r,i)=>`<article class="integration-card"><div class="integration-head"><div class="integration-logo meta">${clean(r[0][0])}</div>${tag(i===0?'Piloto':i===1?'Consulta existente':'Pendiente',i<2?'success':'neutral')}</div><h3>${clean(r[0])}</h3><p>${clean(r[1])}</p></article>`).join('')}</div>`;
+}
+
+  function clients(){
+ if(!isAdmin())return overview();
+ return `${heading('Administración','Mis clientes','Abre fichas y propiedades autorizadas. No conecta cuentas publicitarias en nombre del cliente.')}
+ <div class="client-grid">${state.businesses.map(b=>`<article class="client-card client-card-clickable" data-act="client-detail" data-id="${clean(b.id)}" role="button" tabindex="0"><div class="client-avatar">${icon('building',27)}</div><h3>${clean(b.name)}</h3><p>${clean(b.slug)}</p><div class="client-line">${icon('lock',14)} Acceso mediante permisos RLS</div><span class="button button-outline">Ver ficha ${icon('chevron',15)}</span></article>`).join('')||empty('Sin negocios autorizados.')}</div>`;
+}
+
+  function clientDetail(){
+ if(!isAdmin())return overview();
+ const b=business();if(!b)return clients();
+ const sites=state.sites.map(s=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(s.name)}</strong><small>${clean(s.url||'URL no registrada')}</small></div><span class="client-site-badge">${s.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
+ return `${heading('Cliente',b.name,'Consulta administrativa: sin usar sus tokens ni mezclar sus datos con otras empresas.')}
+ <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">${icon('chevron',16)} Volver</button></div>
+ <div class="content-grid"><div class="col-7">${card('Sitios registrados',fmt(state.sites.length)+' sitios autorizados',sites||empty('Esta empresa no tiene sitios registrados.'))}</div>
+ <div class="col-5">${card('Privacidad','Gestión de la plataforma',`<p>Las campañas y conexiones se consultan desde la sesión del cliente. No se muestran contraseñas ni secretos.</p><p class="fine-print">Invitaciones, planes y facturación requieren flujos administrativos propios antes de habilitar acciones de escritura.</p>`)}</div></div>`;
+}
+    function metaPilotEligible() { return !isAdmin() && !!business()?.id; }
   function metaMetric(value, digits=0) {
     const n=Number(value);
     return value===null || value===undefined || !Number.isFinite(n) ? '—' :
       new Intl.NumberFormat('es-PE',{maximumFractionDigits:digits}).format(n);
   }
-  function metaCard() {
-    if (!metaPilotEligible()) return `<article class="integration-card"><div class="integration-head"><div class="integration-logo meta">M</div>${tag('Próximamente')}</div><h3>Meta Ads</h3><p>Estadísticas de Facebook e Instagram Ads.</p><div class="integration-status"><strong>No habilitado para este negocio</strong><span>El piloto se limita a la empresa Edwin Digital. Más adelante cada negocio autorizará sus cuentas por separado.</span></div></article>`;
-    const a=state.meta || {}, accounts=a.accounts||[];
-    const options=accounts.map(x=>`<option value="${clean(x.id)}" ${x.id===a.selected_account?'selected':''}>${clean(x.name)} (${clean(x.id)})</option>`).join('');
-    const metrics=state.metaReport?.metrics, currency=state.metaReport?.currency||'';
-    const stats=metrics ? `<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${clean(currency)} ${metaMetric(metrics.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(metrics.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(metrics.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(metrics.ctr,2)}%</strong></div><div><small>CPC</small><strong>${clean(currency)} ${metaMetric(metrics.cpc,2)}</strong></div></div>` :
-      (a.selected_account && !state.metaLoading ? '<p class="fine-print">No hay estadísticas disponibles para el período seleccionado.</p>' : '');
-    const controls=!a.configured ? '<p class="fine-print">La conexión requiere una configuración inicial del administrador en Cloudflare y Meta for Developers.</p>' :
-      !a.connected ? `<button class="button button-primary" data-act="meta-connect" type="button">${icon('link',16)} Conectar con Facebook</button>` :
-      `<label class="form-label" for="meta-ad-account">Cuenta publicitaria</label>
-         <select class="meta-select" id="meta-ad-account"><option value="">Selecciona una cuenta</option>${options}</select>
-         <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh" type="button">${icon('refresh',15)} Actualizar datos</button>
-         <button class="button button-soft" data-act="meta-disconnect" type="button">Desconectar</button></div>
-         ${stats}
-         <p class="fine-print">Consulta de solo lectura. Piloto personal en este navegador; las conexiones caducan y pueden requerir una nueva autorización.</p>`;
-    return `<article class="integration-card meta-full"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(a.connected?'Conectado':state.metaLoading?'Comprobando':a.configured?'Listo para conectar':'Sin configurar',a.connected?'success':'neutral')}</div>
-      <h3>Meta Ads · piloto</h3><p>Conecta tu cuenta y consulta gasto, clics, impresiones, CTR y CPC sin intermediarios.</p>
-      ${state.metaError?alertBlock(state.metaError):''}
-      <div class="integration-status">${controls}</div>
-      ${state.metaLoading?'<span class="fine-print">Consultando Meta Ads…</span>':''}
-    </article>`;
-  }
-  async function loadMeta() {
+  function metaCard(){
+ if(!metaPilotEligible())return '';
+ const m=state.meta||{},list=m.accounts||[],selected=m.selected_accounts||[m.selected_account].filter(Boolean);
+ const accounts=list.map(x=>`<label class="meta-account-row"><input class="meta-account-check" type="checkbox" value="${clean(x.id)}" ${selected.includes(x.id)?'checked':''}/><span><strong>${clean(x.name)}</strong><small>${clean(x.id)} · ${clean(x.currency)}</small></span></label>`).join('');
+ const reports=state.metaReport?.account_reports||[];
+ const results=reports.map(x=>{
+  const v=x.metrics;
+  return `<div class="meta-account-result"><strong>${clean(x.name)} · ${clean(x.currency)}</strong>${v?`<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${metaMetric(v.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(v.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(v.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(v.ctr,2)}%</strong></div><div><small>CPC</small><strong>${metaMetric(v.cpc,2)}</strong></div></div>`:'<p class="fine-print">Sin datos en el período.</p>'}</div>`;
+ }).join('');
+ const body=!m.configured?'<p>Meta Ads aún requiere habilitación del proveedor por el administrador de la plataforma.</p>':
+ !m.connected?`<button class="button button-primary" data-act="meta-connect">${icon('link',16)} Conectar con Facebook</button>`:
+ `<label class="form-label">Elige hasta cinco cuentas publicitarias</label>
+ <input class="meta-search" id="meta-account-search" placeholder="Buscar cuenta publicitaria…" autocomplete="off"/>
+ <div class="meta-account-list">${accounts||'<p>No se encontraron cuentas autorizadas.</p>'}</div>
+ <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh">${icon('refresh',16)} Actualizar datos</button><button class="button button-soft" data-act="meta-disconnect">Desconectar</button><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas ${icon('chevron',15)}</button></div>
+ ${results}
+ <p class="fine-print">Lectura autorizada por Meta, con resultados separados por cuenta y moneda. El token de esta prueba está cifrado y asociado a esta sesión; puede caducar.</p>`;
+ return `<article class="integration-card meta-full"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(m.connected?'Conectado':m.configured?'Listo para conectar':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Autoriza Facebook y selecciona tus propias cuentas, sin intermediarios.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${body}</div>${state.metaLoading?'<span class="fine-print">Consultando Meta Ads…</span>':''}</article>`;
+}
+    async function loadMeta() {
     if(!metaPilotEligible()) {state.meta=null;state.metaReport=null;state.metaError='';render();return;}
     const current=state.businessId;
     state.metaLoading=true;state.metaError='';state.metaReport=null;render();
@@ -278,7 +315,7 @@
       if(state.businessId!==current)return;
       state.meta=info;
       if(info.error)state.metaError=info.error;
-      if(info.connected && info.selected_account) {
+      if(info.connected && (info.selected_accounts?.length||info.selected_account)) {
         try {
           state.metaReport=await api('/api/meta/report?business_id='+encodeURIComponent(current)+'&period='+encodeURIComponent(state.period));
         } catch(e) {state.metaError=e.message;}
@@ -287,10 +324,21 @@
     finally {if(state.businessId===current){state.metaLoading=false;render();}}
   }
   function integrations(){
-    const entries=[{name:'Google Analytics 4',initials:'G',cls:'google',desc:'Sesiones, usuarios, contenido, eventos, ubicación y adquisición.',active:gaReady(),state:site()?.ga4_property_id?`Propiedad ${site().ga4_property_id}`:'Falta registrar una propiedad GA4',detail:gaReady()?'Los datos están respondiendo correctamente.':state.ga?.reason||state.gaError||'Hace falta una credencial de servicio válida en Cloudflare.'},{name:'Hotmart',initials:'H',cls:'hotmart',desc:'Ventas, productos, métodos de pago e ingresos agrupados por moneda.',active:!!state.hm && selectedBusinessIsHotmart(),state:selectedBusinessIsHotmart()?'Cuenta piloto de Edwin Digital':'No vinculado para este negocio',detail:'El piloto utiliza secretos privados del administrador. Clientes nuevos necesitan OAuth independiente.'},{name:'Google Ads',initials:'A',cls:'google',desc:'Coste, clics, impresiones, CTR, CPC y conversiones de anuncios.',active:false,state:'Integración pendiente',detail:'Requiere una conexión autorizada a Google Ads API; GA4 no proporciona por sí solo todos estos costos.'},{name:'Meta Ads',initials:'M',cls:'meta',desc:'Gasto, alcance, clics, leads, CPA y rendimiento publicitario.',active:false,state:'Integración pendiente',detail:'Requiere conexión autorizada a Marketing API de Meta con permisos del anunciante.'}];
-    return `${heading('Conexiones','Tus fuentes de información','Información clara sobre qué servicios ya entregan datos y cuáles necesitan autorización.')}${statusStrip()}<div class="integration-grid">${entries.filter(s=>s.name!=='Meta Ads').map(s=>`<article class="integration-card"><div class="integration-head"><div class="integration-logo ${s.cls}">${clean(s.initials)}</div>${tag(s.active?'Conectado':'Pendiente',s.active?'success':'neutral')}</div><h3>${s.name}</h3><p>${s.desc}</p><div class="integration-status"><strong>${clean(s.state)}</strong><span>${clean(s.detail)}</span></div></article>`).join('')}${metaCard()}</div>${alertBlock('Las claves de Google y Hotmart deben permanecer en los secretos de Cloudflare. Nunca las pegues en el chat, ni las incluyas en GitHub o en código del navegador.','info')}`;
-  }
-  function settings(){
+ const connected=gaReady(),other=[
+  ['Google Analytics 4','G','Sesiones, usuarios, eventos y adquisición web.',connected?'Conectado':'Pendiente',connected?'Propiedad GA4 autorizada.':'Requiere acceso a tu propiedad de Analytics.'],
+  ['Google Ads','A','Campañas, clics, CTR, CPC y conversiones.','Próximamente','OAuth y API por empresa aún pendientes.'],
+  ['Hotmart','H','Ventas, ingresos, productos y reembolsos.','Próximamente','La conexión debe usar la propia cuenta de Hotmart de tu empresa.'],
+  ['Shopify','S','Pedidos, ventas, catálogo y devoluciones.','Próximamente','Instalación y permiso por cada tienda.'],
+  ['TikTok Ads','T','Campañas y métricas oficiales de TikTok.','Próximamente','Acceso a TikTok Business API pendiente.'],
+  ['Facebook / Instagram orgánico','F','Publicaciones y resultados no pagados.','Próximamente','Pendientes permisos de páginas y perfiles.'],
+  ['Google Search Console','G','Consultas, posiciones, clics e impresiones.','Próximamente','Autorización Google pendiente.'],
+  ['LinkedIn Ads','L','Campañas de publicidad profesional.','Próximamente','Autorización de anuncios pendiente.']
+ ];
+ return `${heading('Conexiones','Vincula las cuentas de tu empresa','Autoriza cada plataforma desde tu negocio, como en Windsor.ai. No compartimos tokens entre clientes.')}
+ <div class="integration-grid">${metaCard()}${other.map(a=>`<article class="integration-card"><div class="integration-head"><div class="integration-logo google">${clean(a[1])}</div>${tag(a[3],a[3]==='Conectado'?'success':'neutral')}</div><h3>${clean(a[0])}</h3><p>${clean(a[2])}</p><div class="integration-status"><strong>${clean(a[4])}</strong></div></article>`).join('')}</div>
+ <p class="fine-print">Las plataformas marcadas Próximamente no envían datos reales todavía. Meta Ads funciona en modo piloto de lectura; en Meta Developers, el acceso externo puede requerir revisión y autorización del proveedor.</p>`;
+}
+    function settings(){
     return `${heading('Preferencias','Mi cuenta y seguridad','Gestiona tu acceso y personaliza tu espacio de trabajo.')}
       ${card('Información de sesión','Cuenta autenticada con Supabase',`<div class="settings-line"><span>Correo electrónico</span><b>${clean(state.user.email)}</b></div><div class="settings-line"><span>Tipo de acceso</span><b>${isAdmin()?'Administrador':'Cliente'}</b></div><div class="settings-line"><span>Negocio activo</span><b>${clean(business()?.name||'Sin seleccionar')}</b></div><div class="settings-line"><span>Sitio activo</span><b>${clean(site()?.name||'Sin seleccionar')}</b></div>`)}
       <div class="spacer-lg"></div>
@@ -309,20 +357,38 @@
 
   const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}">${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
-  function sidebar(){return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><div class="sidebar-workspace"><span class="workspace-symbol">${icon('building',20)}</span><span><b>${clean(business()?.name||'Mi espacio')}</b><small>Espacio de análisis</small></span>${icon('chevronDown',16)}</div>${groupTitle('PANEL DE CONTROL')}${['overview','analytics','acquisition','campaigns','audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['hotmart','reports'].map(navLink).join('')}${groupTitle('ADMINISTRACIÓN')}${isAdmin()?navLink('clients'):''}${['integrations','settings'].map(navLink).join('')}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Administrador':'Cliente autorizado'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;}
-  function topbar() {
-    const places=state.businesses.length>1?`<label class="select-wrap company-select" title="Elegir negocio">${icon('building',16)}<select id="business-selector" aria-label="Elegir negocio">${state.businesses.map(b=>`<option value="${clean(b.id)}" ${state.businessId===b.id?'selected':''}>${clean(b.name)}</option>`).join('')}</select>${icon('chevronDown',14)}</label>`:'';
-    const sites=state.sites.length?`<label class="select-wrap site-select" title="Elegir sitio">${icon('globe',16)}<select id="site-selector" aria-label="Elegir propiedad">${state.sites.map(s=>`<option value="${clean(s.id)}" ${s.id===state.siteId?'selected':''}>${clean(s.name)}${s.ga4_property_id?'':' (sin GA4)'}</option>`).join('')}</select>${icon('chevronDown',14)}</label>`:'';
-    return `<header class="topbar"><div class="top-left"><button class="icon-button mobile-menu" data-act="menu" title="Abrir menú">${icon('menu')}</button><div class="breadcrumbs">Workspace <span>/</span><strong>${clean(pages[state.page]?.[0]||'Resumen')}</strong></div></div><div class="top-right">${places}${sites}<label class="search-wrap">${icon('search',18)}<input id="global-search" value="${clean(state.search)}" placeholder="Buscar en datos…" aria-label="Buscar filas y resultados" spellcheck="false"/></label><label class="select-wrap period-select">${icon('calendar',16)}<select id="date-period" aria-label="Período">${[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses']].map(([value,label])=>`<option value="${value}" ${state.period===value?'selected':''}>${label}</option>`).join('')}</select>${icon('chevronDown',14)}</label><button class="icon-button refresh-button" data-act="refresh" title="Actualizar datos" ${state.gaLoading||state.hmLoading?'disabled':''}>${icon('refresh',18)}</button><button class="icon-button" data-act="theme" title="Cambiar apariencia">${icon(state.theme==='dark'?'sun':'moon',18)}</button><button class="top-avatar account-link" data-act="nav" data-page="settings" aria-label="Mi cuenta y seguridad" title="Mi cuenta y seguridad">${clean(state.user.email[0].toUpperCase())}</button></div></header>`;
-  }
-  function login(){root.innerHTML=`<div class="login-page"><div class="login-side"><div class="login-brand">${brand(true)}</div><div class="login-center"><div class="login-pill">${icon('spark',16)} Intelligence for better decisions</div><h1>Todos tus datos.<br><em>Una mejor perspectiva.</em></h1><p>Transforma información en decisiones. Un solo espacio para comprender tu sitio, tus usuarios y las ventas conectadas.</p><div class="login-feature-row"><span>${icon('check',15)} Datos reales</span><span>${icon('check',15)} Multiempresa</span><span>${icon('check',15)} Acceso seguro</span></div><div class="login-abstract" aria-hidden="true"><div class="abstract-blob"></div><div class="abstract-card a"><div class="abstract-dots"><i></i><i></i><i></i></div><span>Overview analytics</span><div class="abstract-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="abstract-card b"><div class="abstract-circle"></div><div class="abstract-lines"><i></i><i></i><i></i></div></div></div></div><div class="login-copyright">© Edwin Digital · Analytics Platform</div></div><main class="login-form-side"><div class="login-theme"><button class="icon-button" data-act="theme" title="Cambiar tema">${icon(state.theme==='dark'?'sun':'moon')}</button></div><div class="login-panel"><div class="login-badge">ACCESO A TU DASHBOARD</div><h2>Bienvenido de nuevo <span>👋</span></h2><p class="login-sub">Ingresa con tu cuenta para ver todos tus reportes en un mismo lugar.</p>${state.startupError?alertBlock(state.startupError):''}${state.loginNotice?alertBlock(state.loginNotice,'info'):''}<form id="login-form"><label class="form-label" for="email">Correo electrónico</label><div class="form-input">${icon('users',17)}<input id="email" name="email" type="email" placeholder="tucorreo@empresa.com" autocomplete="username" required/></div><label class="form-label" for="password">Contraseña</label><div class="form-input">${icon('lock',17)}<input id="password" name="password" type="password" placeholder="Tu contraseña de acceso" autocomplete="current-password" required/><button type="button" class="password-toggle" data-act="show-password" title="Mostrar u ocultar contraseña">${icon('eye',18)}</button></div>${state.loginError?alertBlock(state.loginError):''}<button class="button button-primary sign-in" type="submit" ${state.loginBusy||state.startupError?'disabled':''}>${state.loginBusy?'<span class="spinner"></span> Validando cuenta…':'Ingresar a mi dashboard'} ${!state.loginBusy?icon('arrowUp',18):''}</button></form><div class="login-help">${icon('lock',14)} Acceso protegido por Supabase Auth. Nunca introduzcas claves de API aquí.</div></div><div class="login-contact">¿Necesitas acceso? Solicítalo al administrador de Edwin Digital.</div></main></div>`;}
+function sidebar(){
+ const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','adminIntegrations','settings'].map(navLink).join('')}`:
+ `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition','campaigns','audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['hotmart','reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
+ return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><div class="sidebar-workspace"><span class="workspace-symbol">${icon('building',20)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(business()?.name||'Mi empresa')}</b><small>${isAdmin()?'Superadministrador':'Espacio de análisis'}</small></span>${icon('chevronDown',16)}</div>${menu}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Superadministrador':'Usuario de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
+}
+    function topbar(){
+ const places=!isAdmin()&&state.businesses.length>1?`<label class="select-wrap company-select">${icon('building',16)}<select id="business-selector">${state.businesses.map(x=>`<option value="${clean(x.id)}" ${state.businessId===x.id?'selected':''}>${clean(x.name)}</option>`).join('')}</select>${icon('chevronDown',14)}</label>`:'';
+ const sites=!isAdmin()&&state.sites.length?`<label class="select-wrap site-select">${icon('globe',16)}<select id="site-selector">${state.sites.map(x=>`<option value="${clean(x.id)}" ${state.siteId===x.id?'selected':''}>${clean(x.name)}</option>`).join('')}</select>${icon('chevronDown',14)}</label>`:'';
+ const period=isAdmin()?'':`<label class="select-wrap period-select">${icon('calendar',16)}<select id="date-period">${[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses']].map(([v,n])=>`<option value="${v}" ${state.period===v?'selected':''}>${n}</option>`).join('')}</select>${icon('chevronDown',14)}</label>`;
+ return `<header class="topbar"><div class="top-left"><button class="icon-button mobile-menu" data-act="menu">${icon('menu')}</button><div class="breadcrumbs">${isAdmin()?'Plataforma':'Mi empresa'} <span>/</span><strong>${clean(pages[state.page]?.[0]||'Resumen')}</strong></div></div><div class="top-right">${places}${sites}${isAdmin()?'':`<label class="search-wrap">${icon('search',18)}<input id="global-search" value="${clean(state.search)}" placeholder="Buscar en datos…"/></label>`}${period}${isAdmin()?'':`<button class="icon-button refresh-button" data-act="refresh" title="Actualizar">${icon('refresh',18)}</button>`}<button class="icon-button" data-act="theme" title="Tema">${icon(state.theme==='dark'?'sun':'moon',18)}</button><button class="top-avatar account-link" data-act="nav" data-page="settings" title="Mi cuenta">${clean(state.user.email[0].toUpperCase())}</button></div></header>`;
+}
+    function login(){root.innerHTML=`<div class="login-page"><div class="login-side"><div class="login-brand">${brand(true)}</div><div class="login-center"><div class="login-pill">${icon('spark',16)} Intelligence for better decisions</div><h1>Todos tus datos.<br><em>Una mejor perspectiva.</em></h1><p>Transforma información en decisiones. Un solo espacio para comprender tu sitio, tus usuarios y las ventas conectadas.</p><div class="login-feature-row"><span>${icon('check',15)} Datos reales</span><span>${icon('check',15)} Multiempresa</span><span>${icon('check',15)} Acceso seguro</span></div><div class="login-abstract" aria-hidden="true"><div class="abstract-blob"></div><div class="abstract-card a"><div class="abstract-dots"><i></i><i></i><i></i></div><span>Overview analytics</span><div class="abstract-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="abstract-card b"><div class="abstract-circle"></div><div class="abstract-lines"><i></i><i></i><i></i></div></div></div></div><div class="login-copyright">© Edwin Digital · Analytics Platform</div></div><main class="login-form-side"><div class="login-theme"><button class="icon-button" data-act="theme" title="Cambiar tema">${icon(state.theme==='dark'?'sun':'moon')}</button></div><div class="login-panel"><div class="login-badge">ACCESO A TU DASHBOARD</div><h2>Bienvenido de nuevo <span>👋</span></h2><p class="login-sub">Ingresa con tu cuenta para ver todos tus reportes en un mismo lugar.</p>${state.startupError?alertBlock(state.startupError):''}${state.loginNotice?alertBlock(state.loginNotice,'info'):''}<form id="login-form"><label class="form-label" for="email">Correo electrónico</label><div class="form-input">${icon('users',17)}<input id="email" name="email" type="email" placeholder="tucorreo@empresa.com" autocomplete="username" required/></div><label class="form-label" for="password">Contraseña</label><div class="form-input">${icon('lock',17)}<input id="password" name="password" type="password" placeholder="Tu contraseña de acceso" autocomplete="current-password" required/><button type="button" class="password-toggle" data-act="show-password" title="Mostrar u ocultar contraseña">${icon('eye',18)}</button></div>${state.loginError?alertBlock(state.loginError):''}<button class="button button-primary sign-in" type="submit" ${state.loginBusy||state.startupError?'disabled':''}>${state.loginBusy?'<span class="spinner"></span> Validando cuenta…':'Ingresar a mi dashboard'} ${!state.loginBusy?icon('arrowUp',18):''}</button></form><div class="login-help">${icon('lock',14)} Acceso protegido por Supabase Auth. Nunca introduzcas claves de API aquí.</div></div><div class="login-contact">¿Necesitas acceso? Solicítalo al administrador de Edwin Digital.</div></main></div>`;}
   function render() {
     setTheme();
     if(state.loading){root.innerHTML=`<div class="initial-load"><span class="spinner"></span><strong>Preparando Edwin Digital Analytics…</strong></div>`;return;}
     if(!state.user){login();return;}
-    const contents={overview,analytics,acquisition,campaigns,audience,content,events,hotmart,reports,clients,clientDetail,integrations,settings};
+    if(isAdmin()&&!['adminHome','clients','clientDetail','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
+    if(!isAdmin()&&['adminHome','clients','clientDetail','adminIntegrations'].includes(state.page))state.page='overview';
+    const contents={overview,analytics,acquisition,campaigns,utm,audience,content,events,hotmart,reports,clients,clientDetail,adminHome,adminIntegrations,integrations,company,settings};
     root.innerHTML=`<div class="layout">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${(contents[state.page]||overview)()}</main><footer class="footer"><span>© ${new Date().getFullYear()} Edwin Digital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
   }
+  async function loadAds(){
+ if(isAdmin()||!state.businessId||state.adsPlatform!=='meta'){state.metaCampaigns=null;state.adsLoading=false;render();return;}
+ const businessId=state.businessId,period=state.period,level=state.adsLevel;
+ if(!state.meta?.connected||!(state.meta?.selected_accounts?.length||state.meta?.selected_account)){state.metaCampaigns=null;state.adsLoading=false;render();return;}
+ state.adsLoading=true;state.adsError='';state.metaCampaigns=null;render();
+ try{
+  const rows=await api('/api/meta/campaigns?business_id='+encodeURIComponent(businessId)+'&period='+encodeURIComponent(period)+'&level='+encodeURIComponent(level));
+  if(state.businessId===businessId&&state.period===period&&state.adsLevel===level)state.metaCampaigns=rows;
+ }catch(e){if(state.businessId===businessId)state.adsError=e.message;}
+ finally{if(state.businessId===businessId){state.adsLoading=false;render();}}
+}
   async function refresh() {
     const generation=++state.requestId, b=state.businessId, s=state.siteId, p=state.period;
     state.ga=null;state.hm=null;state.gaError='';state.hmError='';
@@ -336,19 +402,18 @@
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.meta=null;state.metaReport=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
-    await refresh();
-    if(metaPilotEligible())await loadMeta();
+    if(!isAdmin()){await refresh();if(metaPilotEligible())await loadMeta();}
   }
   async function init(){
     state.loading=true;render();
     try{
       const status=await api('/api/status');if(!status.configured)throw new Error(`Configuración pendiente: ${(status.missing||[]).join(', ')}`);
       const user=await api('/api/me');const companies=await api('/api/businesses');
-      state.user=user.user;state.businesses=companies.businesses||[];if(new URLSearchParams(location.search).has('meta')){state.page='integrations';const result=new URLSearchParams(location.search).get('meta');if(result==='cancelled')state.metaError='Se canceló la autorización con Facebook.';history.replaceState({},'',location.pathname+location.hash);}state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
-      if(state.businesses.length) await chooseBusiness(state.businesses.find(b=>b.slug==='edwin-digital')?.id||state.businesses[0].id);
+      state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){state.page='integrations';const result=new URLSearchParams(location.search).get('meta');if(result==='cancelled')state.metaError='Se canceló la autorización con Facebook.';history.replaceState({},'',location.pathname+location.hash);}state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
+      if(state.businesses.length&&!isAdmin()) await chooseBusiness(state.businesses[0].id);
     }catch(e){state.loading=false;state.user=null;state.loginBusy=false;if(e.status!==401)state.startupError=e.message;render();}
   }
   function doCsv(dataset=''){
@@ -368,10 +433,11 @@
     const action=b.dataset.act;
     if(action==='theme'){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('ed-theme-v3',state.theme);render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
-    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations')await loadMeta();}
+    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await refresh();
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
     else if(action==='meta-refresh')await loadMeta();
+    else if(action==='ads-refresh'){await loadMeta();await loadAds();}
     else if(action==='meta-disconnect'){
       if(confirm('¿Desconectar Meta Ads de este navegador? Puedes volver a autorizarla.')){
         try{await api('/api/meta/disconnect',{method:'POST',body:'{}'});await loadMeta();}
@@ -398,14 +464,22 @@
   document.addEventListener('change', async e=>{
     if(e.target.id==='business-selector')await chooseBusiness(e.target.value);
     else if(e.target.id==='site-selector'){state.siteId=e.target.value;await refresh();}
-    else if(e.target.id==='meta-ad-account'){
-      if(!e.target.value)return;
-      try{await api('/api/meta/select',{method:'POST',body:JSON.stringify({business_id:state.businessId,account_id:e.target.value})});await loadMeta();}
+    else if(e.target.classList?.contains('meta-account-check')){
+      const ids=[...document.querySelectorAll('.meta-account-check:checked')].map(n=>n.value);
+      if(ids.length>5){e.target.checked=false;state.metaError='Selecciona un máximo de cinco cuentas.';return;}
+      try{await api('/api/meta/select',{method:'POST',body:JSON.stringify({business_id:state.businessId,account_ids:ids})});state.metaCampaigns=null;await loadMeta();}
       catch(error){state.metaError=error.message;render();}
     }
-    else if(e.target.id==='date-period'){state.period=e.target.value;await refresh();if(state.page==='integrations')await loadMeta();}
+    else if(e.target.id==='ads-platform'){state.adsPlatform=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
+    else if(e.target.id==='ads-level'){state.adsLevel=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
+    else if(e.target.id==='date-period'){state.period=e.target.value;await refresh();if(state.page==='integrations'||state.page==='campaigns')await loadMeta();if(state.page==='campaigns')await loadAds();}
   });
   document.addEventListener('input',e=>{
+    if(e.target.id==='meta-account-search'){
+      const q=e.target.value.trim().toLowerCase();
+      document.querySelectorAll('.meta-account-row').forEach(row=>{row.style.display=row.textContent.toLowerCase().includes(q)?'':'none';});
+      return;
+    }
     if(e.target.id!=='global-search')return;
     const q=e.target.value,selStart=e.target.selectionStart,selEnd=e.target.selectionEnd;
     state.search=q;render();const input=document.getElementById('global-search');if(input){input.focus();input.setSelectionRange(selStart,selEnd);}
