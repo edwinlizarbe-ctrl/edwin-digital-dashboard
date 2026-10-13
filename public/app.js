@@ -263,8 +263,8 @@
   }
 function company(){
  const b=business(),items=state.sites.map(x=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(x.name)}</strong><small>${clean(x.url||'Sin URL')}</small></div><span class="client-site-badge">${x.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
- return `${heading('Mi negocio','Mi empresa','Consulta tus datos de empresa y administra tus fuentes autorizadas.')}
- <div class="content-grid"><div class="col-7">${card('Datos de mi empresa','Información actualmente registrada',`<div class="settings-line"><span>Empresa</span><b>${clean(b?.name||'Pendiente')}</b></div><div class="settings-line"><span>Identificador</span><b>${clean(b?.slug||'—')}</b></div><div class="settings-line"><span>Usuario</span><b>${clean(state.user?.email||'')}</b></div><p class="fine-print">La edición del logotipo, nombre comercial y datos de la empresa necesita almacenamiento y permisos de actualización separados por cliente.</p>`)}</div><div class="col-5">${card('Conecta tus cuentas','Tus accesos no se comparten con otras empresas',`<p>Desde Integraciones puedes autorizar Meta Ads y consultar las fuentes que realmente están conectadas.</p><button class="button button-primary" data-act="nav" data-page="integrations">${icon('plug',17)} Mis integraciones</button>`)}</div><div class="col-12">${card('Mis sitios',fmt(state.sites.length)+' registrados',items||empty('No hay sitios asignados.'))}</div></div>`;
+ return `${heading('Mi negocio','Mi empresa','Consulta tus datos de empresa y las fuentes autorizadas.')}
+ <div class="content-grid"><div class="col-7">${card('Datos de mi empresa','Información actualmente registrada',`<div class="settings-line"><span>Empresa</span><b>${clean(b?.name||'Pendiente')}</b></div><div class="settings-line"><span>Identificador</span><b>${clean(b?.slug||'—')}</b></div><div class="settings-line"><span>Usuario</span><b>${clean(state.user?.email||'')}</b></div><p class="fine-print">La edición del logotipo, nombre comercial y datos de la empresa necesita almacenamiento y permisos de actualización separados por cliente.</p>`)}</div><div class="col-5">${card('Fuentes de mi empresa','El estado se refleja al autorizar una conexión',connectionOverview())}</div><div class="col-12">${card('Mis sitios',fmt(state.sites.length)+' registrados',items||empty('No hay sitios asignados.'))}</div></div>`;
 }
   function adminStatusFor(b){
  const x=state.adminSiteStats[b.id];
@@ -370,15 +370,14 @@ function company(){
   const v=x.metrics;
   return `<div class="meta-account-result"><strong>${clean(x.name)} · ${clean(x.currency)}</strong>${v?`<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${metaMetric(v.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(v.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(v.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(v.ctr,2)}%</strong></div><div><small>CPC</small><strong>${metaMetric(v.cpc,2)}</strong></div></div>`:'<p class="fine-print">Sin datos en el período.</p>'}</div>`;
  }).join('');
- const body=!m.configured?'<p>Meta Ads aún requiere habilitación del proveedor por el administrador de la plataforma.</p>':
+ const body=!m.configured?'<p>Esta conexión aún no está disponible. Puedes continuar usando las otras áreas del panel.</p>':
  !m.connected?`<button class="button button-primary" data-act="meta-connect">${icon('link',16)} Conectar con Facebook</button>`:
  `<label class="form-label">Elige hasta cinco cuentas publicitarias</label>
  <input class="meta-search" id="meta-account-search" placeholder="Buscar cuenta publicitaria…" autocomplete="off"/>
  <div class="meta-account-list">${accounts||'<p>No se encontraron cuentas autorizadas.</p>'}</div>
  <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh">${icon('refresh',16)} Actualizar datos</button><button class="button button-soft" data-act="meta-disconnect">Desconectar</button><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas ${icon('chevron',15)}</button></div>
- ${results}
- <p class="fine-print">Lectura autorizada por Meta, con resultados separados por cuenta y moneda. El token de esta prueba está cifrado y asociado a esta sesión; puede caducar.</p>`;
- return `<article class="integration-card meta-full"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(m.connected?'Conectado':m.configured?'Listo para conectar':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Autoriza Facebook y selecciona tus propias cuentas, sin intermediarios.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${body}</div>${state.metaLoading?'<span class="fine-print">Consultando Meta Ads…</span>':''}</article>`;
+ <p class="fine-print">Consulta las estadísticas desde Resumen y Campañas Ads.</p>`;
+ return `<article class="integration-card"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(m.connected?'Conectado':m.configured?'Disponible':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Publicidad de Facebook e Instagram.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${m.connected&&!state.metaPanelOpen?`<div class="integration-compact-footer"><span>${selected.length} cuenta(s) seleccionadas</span><button class="button button-outline" data-act="meta-panel-toggle">Administrar cuentas</button></div>`:body}${m.connected&&state.metaPanelOpen?`<button class="button button-soft" data-act="meta-panel-toggle">Cerrar detalles</button>`:''}</div>${state.metaLoading?'<span class="fine-print">Consultando conexión…</span>':''}</article>`;
 }
     async function loadMeta() {
     if(!metaPilotEligible()) {state.meta=null;state.metaReport=null;state.metaError='';render();return;}
@@ -512,10 +511,11 @@ function sidebar(){
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
+    else if(action==='meta-panel-toggle'){state.metaPanelOpen=!state.metaPanelOpen;render();}
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
     else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
-    else if(action==='meta-disconnect'){
+    else if(action==='meta-disconnect'){state.metaPanelOpen=false;
       if(confirm('¿Desconectar Meta Ads de este navegador? Puedes volver a autorizarla.')){
         try{await api('/api/meta/disconnect',{method:'POST',body:'{}'});await loadMeta();}
         catch(e){state.metaError=e.message;render();}
