@@ -221,7 +221,7 @@
  else if(!report)result=empty('Pulsa Actualizar para cargar las campañas autorizadas.','Sin datos');
  else{
   const c=report.currency||'',fmtCost=(n,row)=>n==null?'—':money(n,row?.currency||c);
-  const columns=[{key:'name',label:'Nombre'},{key:'spend',label:'Inversión',display:fmtCost},{key:'impressions',label:'Impresiones',display:v=>v==null?'—':fmt(v)},{key:'clicks',label:'Clics',display:v=>v==null?'—':fmt(v)},{key:'ctr',label:'CTR',display:v=>v==null?'—':fmt1(v)+'%'},{key:'cpc',label:'CPC',display:fmtCost}];
+  const columns=[{key:'account_name',label:'Cuenta'},{key:'name',label:'Nombre'},{key:'spend',label:'Inversión',display:fmtCost},{key:'impressions',label:'Impresiones',display:v=>v==null?'—':fmt(v)},{key:'clicks',label:'Clics',display:v=>v==null?'—':fmt(v)},{key:'ctr',label:'CTR',display:v=>v==null?'—':fmt1(v)+'%'},{key:'cpc',label:'CPC',display:fmtCost}];
   result=`${report.partial?alertBlock('La consulta contiene resultados parciales; hay más filas por recuperar.','info'):''}${report.rows?.length?dataTable(report.rows,columns,100):empty('No hay resultados registrados para este período.','Sin resultados')}`;
  }
  const m=state.metaReport?.metrics,curr=state.metaReport?.currency||'';
