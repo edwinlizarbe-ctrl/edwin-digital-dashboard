@@ -11,6 +11,7 @@
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
     metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -37,6 +38,7 @@
     utm: ['Fuentes UTM de GA4', 'mouse-pointer'],
     adminHome: ['Panel administrador', 'layout-dashboard'],
     adminIntegrations: ['Integraciones SaaS', 'plug'],
+    adminOperations: ['Supervisión', 'activity'],
     audience: ['Audiencia', 'users'],
     content: ['Contenido web', 'file-text'],
     events: ['Eventos y metas', 'target'],
@@ -104,7 +106,7 @@
     if (!state.businesses.length) return empty('Tu cuenta no tiene negocios autorizados. El administrador debe asignarte uno.', 'Falta vincular un negocio');
     if (!state.sites.length) return empty('No hay sitios asignados al negocio seleccionado.', 'Falta registrar el sitio');
     if (!state.siteId) return empty('Selecciona un sitio que tenga un ID de propiedad GA4.', 'Falta vincular Analytics');
-    return empty(state.gaError || state.ga?.reason || 'Configura GOOGLE_SERVICE_ACCOUNT_JSON en Cloudflare y permite a la cuenta de servicio leer la propiedad GA4.', 'Conexión pendiente');
+    return empty(state.gaError || 'Esta propiedad todavía no tiene una conexión disponible.', 'Conexión pendiente');
   }
   const card = (title,subtitle,body,actions='') => `<section class="card"><div class="card-heading"><div><h3>${clean(title)}</h3>${subtitle?`<p>${clean(subtitle)}</p>`:''}</div>${actions}</div>${body}</section>`;
   const tip = content => `<span class="info-tip" title="${clean(content)}">${icon('info',15)}</span>`;
@@ -181,7 +183,7 @@
   function flags() {
     const warnings=state.ga?.warnings||[];
     const items=[];
-    if(!gaReady())items.push(state.gaError || state.ga?.reason || 'Para mostrar cifras reales, configura la conexión GA4 del sitio seleccionado.');
+    if(!gaReady())items.push(state.gaError || 'Los datos GA4 no están disponibles para este sitio.');
     if(warnings.length)items.push(`${warnings.length} secciones de GA4 no devolvieron información. Revisa los permisos y las métricas de la propiedad.`);
     return items.map(x=>alertBlock(x)).join('');
   }
@@ -208,9 +210,24 @@
     return `<div class="connection-overview">${sources.map(([name,status,page,detail])=>`<div class="connection-row"><div><b>${clean(name)}</b><small>${clean(detail)}</small></div>${tag(status,status==='Conectado'?'success':'neutral')}</div>`).join('')}<div class="connection-actions"><button class="button button-outline" data-act="nav" data-page="integrations">${icon('plug',16)} Gestionar integraciones</button><button class="button button-soft" data-act="nav" data-page="campaigns">${icon('megaphone',16)} Campañas Ads</button></div></div>`;
   }
 
-  function overview() {
+  function connectedAdsOverview(){
+ const reports=state.metaReport?.account_reports||[];
+ if(!state.meta?.connected||reports.length===0)return '';
+ const cards=reports.map(report=>{
+  const m=report.metrics,cur=report.currency||'';
+  const metrics=m?`<div class="ads-source-metrics">
+  <div><span>Inversión</span><b>${m.spend==null?'—':clean(money(m.spend,cur))}</b></div>
+  <div><span>Clics</span><b>${metaMetric(m.clicks)}</b></div>
+  <div><span>Impresiones</span><b>${metaMetric(m.impressions)}</b></div>
+  <div><span>CTR</span><b>${m.ctr==null?'—':metaMetric(m.ctr,2)+'%'}</b></div>
+  <div><span>CPC</span><b>${m.cpc==null?'—':clean(money(m.cpc,cur))}</b></div></div>`:'<p class="fine-print">No hay resultados de esta cuenta en el período.</p>';
+  return `<div class="ads-source-kpi"><div class="ads-source-title"><strong>${clean(report.name||'Cuenta Meta Ads')}</strong><small>${clean(cur)}</small></div>${metrics}</div>`;
+ }).join('');
+ return `<div class="content-grid"><div class="col-12">${card('Campañas conectadas · Meta Ads','Datos de tus cuentas publicitarias, separados por moneda · '+periodLabel(),cards+'<div class="connection-actions"><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas</button></div>')}</div></div>`;
+}
+    function overview() {
     const ok=gaReady();
-    return `${heading('Vista general','Todo tu negocio, en una sola vista','Visualiza el rendimiento del sitio y las conversiones registradas, con datos reales.')}${statusStrip()}${mainKpis()}<div class="content-grid"><div class="col-8">${card('Rendimiento del sitio',`Usuarios y sesiones · ${periodLabel()}`,ok?chart(rows('trend'),'sessions','Sesiones','totalUsers','Usuarios'):dataPlaceholder())}</div><div class="col-4">${card('¿De dónde viene tu tráfico?','Distribución por canal de adquisición',ok?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Contenido que concentra la atención',ok?barList(rows('pages'),'pagePath','screenPageViews',6):dataPlaceholder(),`<button class="text-action" data-act="nav" data-page="content">Ver contenido ${icon('chevron',14)}</button>`)}</div><div class="col-5">${card('Lectura rápida de tus datos','Hallazgos generados con la información disponible',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${flags()}`;
+    return `${heading('Vista general','Todo tu negocio, en una sola vista','Visualiza el rendimiento del sitio y las conversiones registradas, con datos reales.')}${statusStrip()}${mainKpis()}<div class="content-grid"><div class="col-8">${card('Rendimiento del sitio',`Usuarios y sesiones · ${periodLabel()}`,ok?chart(rows('trend'),'sessions','Sesiones','totalUsers','Usuarios'):dataPlaceholder())}</div><div class="col-4">${card('¿De dónde viene tu tráfico?','Distribución por canal de adquisición',ok?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Contenido que concentra la atención',ok?barList(rows('pages'),'pagePath','screenPageViews',6):dataPlaceholder(),`<button class="text-action" data-act="nav" data-page="content">Ver contenido ${icon('chevron',14)}</button>`)}</div><div class="col-5">${card('Lectura rápida de tus datos','Hallazgos generados con la información disponible',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${connectedAdsOverview()}${flags()}`;
   }
   function heading(kicker,title,subtitle){return `<div class="page-title"><div><div class="eyebrow">${clean(kicker)}</div><h1>${clean(title)}</h1><p>${clean(subtitle)}</p></div><button class="button button-outline title-export" data-act="csv">${icon('download',17)} Exportar CSV</button></div>`;}
   function detailKpis() {
@@ -261,23 +278,63 @@
   }
 function company(){
  const b=business(),items=state.sites.map(x=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(x.name)}</strong><small>${clean(x.url||'Sin URL')}</small></div><span class="client-site-badge">${x.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
- return `${heading('Mi negocio','Mi empresa','Consulta tus datos de empresa y administra tus fuentes autorizadas.')}
- <div class="content-grid"><div class="col-7">${card('Datos de mi empresa','Información actualmente registrada',`<div class="settings-line"><span>Empresa</span><b>${clean(b?.name||'Pendiente')}</b></div><div class="settings-line"><span>Identificador</span><b>${clean(b?.slug||'—')}</b></div><div class="settings-line"><span>Usuario</span><b>${clean(state.user?.email||'')}</b></div><p class="fine-print">La edición del logotipo, nombre comercial y datos de la empresa necesita almacenamiento y permisos de actualización separados por cliente.</p>`)}</div><div class="col-5">${card('Conecta tus cuentas','Tus accesos no se comparten con otras empresas',`<p>Desde Integraciones puedes autorizar Meta Ads y consultar las fuentes que realmente están conectadas.</p><button class="button button-primary" data-act="nav" data-page="integrations">${icon('plug',17)} Mis integraciones</button>`)}</div><div class="col-12">${card('Mis sitios',fmt(state.sites.length)+' registrados',items||empty('No hay sitios asignados.'))}</div></div>`;
+ return `${heading('Mi negocio','Mi empresa','Consulta tus datos de empresa y las fuentes autorizadas.')}
+ <div class="content-grid"><div class="col-7">${card('Datos de mi empresa','Información actualmente registrada',`<div class="settings-line"><span>Empresa</span><b>${clean(b?.name||'Pendiente')}</b></div><div class="settings-line"><span>Identificador</span><b>${clean(b?.slug||'—')}</b></div><div class="settings-line"><span>Usuario</span><b>${clean(state.user?.email||'')}</b></div><p class="fine-print">La edición del logotipo, nombre comercial y datos de la empresa necesita almacenamiento y permisos de actualización separados por cliente.</p>`)}</div><div class="col-5">${card('Fuentes de mi empresa','El estado se refleja al autorizar una conexión',connectionOverview())}</div><div class="col-12">${card('Mis sitios',fmt(state.sites.length)+' registrados',items||empty('No hay sitios asignados.'))}</div></div>`;
 }
-  function adminHome(){
+  function adminStatusFor(b){
+ const x=state.adminSiteStats[b.id];
+ return x?.error?'Sin acceso':x?x.count+' sitios visibles':state.adminStatsLoading?'Consultando…':'No comprobado';
+}
+  function adminOperations(){
+ const records=state.businesses.map(b=>{const x=state.adminSiteStats[b.id];return {
+  name:b.name,sites:x?.error?'Sin acceso':x?x.count:'—',
+  ga4:x?.error?'Sin acceso':x?x.ga4:'—',
+  status:x?.error?'Revisar permisos':x?'Consultado':'Pendiente'};
+ });
+ const columns=[{key:'name',label:'Empresa'},{key:'sites',label:'Sitios visibles'},{key:'ga4',label:'Propiedades GA4'},{key:'status',label:'Estado'}];
+ return `${heading('Administración','Supervisión de clientes','Consulta los sitios visibles por empresa sin usar las contraseñas ni las sesiones de tus clientes.')}
+ <div class="admin-toolbar"><span>${fmt(records.length)} empresas autorizadas</span>
+ <button class="button button-outline" data-act="admin-check" ${state.adminStatsLoading?'disabled':''}>${icon('refresh',16)} Actualizar inventario</button></div>
+ ${state.adminStatsError?alertBlock(state.adminStatsError):''}
+ ${card('Inventario de empresas','Cero sitios visibles no significa que la empresa no tenga sitios registrados.',records.length?dataTable(records,columns,100):empty('No hay empresas asignadas.'))}
+ <div class="spacer-lg"></div>
+ ${card('Control de la plataforma','Funciones actualmente disponibles y pendientes',`<div class="admin-status-grid"><div><b>Clientes y propiedades</b><p>Consulta autorizada de empresas y sitios.</p></div><div><b>Conexiones</b><p>Separadas por empresa; no se comparten claves.</p></div><div><b>Usuarios, planes y cobros</b><p>Necesitan un módulo de administración seguro antes de habilitarse.</p></div></div>`)}`;
+}
+  async function loadAdminStats(){
+ if(!isAdmin())return;
+ const stats={},items=[...state.businesses];state.adminStatsLoading=true;state.adminStatsError='';render();
+ for(let i=0;i<items.length;i+=4){
+  const batch=await Promise.all(items.slice(i,i+4).map(async b=>{
+   try{const r=await api('/api/sites?business_id='+encodeURIComponent(b.id));
+     const sites=Array.isArray(r.sites)?r.sites:[];
+     return [b.id,{count:sites.length,ga4:sites.filter(x=>!!x.ga4_property_id).length}];
+   }catch(e){return [b.id,{error:String(e.message).slice(0,120)}];}
+  }));
+  for(const [id,value] of batch)stats[id]=value;
+ }
+ if(isAdmin()){
+  state.adminSiteStats=stats;state.adminStatsLoading=false;
+  const failures=Object.values(stats).filter(x=>x.error).length;
+  if(failures)state.adminStatsError=`No se pudieron consultar ${failures} empresa(s) debido a los permisos actuales.`;
+  render();
+ }
+}
+    function adminHome(){
  const items=state.businesses||[];
- const rows=items.map(b=>`<div class="client-site-row"><div class="client-avatar compact">${icon('building',19)}</div><div><strong>${clean(b.name)}</strong><small>${clean(b.slug)}</small></div><button class="button button-soft" data-act="client-detail" data-id="${clean(b.id)}">Ver ficha</button></div>`).join('');
+ const rows=items.map(b=>`<div class="client-site-row"><div class="client-avatar compact">${icon('building',19)}</div><div><strong>${clean(b.name)}</strong><small>${clean(b.slug)} · ${clean(adminStatusFor(b))}</small></div><button class="button button-soft" data-act="client-detail" data-id="${clean(b.id)}">Ver ficha</button></div>`).join('');
  return `${heading('Superadministrador','Centro de administración','Gestiona las empresas autorizadas y revisa las conexiones de la plataforma sin acceder a las credenciales de los clientes.')}
  <div class="small-kpis admin-overview-kpis">
  <div class="small-kpi"><span>Empresas visibles</span><strong>${fmt(items.length)}</strong><small>Según permisos de Supabase</small></div>
- <div class="small-kpi"><span>Espacios de trabajo</span><strong>${fmt(items.length)}</strong><small>Datos separados por empresa</small></div>
- <div class="small-kpi"><span>Publicidad</span><strong>4 canales</strong><small>Meta, Google, TikTok y LinkedIn</small></div>
- <div class="small-kpi"><span>Conexiones</span><strong>Por cliente</strong><small>Credenciales no compartidas</small></div></div>
+ <div class="small-kpi"><span>Sitios visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(Object.values(state.adminSiteStats).reduce((t,x)=>t+(x.count||0),0)):'—'}</strong><small>Según tus permisos</small></div>
+ <div class="small-kpi"><span>Propiedades GA4 visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(Object.values(state.adminSiteStats).reduce((t,x)=>t+(x.ga4||0),0)):'—'}</strong><small>Con propiedad asignada</small></div>
+ <div class="small-kpi"><span>Verificación</span><strong>${fmt(Object.values(state.adminSiteStats).filter(x=>!x.error).length)} / ${fmt(items.length)}</strong><small>Empresas revisadas</small></div></div>
  <div class="content-grid">
  <div class="col-8">${card('Cartera de empresas','Abre una ficha para consultar sus propiedades autorizadas',rows||empty('No hay empresas visibles para esta cuenta.'))}</div>
  <div class="col-4">${card('Gestión rápida','Acciones disponibles para tu rol',`<div class="admin-quick-actions">
  <button class="button button-primary" data-act="nav" data-page="clients">${icon('building',16)} Gestionar empresas</button>
+ <button class="button button-outline" data-act="nav" data-page="adminOperations">${icon('activity',16)} Supervisión de clientes</button>
  <button class="button button-outline" data-act="nav" data-page="adminIntegrations">${icon('plug',16)} Catálogo de integraciones</button>
+ <button class="button button-outline" data-act="admin-check" ${state.adminStatsLoading?'disabled':''}>${icon('refresh',16)} Comprobar sitios</button>
  <button class="button button-outline" data-act="nav" data-page="settings">${icon('settings',16)} Mi cuenta y seguridad</button></div>`)}</div>
  <div class="col-12">${card('Control de la plataforma','Acceso y estado de las funcionalidades',`<div class="admin-status-grid">
  <div><b>Accesos independientes</b><p>Las fichas se consultan con los permisos de tu cuenta; no se usan las sesiones de tus clientes.</p></div>
@@ -301,7 +358,7 @@ function company(){
  const query=state.adminQuery.trim().toLowerCase(), filtered=state.businesses.filter(b=>(b.name+' '+(b.slug||'')).toLowerCase().includes(query));
  return `${heading('Administración','Mis clientes','Empresas a las que tienes acceso por Supabase. Las cuentas publicitarias y ventas siguen siendo privadas de cada negocio.')}
  <div class="admin-toolbar"><label class="admin-search">${icon('search',18)}<input id="admin-client-search" type="search" value="${clean(state.adminQuery)}" placeholder="Buscar empresa o identificador" aria-label="Buscar clientes"/></label><span>${fmt(filtered.length)} de ${fmt(state.businesses.length)} empresas</span></div>
- <div class="client-grid">${filtered.map(b=>`<article class="client-card client-card-clickable" data-act="client-detail" data-id="${clean(b.id)}" role="button" tabindex="0"><div class="client-avatar">${icon('building',27)}</div><h3>${clean(b.name)}</h3><p>${clean(b.slug)}</p><div class="client-line">${icon('lock',14)} Aislamiento por empresa</div><span class="button button-outline">Ver ficha ${icon('chevron',15)}</span></article>`).join('')||empty(query?'No hay clientes que coincidan con la búsqueda.':'No hay negocios autorizados.')}</div>`;
+ <div class="client-grid">${filtered.map(b=>`<article class="client-card client-card-clickable" data-act="client-detail" data-id="${clean(b.id)}" role="button" tabindex="0"><div class="client-avatar">${icon('building',27)}</div><h3>${clean(b.name)}</h3><p>${clean(b.slug)}</p><div class="client-line">${icon('lock',14)} ${clean(adminStatusFor(b))} · Aislamiento por empresa</div><span class="button button-outline">Ver ficha ${icon('chevron',15)}</span></article>`).join('')||empty(query?'No hay clientes que coincidan con la búsqueda.':'No hay negocios autorizados.')}</div>`;
 }
 
   function clientDetail(){
@@ -310,7 +367,7 @@ function company(){
  const sites=state.sites.map(s=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(s.name)}</strong><small>${clean(s.url||'URL no registrada')}</small></div><span class="client-site-badge">${s.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
  return `${heading('Cliente',b.name,'Consulta administrativa: sin usar sus tokens ni mezclar sus datos con otras empresas.')}
  <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">${icon('chevron',16)} Volver</button></div>
- <div class="content-grid"><div class="col-7">${card('Sitios registrados',fmt(state.sites.length)+' sitios autorizados',sites||empty('Sin sitios GA4 asignados. Las cuentas publicitarias no se cuentan como sitios registrados.'))}</div>
+ <div class="content-grid"><div class="col-7">${card('Sitios visibles',fmt(state.sites.length)+' registros accesibles',sites||empty('No hay sitios visibles con tu rol actual; esto no confirma que el cliente no tenga sitios.'))}</div>
  <div class="col-5">${card('Privacidad','Gestión de la plataforma',`<p>Las campañas y conexiones se consultan desde la sesión del cliente. No se muestran contraseñas ni secretos.</p><p class="fine-print">Invitaciones, planes y facturación requieren flujos administrativos propios antes de habilitar acciones de escritura.</p>`)}</div></div>`;
 }
     function metaPilotEligible() { return !isAdmin() && !!business()?.id; }
@@ -328,15 +385,14 @@ function company(){
   const v=x.metrics;
   return `<div class="meta-account-result"><strong>${clean(x.name)} · ${clean(x.currency)}</strong>${v?`<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${metaMetric(v.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(v.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(v.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(v.ctr,2)}%</strong></div><div><small>CPC</small><strong>${metaMetric(v.cpc,2)}</strong></div></div>`:'<p class="fine-print">Sin datos en el período.</p>'}</div>`;
  }).join('');
- const body=!m.configured?'<p>Meta Ads aún requiere habilitación del proveedor por el administrador de la plataforma.</p>':
+ const body=!m.configured?'<p>Esta conexión aún no está disponible. Puedes continuar usando las otras áreas del panel.</p>':
  !m.connected?`<button class="button button-primary" data-act="meta-connect">${icon('link',16)} Conectar con Facebook</button>`:
  `<label class="form-label">Elige hasta cinco cuentas publicitarias</label>
  <input class="meta-search" id="meta-account-search" placeholder="Buscar cuenta publicitaria…" autocomplete="off"/>
  <div class="meta-account-list">${accounts||'<p>No se encontraron cuentas autorizadas.</p>'}</div>
  <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh">${icon('refresh',16)} Actualizar datos</button><button class="button button-soft" data-act="meta-disconnect">Desconectar</button><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas ${icon('chevron',15)}</button></div>
- ${results}
- <p class="fine-print">Lectura autorizada por Meta, con resultados separados por cuenta y moneda. El token de esta prueba está cifrado y asociado a esta sesión; puede caducar.</p>`;
- return `<article class="integration-card meta-full"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(m.connected?'Conectado':m.configured?'Listo para conectar':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Autoriza Facebook y selecciona tus propias cuentas, sin intermediarios.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${body}</div>${state.metaLoading?'<span class="fine-print">Consultando Meta Ads…</span>':''}</article>`;
+ <p class="fine-print">Consulta las estadísticas desde Resumen y Campañas Ads.</p>`;
+ return `<article class="integration-card"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(m.connected?'Conectado':m.configured?'Disponible':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Publicidad de Facebook e Instagram.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${m.connected&&!state.metaPanelOpen?`<div class="integration-compact-footer"><span>${selected.length} cuenta(s) seleccionadas</span><button class="button button-outline" data-act="meta-panel-toggle">Administrar cuentas</button></div>`:body}${m.connected&&state.metaPanelOpen?`<button class="button button-soft" data-act="meta-panel-toggle">Cerrar detalles</button>`:''}</div>${state.metaLoading?'<span class="fine-print">Consultando conexión…</span>':''}</article>`;
 }
     async function loadMeta() {
     if(!metaPilotEligible()) {state.meta=null;state.metaReport=null;state.metaError='';render();return;}
@@ -389,7 +445,7 @@ function company(){
   const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}" title="${clean(pages[id][0])}" aria-label="${clean(pages[id][0])}" ${state.page===id?'aria-current="page"':''}>${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
 function sidebar(){
- const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','adminIntegrations','settings'].map(navLink).join('')}`:
+ const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
  `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition','campaigns','audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['hotmart','reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
  return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('menu',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><div class="sidebar-workspace"><span class="workspace-symbol">${icon('building',20)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(business()?.name||'Mi empresa')}</b><small>${isAdmin()?'Superadministrador':'Espacio de análisis'}</small></span>${icon('chevronDown',16)}</div>${menu}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Superadministrador':'Usuario de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
 }
@@ -404,9 +460,9 @@ function sidebar(){
     setTheme();
     if(state.loading){root.innerHTML=`<div class="initial-load"><span class="spinner"></span><strong>Preparando Edwin Digital Analytics…</strong></div>`;return;}
     if(!state.user){login();return;}
-    if(isAdmin()&&!['adminHome','clients','clientDetail','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
-    if(!isAdmin()&&['adminHome','clients','clientDetail','adminIntegrations'].includes(state.page))state.page='overview';
-    const contents={overview,analytics,acquisition,campaigns,utm,audience,content,events,hotmart,reports,clients,clientDetail,adminHome,adminIntegrations,integrations,company,settings};
+    if(isAdmin()&&!['adminHome','clients','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
+    if(!isAdmin()&&['adminHome','clients','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
+    const contents={overview,analytics,acquisition,campaigns,utm,audience,content,events,hotmart,reports,clients,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
     root.innerHTML=`<div class="layout ${state.sidebarCollapsed?'sidebar-collapsed':''}">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${(contents[state.page]||overview)()}</main><footer class="footer"><span>© ${new Date().getFullYear()} Edwin Digital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
   }
   async function loadAds(){
@@ -444,7 +500,8 @@ function sidebar(){
       const status=await api('/api/status');if(!status.configured)throw new Error(`Configuración pendiente: ${(status.missing||[]).join(', ')}`);
       const user=await api('/api/me');const companies=await api('/api/businesses');
       state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){state.page='integrations';const result=new URLSearchParams(location.search).get('meta');if(result==='cancelled')state.metaError='Se canceló la autorización con Facebook.';history.replaceState({},'',location.pathname+location.hash);}state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
-      if(state.businesses.length&&!isAdmin()) await chooseBusiness(state.businesses[0].id);
+      if(isAdmin())await loadAdminStats();
+      else if(state.businesses.length)await chooseBusiness(state.businesses[0].id);
     }catch(e){state.loading=false;state.user=null;state.loginBusy=false;if(e.status!==401)state.startupError=e.message;render();}
   }
   function doCsv(dataset=''){
@@ -466,12 +523,14 @@ function sidebar(){
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
     else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
-    else if(action==='refresh')await refresh();
+    else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
+    else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
+    else if(action==='meta-panel-toggle'){state.metaPanelOpen=!state.metaPanelOpen;render();}
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
     else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
-    else if(action==='meta-disconnect'){
+    else if(action==='meta-disconnect'){state.metaPanelOpen=false;
       if(confirm('¿Desconectar Meta Ads de este navegador? Puedes volver a autorizarla.')){
         try{await api('/api/meta/disconnect',{method:'POST',body:'{}'});await loadMeta();}
         catch(e){state.metaError=e.message;render();}
