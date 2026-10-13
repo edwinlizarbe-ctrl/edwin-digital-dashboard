@@ -557,7 +557,7 @@ async function saveAdminFeature(feature,enabled,plan){
   if(state.adminFeatureBusiness===id){
     state.adminEntitlements=data;
     if(data.plan)state.adminPlans[id]=data.plan;
-    state.adminFeatureNotice=plan?'Plan Premium asignado para esta empresa.':'Permiso de integración guardado para esta empresa.';
+    state.adminFeatureNotice=plan?('Plan '+(plan==='premium'?'Premium':'Free')+' asignado. '+(plan==='premium'?'Todos los permisos están habilitados para la empresa.':'Personaliza sus integraciones con ON/OFF.')):'Permiso de integración guardado para esta empresa.';
   }
  }catch(e){if(state.adminFeatureBusiness===id)state.adminFeatureError=e.message;}
  finally{state.adminFeatureBusy=false;render();}
@@ -593,24 +593,37 @@ async function loadAdminEntitlements(id){
 function adminPermissionsPanel(){
  const businesses=state.businesses||[],id=state.adminFeatureBusiness||businesses[0]?.id||'';
  const data=state.adminEntitlements,ready=data?.configured===true,flags=data?.features||{};
- const options=businesses.map(b=>'<option value="'+clean(b.id)+'" '+(id===b.id?'selected':'')+'>'+clean(b.name)+'</option>').join('');
+ const plan=data?.plan||null,premium=plan==='premium',free=plan==='free';
+ const options=businesses.map(b=>'<option value="'+clean(b.id)+'" '+(id===b.id?' selected':'')+'>'+clean(b.name)+'</option>').join('');
  const controls=businessFeatureLabels.map(([key,name])=>{
-   const on=!!flags[key],unavailable=['search_console','social_organic','hotmart','shopify','google_ads','tiktok_ads','linkedin_ads'].includes(key);
+   const on=premium?true:!!flags[key];
+   const unavailable=['search_console','social_organic','hotmart','shopify','google_ads','tiktok_ads','linkedin_ads'].includes(key);
+   const editable=ready&&free&&!state.adminFeatureBusy;
    return '<div class="admin-feature-row">'+providerLogo(name)+
-    '<div class="admin-feature-name"><strong>'+clean(name)+'</strong><small>'+(unavailable?'API aún no integrada: este interruptor solo controla la habilitación futura.':'Acceso controlado desde el servidor para esta empresa.')+'</small></div>'+
-    '<label class="admin-feature-switch" title="'+(on?'Desactivar':'Activar')+' '+clean(name)+'"><input type="checkbox" class="admin-feature-toggle" data-feature="'+key+'" '+(on?'checked':'')+' '+(!ready||state.adminFeatureBusy?'disabled':'')+'/><span></span></label>'+
+    '<div class="admin-feature-name"><strong>'+clean(name)+'</strong><small>'+
+    (unavailable?'En desarrollo · permiso para cuando se habilite la conexión.':
+     premium?'Incluido en Premium · '+(key==='ga4'?'requiere propiedad GA4 autorizada.':'requiere una cuenta Meta autorizada.'):
+     'Disponible según permisos y conexión de la empresa.')+'</small></div>'+
+    '<label class="admin-feature-switch" title="'+(editable?'Cambiar permiso: ':'Permiso: ')+clean(name)+'"><input type="checkbox" class="admin-feature-toggle" data-feature="'+key+'" '+(on?'checked':'')+' '+(!editable?'disabled':'')+' aria-label="'+clean(name)+' '+(on?'activado':'desactivado')+'"/><span></span></label>'+
     '<small class="admin-feature-state">'+(on?'ON':'OFF')+'</small></div>';
  }).join('');
- return card('Permisos por empresa','Elige a qué integraciones puede acceder cada cliente; los cambios se guardan en Supabase.',
-   '<div class="admin-feature-header"><label class="form-label">Empresa seleccionada<select id="admin-feature-business" class="simple-input" '+(!businesses.length?'disabled':'')+'>'+options+'</select></label>'+
-   '<div><span class="admin-plan-label">Plan asignado</span><div class="admin-plan-value">'+(data?.plan==='premium'?'Premium':data?.plan==='free'?'Free':'Sin asignar')+'</div>'+
-   '<p class="fine-print">Free está reservado para una fase posterior. Premium es de asignación manual, sin cobro automático.</p>'+
-   '<button class="button button-outline" data-act="admin-set-premium" '+(!ready||state.adminFeatureBusy?'disabled':'')+'>Asignar Premium</button></div></div>'+
-   (state.adminFeatureLoading?'<div class="ga-wizard-pulse" role="status">Cargando permisos de esta empresa…</div>':'')+
+ const canAssign=ready&&!state.adminFeatureBusy&&!state.adminFeatureLoading;
+ const top='<div class="admin-feature-header"><label class="form-label">Selecciona un cliente / empresa<select id="admin-feature-business" class="simple-input" '+(!businesses.length?'disabled':'')+'>'+options+'</select></label>'+
+ '<div class="admin-feature-plan-summary"><span class="admin-plan-label">Plan del cliente</span><div class="admin-plan-value">'+(premium?'Premium':free?'Free':'Sin asignar')+'</div>'+
+ '<p class="fine-print">Cada empresa tiene su propio plan. No se cobra nada desde esta pantalla.</p></div></div>';
+ const planCards='<div class="admin-plan-options" role="group" aria-label="Asignar plan a la empresa">'+
+ '<div class="admin-plan-option '+(free?'selected':'')+'"><div><b>Plan Free</b><p>Permisos personalizados. Tú decides qué integraciones se activan.</p></div><button type="button" class="button '+(free?'button-soft':'button-outline')+'" data-act="admin-set-free" '+(!canAssign||free?'disabled':'')+'>'+(free?'Free asignado':'Asignar Free')+'</button></div>'+
+ '<div class="admin-plan-option '+(premium?'selected':'')+'"><div><b>Plan Premium</b><p>Incluye todos los permisos de integración. Ideal para clientes con página web.</p></div><button type="button" class="button '+(premium?'button-soft':'button-primary')+'" data-act="admin-set-premium" '+(!canAssign||premium?'disabled':'')+'>'+(premium?'Premium asignado':'Asignar Premium')+'</button></div></div>';
+ return card('Planes y permisos por empresa','Selecciona un cliente, asigna su plan y controla sus integraciones. Los cambios se aplican únicamente a esa empresa.',
+   top+planCards+
+   '<div class="admin-feature-shortcuts"><button type="button" class="button button-outline" data-act="nav" data-page="accounts">'+icon('users',16)+' Ver correos y accesos de clientes</button><button type="button" class="button button-outline" data-act="nav" data-page="clients">'+icon('building',16)+' Ver empresas</button></div>'+
+   (state.adminFeatureLoading?'<div class="ga-wizard-pulse" role="status">Consultando el plan y los permisos de la empresa…</div>':'')+
    (state.adminFeatureError?alertBlock(state.adminFeatureError,'info'):'')+
    (state.adminFeatureNotice?'<p class="company-message" role="status">'+clean(state.adminFeatureNotice)+'</p>':'')+
-   (ready?'<div class="admin-feature-grid">'+controls+'</div>':'<p class="fine-print">Los interruptores aparecerán cuando Supabase y el secreto administrativo estén configurados. No son controles decorativos.</p>')+
-   '<p class="fine-print">Desactivar GA4 o Meta Ads impide consultar sus datos mediante la API del dashboard. Activar una integración que aún está en desarrollo no conecta su API.</p>'
+   '<div class="admin-permissions-heading"><div><h3>Acceso a las integraciones</h3><p>'+(premium?'Premium: todos los permisos están incluidos.':free?'Free: activa o desactiva cada integración con ON/OFF.':'Asigna un plan para habilitar los interruptores.')+'</p></div><span class="admin-feature-pill">'+(premium?'Todos ON':free?'Personalizable':'Sin asignar')+'</span></div>'+
+   '<div class="admin-feature-grid">'+controls+'</div>'+
+   (!ready?'<div class="admin-setup-guide"><strong>Falta activar el almacenamiento de permisos</strong><p>Para asignar planes y usar ON/OFF primero ejecuta la migración <code>migrations/20261013_ed_business_features.sql</code> en Supabase y guarda <code>SUPABASE_SERVICE_ROLE_KEY</code> como secreto en Cloudflare. Hasta entonces los interruptores son una vista previa y no se pueden guardar.</p></div>':'')+
+   '<p class="fine-print">Desactivar GA4 o Meta impide su consulta por API. Activar un proveedor que aún diga «Próximamente» no conecta automáticamente esa plataforma.</p>'
  );
 }
 
@@ -1004,6 +1017,9 @@ function sidebar(){
     }
     else if(action==='admin-set-premium'&&isAdmin()){
       await saveAdminFeature('',null,'premium');
+    }
+    else if(action==='admin-set-free'&&isAdmin()){
+      await saveAdminFeature('',null,'free');
     }
     else if(action==='account-email-history'&&isAdmin()){
       const userId=b.dataset.id||'';
