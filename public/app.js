@@ -337,11 +337,11 @@
       ['Tasa de sesión con evento clave','sessionKeyEventRate',pc,true]
     ];
     return `<div class="small-kpis analytic-visual-kpis">${specs.map(([label,key,format,isRate])=>{
-      const usable=ok&&series.length>1&&series.every(r=>Number.isFinite(Number(r[key])));
-      const points=usable?series.slice(-30):[];
+      const usable=ok&&series.length>1&&series.filter(r=>r[key]!==null&&r[key]!==undefined&&r[key]!==''&&Number.isFinite(Number(r[key]))).length>1;
+      const points=usable?series.filter(r=>r[key]!==null&&r[key]!==undefined&&r[key]!==''&&Number.isFinite(Number(r[key]))).slice(-30):[];
       const max=Math.max(1,...points.map(r=>Number(r[key])));
       const line=points.map((r,i)=>`${(i/(points.length-1)*128).toFixed(1)},${(34-30*Number(r[key])/max).toFixed(1)}`).join(' ');
-      const visual=usable?`<svg class="analytic-mini-chart" viewBox="0 0 128 40" role="img" aria-label="Evolución diaria de ${clean(label)}"><polyline points="${line}" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`:isRate&&ok&&Number.isFinite(Number(v[key]))?`<div class="analytic-rate-track" role="img" aria-label="${clean(label)}: ${format(v[key])}"><span style="width:${Math.min(100,Math.max(0,Number(v[key])*100))}%"></span></div>`:'<span class="analytic-chart-unavailable">Sin evolución diaria disponible</span>';
+      const visual=points.length>1?`<svg class="analytic-mini-chart" viewBox="0 0 128 40" role="img" aria-label="Evolución diaria de ${clean(label)}"><polyline points="${line}" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`:isRate&&ok&&Number.isFinite(Number(v[key]))?`<div class="analytic-rate-track" role="img" aria-label="${clean(label)}: ${format(v[key])}"><span style="width:${Math.min(100,Math.max(0,Number(v[key])*100))}%"></span></div>`:'<span class="analytic-chart-unavailable">Sin evolución diaria disponible</span>';
       return `<article class="small-kpi"><span>${clean(label)}</span><strong>${ok&&v[key]!=null?format(v[key]):'—'}</strong>${visual}${trendFor(key,isRate)}</article>`;
     }).join('')}</div>`;
   }
