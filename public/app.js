@@ -210,9 +210,24 @@
     return `<div class="connection-overview">${sources.map(([name,status,page,detail])=>`<div class="connection-row"><div><b>${clean(name)}</b><small>${clean(detail)}</small></div>${tag(status,status==='Conectado'?'success':'neutral')}</div>`).join('')}<div class="connection-actions"><button class="button button-outline" data-act="nav" data-page="integrations">${icon('plug',16)} Gestionar integraciones</button><button class="button button-soft" data-act="nav" data-page="campaigns">${icon('megaphone',16)} Campañas Ads</button></div></div>`;
   }
 
-  function overview() {
+  function connectedAdsOverview(){
+ const reports=state.metaReport?.account_reports||[];
+ if(!state.meta?.connected||reports.length===0)return '';
+ const cards=reports.map(report=>{
+  const m=report.metrics,cur=report.currency||'';
+  const metrics=m?`<div class="ads-source-metrics">
+  <div><span>Inversión</span><b>${m.spend==null?'—':clean(money(m.spend,cur))}</b></div>
+  <div><span>Clics</span><b>${metaMetric(m.clicks)}</b></div>
+  <div><span>Impresiones</span><b>${metaMetric(m.impressions)}</b></div>
+  <div><span>CTR</span><b>${m.ctr==null?'—':metaMetric(m.ctr,2)+'%'}</b></div>
+  <div><span>CPC</span><b>${m.cpc==null?'—':clean(money(m.cpc,cur))}</b></div></div>`:'<p class="fine-print">No hay resultados de esta cuenta en el período.</p>';
+  return `<div class="ads-source-kpi"><div class="ads-source-title"><strong>${clean(report.name||'Cuenta Meta Ads')}</strong><small>${clean(cur)}</small></div>${metrics}</div>`;
+ }).join('');
+ return `<div class="content-grid"><div class="col-12">${card('Campañas conectadas · Meta Ads','Datos de tus cuentas publicitarias, separados por moneda · '+periodLabel(),cards+'<div class="connection-actions"><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas</button></div>')}</div></div>`;
+}
+    function overview() {
     const ok=gaReady();
-    return `${heading('Vista general','Todo tu negocio, en una sola vista','Visualiza el rendimiento del sitio y las conversiones registradas, con datos reales.')}${statusStrip()}${mainKpis()}<div class="content-grid"><div class="col-8">${card('Rendimiento del sitio',`Usuarios y sesiones · ${periodLabel()}`,ok?chart(rows('trend'),'sessions','Sesiones','totalUsers','Usuarios'):dataPlaceholder())}</div><div class="col-4">${card('¿De dónde viene tu tráfico?','Distribución por canal de adquisición',ok?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Contenido que concentra la atención',ok?barList(rows('pages'),'pagePath','screenPageViews',6):dataPlaceholder(),`<button class="text-action" data-act="nav" data-page="content">Ver contenido ${icon('chevron',14)}</button>`)}</div><div class="col-5">${card('Lectura rápida de tus datos','Hallazgos generados con la información disponible',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${flags()}`;
+    return `${heading('Vista general','Todo tu negocio, en una sola vista','Visualiza el rendimiento del sitio y las conversiones registradas, con datos reales.')}${statusStrip()}${mainKpis()}<div class="content-grid"><div class="col-8">${card('Rendimiento del sitio',`Usuarios y sesiones · ${periodLabel()}`,ok?chart(rows('trend'),'sessions','Sesiones','totalUsers','Usuarios'):dataPlaceholder())}</div><div class="col-4">${card('¿De dónde viene tu tráfico?','Distribución por canal de adquisición',ok?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Contenido que concentra la atención',ok?barList(rows('pages'),'pagePath','screenPageViews',6):dataPlaceholder(),`<button class="text-action" data-act="nav" data-page="content">Ver contenido ${icon('chevron',14)}</button>`)}</div><div class="col-5">${card('Lectura rápida de tus datos','Hallazgos generados con la información disponible',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${connectedAdsOverview()}${flags()}`;
   }
   function heading(kicker,title,subtitle){return `<div class="page-title"><div><div class="eyebrow">${clean(kicker)}</div><h1>${clean(title)}</h1><p>${clean(subtitle)}</p></div><button class="button button-outline title-export" data-act="csv">${icon('download',17)} Exportar CSV</button></div>`;}
   function detailKpis() {
