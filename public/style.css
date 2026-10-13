@@ -914,3 +914,13 @@ input,select,textarea{max-width:100%}
 .integration-card{min-width:0}
 @media(max-width:960px){.integration-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.integration-grid{grid-template-columns:1fr}}
+
+/* Consistent dark-side navigation and pure black theme */
+[data-theme=black]{color-scheme:dark;--bg:#050608;--side:#090B0E;--surface:#101318;--surface2:#171B22;--text:#F1F5F9;--muted:#94A3B8;--muted2:#CBD5E1;--border:#28303C;--accent:#60A5FA;--accent2:#3B82F6;--accent-soft:#152D49;--grid:#2A3442;--area:#101820}
+[data-theme=black] .sidebar{background:#090B0E;color:#E2E8F0}
+[data-theme=black] .card,[data-theme=black] .kpi{background:var(--surface);color:var(--text)}
+[data-theme=black] .button-primary{background:#2563EB;color:#FFFFFF}
+[data-sidebar-tone=navy] .sidebar .nav-link>svg,[data-sidebar-tone=blue] .sidebar .nav-link>svg,[data-sidebar-tone=graphite] .sidebar .nav-link>svg,[data-sidebar-tone=black] .sidebar .nav-link>svg{color:currentColor;opacity:.84}
+[data-sidebar-tone=navy] .sidebar .nav-link:hover>svg,[data-sidebar-tone=blue] .sidebar .nav-link:hover>svg{color:currentColor;opacity:1}
+.sidebar-collapse-btn{border-radius:9px}
+.content-grid>.col-4,.content-grid>.col-5,.content-grid>.col-6,.content-grid>.col-7,.content-grid>.col-8{align-self:stretch}
