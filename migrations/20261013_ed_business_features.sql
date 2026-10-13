@@ -19,3 +19,6 @@ alter table public.ed_business_features enable row level security;
 -- with the user's JWT and performs server-side feature operations with service_role.
 revoke all on public.ed_business_features from anon,authenticated;
 -- Realtime publication is intentionally NOT enabled for entitlement records.
+
+-- Explicitly grant only the backend service account access to this table.
+grant select, insert, update, delete on public.ed_business_features to service_role;
