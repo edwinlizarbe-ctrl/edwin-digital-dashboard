@@ -874,3 +874,15 @@ input,select,textarea{max-width:100%}
 .analytic-metric-pick:hover{border-color:#2563EB}
 .analytic-metric-pick:focus-visible{outline:3px solid #93C5FD;outline-offset:2px}
 [data-theme=dark] .analytic-metric-pick.selected{border-color:#60A5FA}
+
+/* GA4: all twelve KPI cards selectable; hover feedback on the enlarged chart. */
+.analytic-primary-pick{font:inherit;text-align:left;cursor:pointer;width:100%;border:1px solid var(--border);color:var(--text);background:var(--surface)}
+.analytic-primary-pick.selected{border:2px solid #2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.analytic-primary-pick:hover,.analytic-metric-pick:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(15,39,71,.09)}
+.analytic-primary-pick:focus-visible{outline:3px solid #93C5FD;outline-offset:2px}
+.chart-spot{cursor:crosshair;transition:r .15s,stroke-width .15s;pointer-events:all}
+.chart-spot:hover{r:8;stroke:#2563EB;stroke-width:2}
+.analytic-visual-kpis .small-kpi:nth-child(4n+2) .analytic-mini-chart polyline{stroke:#06B6D4}
+.analytic-visual-kpis .small-kpi:nth-child(4n+3) .analytic-mini-chart polyline{stroke:#0D9488}
+.analytic-visual-kpis .small-kpi:nth-child(4n+4) .analytic-mini-chart polyline{stroke:#1D4ED8}
+@media(prefers-reduced-motion:reduce){.analytic-primary-pick:hover,.analytic-metric-pick:hover{transform:none}}
