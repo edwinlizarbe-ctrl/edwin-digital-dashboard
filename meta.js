@@ -139,6 +139,21 @@ function metaResultUrl(config, flag,returnTo='',businessId='') {
   }
   return home.toString();
 }
+
+function metaFinish(config,flag,pending,inherited=[],cookies=[]){
+ if(!pending.popup)return metaRedirect(metaResultUrl(config,flag,pending.returnTo,pending.business),inherited,cookies);
+ const origin=new URL(config.redirect).origin;
+ const nonce=metaBytesTo64(crypto.getRandomValues(new Uint8Array(16)));
+ const safeFlag=flag==='connected'?'connected':'cancelled';
+ const safeBusiness=metaValidBusinessId(pending.business)?pending.business:'';
+ const script='try{if(window.opener){window.opener.postMessage({type:"edigital:meta-oauth",status:'+JSON.stringify(safeFlag)+',business_id:'+JSON.stringify(safeBusiness)+'},'+JSON.stringify(origin)+');window.close();}}catch(e){}';
+ const content='<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conexión Meta · E Digital.IA</title></head>'+
+  '<body style="font:16px system-ui;background:#f6f8fc;color:#17233d;display:grid;place-items:center;min-height:90vh;text-align:center"><main><h1>Autorización '+(safeFlag==='connected'?'completada':'cancelada')+'</h1><p>Ya puedes volver a E Digital.IA.</p><a href="'+origin+'/?meta='+safeFlag+'&return_to=campaigns&business_id='+safeBusiness+'">Volver a Campañas Ads</a></main><script nonce="'+nonce+'">'+script+'</script></body></html>';
+ const headers=new Headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'"});
+ [...inherited,...cookies].forEach(x=>headers.append('Set-Cookie',x));
+ return new Response(content,{status:200,headers});
+}
+
 export async function handleMetaApi(req,env,s) {
   const url=new URL(req.url),path=url.pathname,method=req.method.toUpperCase();
   const config=metaConfig(env,url.origin),cookies=s.cookies||[],jar=metaJar(req);
@@ -164,7 +179,8 @@ export async function handleMetaApi(req,env,s) {
     if(!await ensureBusinessFeature(env,s,businessId,'meta_ads'))return error('Meta Ads no está habilitado para esta empresa.',403);
     const state=metaBytesTo64(crypto.getRandomValues(new Uint8Array(24)));
     const returnTo=url.searchParams.get('return_to')==='campaigns'?'campaigns':'integrations';
-    const pending=await sealMeta(env,{state,business:businessId,user:s.user.id,returnTo,expires:Date.now()+10*60*1000});
+    const popup=url.searchParams.get('popup')==='1';
+    const pending=await sealMeta(env,{state,business:businessId,user:s.user.id,returnTo,popup,expires:Date.now()+10*60*1000});
     const authorize=new URL('https://www.facebook.com/'+config.version+'/dialog/oauth');
     authorize.searchParams.set('client_id',env.META_APP_ID);
     authorize.searchParams.set('redirect_uri',config.redirect);
@@ -182,7 +198,7 @@ export async function handleMetaApi(req,env,s) {
     if(expired)return error('La autorización ha caducado o no coincide con esta sesión. Vuelve a conectar Meta.',403);
     if(!await metaPilotBusiness(env,s,pending.business))return error('Acceso a negocio no autorizado.',403);
     if(!await ensureBusinessFeature(env,s,pending.business,'meta_ads'))return error('Meta Ads no está habilitado para esta empresa.',403);
-    if(url.searchParams.has('error'))return metaRedirect(metaResultUrl(config,'cancelled',pending.returnTo,pending.business),cookies,[metaCookie(META_PENDING,'',0)]);
+    if(url.searchParams.has('error'))return metaFinish(config,'cancelled',pending,cookies,[metaCookie(META_PENDING,'',0)]);
     const code=url.searchParams.get('code')||'';
     if(!code || code.length>2000)return error('Meta no devolvió un código de autorización válido.');
     const exchange=new URL('https://graph.facebook.com/'+config.version+'/oauth/access_token');
@@ -208,7 +224,7 @@ export async function handleMetaApi(req,env,s) {
       user:s.user.id,business:pending.business,token:info.access_token,
       account:null,accounts:[],expires:Date.now()+seconds*1000,
     });
-    return metaRedirect(metaResultUrl(config,'connected',pending.returnTo,pending.business),cookies,[
+    return metaFinish(config,'connected',pending,cookies,[
       metaCookie(META_PENDING,'',0),metaCookie(META_COOKIE,connection,seconds)
     ]);
   }
