@@ -11,6 +11,9 @@
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
     metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign',
+    companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
+    accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
+    adminHealth: null, adminHealthError: '',
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -21,6 +24,12 @@
   const money = (v, code) => { try { return new Intl.NumberFormat('es-PE', { style:'currency', currency:code, maximumFractionDigits:2 }).format(number(v)); } catch { return `${fmt1(v)} ${clean(code)}`; } };
   const duration = s => `${Math.floor(number(s) / 60)}m ${Math.round(number(s) % 60)}s`;
   const business = () => state.businesses.find(b => b.id === state.businessId);
+  const companyPrefs = () => state.user?.business_preferences?.[state.businessId] || {};
+  const displayBusiness = () => !isAdmin() && companyPrefs().display_name || business()?.name || 'Mi empresa';
+  const companyImage = (size=34) => {
+    const logo=companyPrefs().logo_data||'';
+    return logo.startsWith('data:image/')?`<img class="company-logo-image" src="${clean(logo)}" alt="Logotipo de la empresa" width="${size}" height="${size}" />`:icon('building',Math.round(size*.59));
+  };
   const periodLabel = () => ({ today:'Hoy', yesterday:'Ayer', '7':'Últimos 7 días', '30':'Últimos 30 días', '90':'Últimos 90 días', '365':'Últimos 12 meses' })[state.period] || 'Últimos 30 días';
   const site = () => state.sites.find(s => s.id === state.siteId);
   const isAdmin = () => state.user?.role === 'admin';
@@ -89,7 +98,7 @@
     link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2m3 6a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2"/>',
   };
   const icon = (name, size=19) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.activity}</svg>`;
-  const brand = large => `<div class="brand ${large ? 'brand-large' : ''}"><div class="brand-word">Edwin Digital</div></div>`;
+  const brand = large => `<div class="brand ${large ? 'brand-large' : ''}" aria-label="Edwin Digital"><div class="brand-word">Edwin Digital</div></div>`;
 
   async function api(path, options={}) {
     const res = await fetch(path, { credentials:'same-origin', headers:{ 'Content-Type':'application/json' }, ...options });
@@ -97,7 +106,10 @@
     if (!res.ok) { const error = new Error(data.error || `Error de servidor: ${res.status}`); error.status = res.status; throw error; }
     return data;
   }
-  function setTheme() { document.documentElement.dataset.theme = state.theme; }
+  function setTheme() { document.documentElement.dataset.theme = state.theme;
+    document.documentElement.dataset.accent = state.accent;
+    document.documentElement.dataset.sidebarTone = state.sidebarTone;
+  }
   const tag = (label, type='neutral') => `<span class="tag tag-${type}"><span class="tag-dot"></span>${clean(label)}</span>`;
   const alertBlock = (text, type='warning') => `<div class="alert-block ${type}">${icon(type==='warning'?'alert':'info',18)}<div>${clean(text)}</div></div>`;
   const empty = (text, title='Aún no hay datos') => `<div class="empty-data"><span class="empty-icon">${icon('activity',25)}</span><strong>${clean(title)}</strong><span>${clean(text)}</span></div>`;
@@ -229,7 +241,7 @@
     const ok=gaReady();
     return `${heading('Vista general','Todo tu negocio, en una sola vista','Visualiza el rendimiento del sitio y las conversiones registradas, con datos reales.')}${statusStrip()}${mainKpis()}<div class="content-grid"><div class="col-8">${card('Rendimiento del sitio',`Usuarios y sesiones · ${periodLabel()}`,ok?chart(rows('trend'),'sessions','Sesiones','totalUsers','Usuarios'):dataPlaceholder())}</div><div class="col-4">${card('¿De dónde viene tu tráfico?','Distribución por canal de adquisición',ok?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Contenido que concentra la atención',ok?barList(rows('pages'),'pagePath','screenPageViews',6):dataPlaceholder(),`<button class="text-action" data-act="nav" data-page="content">Ver contenido ${icon('chevron',14)}</button>`)}</div><div class="col-5">${card('Lectura rápida de tus datos','Hallazgos generados con la información disponible',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${connectedAdsOverview()}${flags()}`;
   }
-  function heading(kicker,title,subtitle){return `<div class="page-title"><div><div class="eyebrow">${clean(kicker)}</div><h1>${clean(title)}</h1><p>${clean(subtitle)}</p></div><button class="button button-outline title-export" data-act="csv">${icon('download',17)} Exportar CSV</button></div>`;}
+  function heading(kicker,title,subtitle){const downloadable=['overview','analytics','acquisition','utm','audience','content','events','reports'].includes(state.page);return `<div class="page-title"><div><div class="eyebrow">${clean(kicker)}</div><h1>${clean(title)}</h1><p>${clean(subtitle)}</p></div>${downloadable?`<button class="button button-outline title-export" data-act="csv">${icon('download',17)} Exportar CSV</button>`:''}</div>`;}
   function detailKpis() {
     const v=m(), ok=gaReady();
     return `<div class="small-kpis">${[['Usuarios activos','activeUsers',fmt],['Usuarios nuevos','newUsers',fmt],['Sesiones con interacción','engagedSessions',fmt],['Tasa de interacción','engagementRate',pc],['Rebote','bounceRate',pc],['Eventos totales','eventCount',fmt],['Tiempo medio de sesión','averageSessionDuration',duration],['Tasa de sesión con evento clave','sessionKeyEventRate',pc]].map(x=>`<div class="small-kpi"><span>${x[0]}</span><strong>${ok?x[2](v[x[1]]):'—'}</strong>${trendFor(x[1],x[2]===pc)}</div>`).join('')}</div>`;
@@ -447,7 +459,7 @@ function company(){
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
  `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition','campaigns','audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['hotmart','reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
- return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('menu',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><div class="sidebar-workspace"><span class="workspace-symbol">${icon('building',20)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(business()?.name||'Mi empresa')}</b><small>${isAdmin()?'Superadministrador':'Espacio de análisis'}</small></span>${icon('chevronDown',16)}</div>${menu}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Superadministrador':'Usuario de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
+ return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('menu',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><div class="sidebar-workspace"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Superadministrador':'Espacio de análisis'}</small></span>${icon('chevronDown',16)}</div>${menu}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Superadministrador':'Usuario de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
 }
     function topbar(){
  const places=!isAdmin()&&state.businesses.length>1?`<label class="select-wrap company-select">${icon('building',16)}<select id="business-selector">${state.businesses.map(x=>`<option value="${clean(x.id)}" ${state.businessId===x.id?'selected':''}>${clean(x.name)}</option>`).join('')}</select>${icon('chevronDown',14)}</label>`:'';
