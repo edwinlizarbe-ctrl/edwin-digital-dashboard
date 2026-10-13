@@ -216,16 +216,21 @@
   }
   function filterList(data) { const q=state.search.trim().toLowerCase(); return q?data.filter(x=>Object.values(x).some(v=>String(v).toLowerCase().includes(q))):data; }
 
-  const friendlyChannel = value => ({
-    Direct:'Acceso directo','Organic Search':'Búsquedas gratuitas',
-    'Paid Search':'Anuncios en buscadores','Paid Social':'Anuncios en redes sociales',
-    'Organic Social':'Redes sociales (sin anuncios)','Referral':'Enlaces desde otras páginas',
-    'Email':'Correos electrónicos','Display':'Anuncios gráficos',
-    'Cross-network':'Publicidad en varias redes','Organic Video':'Videos sin anuncios',
-    'Paid Video':'Publicidad en video','Organic Shopping':'Compras sin anuncios',
-    'Paid Shopping':'Anuncios de compras',Other:'Otros canales','(Other)':'Otros canales','Unassigned':'Canal sin identificar',
-    '(not set)':'Sin identificar'
-  })[String(value||'')]||String(value||'Sin identificar');
+  const friendlyChannel = value => {
+    const raw=String(value||'').trim(), key=raw.toLowerCase();
+    const labels={
+      'direct':'Acceso directo','organic search':'Búsquedas gratuitas',
+      'paid search':'Anuncios en buscadores','paid social':'Anuncios en redes sociales',
+      'organic social':'Redes sociales (sin anuncios)','referral':'Enlaces desde otras páginas',
+      'email':'Correos electrónicos','display':'Anuncios gráficos',
+      'cross-network':'Publicidad en varias redes','organic video':'Videos sin anuncios',
+      'paid video':'Publicidad en video','organic shopping':'Compras sin anuncios',
+      'paid shopping':'Anuncios de compras','paid other':'Otros anuncios de pago',
+      'other':'Otros canales','(other)':'Otros canales','unassigned':'Canal sin identificar',
+      '(not set)':'Sin identificar'
+    };
+    return labels[key]||raw||'Sin identificar';
+  };
   const friendlyTrafficSource = rawValue => {
     const raw=String(rawValue||'').trim(),parts=raw.split(/\s*\/\s*/);
     const src=(parts[0]||'').toLowerCase(),med=(parts[1]||'').toLowerCase();
