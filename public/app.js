@@ -781,7 +781,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.campaignConnectionOpen=false;state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await refresh();if(metaPilotEligible())await loadMeta();}
@@ -791,9 +791,15 @@ function sidebar(){
     try{
       const status=await api('/api/status');if(!status.configured)throw new Error(`Configuración pendiente: ${(status.missing||[]).join(', ')}`);
       const user=await api('/api/me');const companies=await api('/api/businesses');
-      state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){state.page='integrations';const result=new URLSearchParams(location.search).get('meta');if(result==='cancelled')state.metaError='Se canceló la autorización con Facebook.';history.replaceState({},'',location.pathname+location.hash);}state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
+      state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){
+        const parameters=new URLSearchParams(location.search),campaignReturn=parameters.get('return_to')==='campaigns';
+        state.page=campaignReturn?'campaigns':'integrations';
+        if(campaignReturn)state.campaignConnectionOpen=true;
+        if(parameters.get('meta')==='cancelled')state.metaError='Se canceló la autorización con Facebook.';
+        history.replaceState({},'',location.pathname+location.hash);
+      }state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
       if(isAdmin())await loadAdminStats();
-      else if(state.businesses.length)await chooseBusiness(state.businesses[0].id);
+      else if(state.businesses.length){await chooseBusiness(state.businesses[0].id);if(state.page==='campaigns')await loadAds();}
     }catch(e){state.loading=false;state.user=null;state.loginBusy=false;if(e.status!==401)state.startupError=e.message;render();}
   }
   function doCsv(dataset=''){
@@ -906,11 +912,36 @@ function sidebar(){
       try{const out=await api('/api/admin/accounts/temporary-password',{method:'POST',body:JSON.stringify({user_id:id})});state.temporaryAccess={email:out.email,password:out.temporary_password};state.accountNotice=out.message||'Clave temporal creada.';}
       catch(e){state.accountsError=e.message;}render();
     }
-    else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
+    else if(action==='meta-connect'){
+      if(state.meta?.configured && metaPilotEligible()){
+        const returnTo=b.dataset.return==='campaigns'?'&return_to=campaigns':'';
+        window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId)+returnTo);
+      }else{
+        state.metaError='La conexión estará disponible cuando Meta Ads termine de configurarse para eDigital.';
+        render();
+      }
+    }
     else if(action==='edit-site'){state.editSiteId=b.dataset.id;state.siteError='';state.siteNotice='';render();}
     else if(action==='edit-site-cancel'){state.editSiteId='';state.siteError='';render();}
     else if(action==='company-logo-clear'){state.companyLogoClear=true;state.companyLogoDraft=null;state.companyNotice='';render();}
     else if(action==='meta-panel-toggle'){state.metaPanelOpen=!state.metaPanelOpen;render();}
+    else if(action==='campaign-connect-toggle'){state.campaignConnectionOpen=!state.campaignConnectionOpen;state.campaignAccountNotice='';render();}
+    else if(action==='campaign-meta-save'){
+      if(state.campaignAccountSaving||!state.meta?.connected)return;
+      const ids=[...document.querySelectorAll('.campaign-meta-account-check:checked')].map(x=>x.value);
+      if(!ids.length||ids.length>5){state.metaError='Selecciona entre una y cinco cuentas publicitarias.';render();return;}
+      const current=state.businessId;
+      state.campaignAccountSaving=true;state.metaError='';state.campaignAccountNotice='';render();
+      try{
+        await api('/api/meta/select',{method:'POST',body:JSON.stringify({business_id:current,account_ids:ids})});
+        if(state.businessId!==current)return;
+        state.metaCampaigns=null;
+        state.campaignAccountNotice='Cuentas guardadas. Estamos consultando tus campañas.';
+        await loadMeta();await loadAds();
+        state.campaignConnectionOpen=false;render();
+      }catch(error){if(state.businessId===current){state.metaError=error.message;state.campaignConnectionOpen=true;render();}}
+      finally{state.campaignAccountSaving=false;if(state.businessId===current)render();}
+    }
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
     else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
@@ -978,9 +1009,10 @@ function sidebar(){
       state.adminQuery=q;render();const input=document.getElementById('admin-client-search');if(input){input.focus();if(start!==null&&end!==null)input.setSelectionRange(start,end);}return;
     }
     if(e.target.id==='integration-search'){filterIntegrations();return;}
-    if(e.target.id==='meta-account-search'){
+    if(e.target.id==='meta-account-search'||e.target.id==='campaign-meta-search'){
       const q=e.target.value.trim().toLowerCase();
-      document.querySelectorAll('.meta-account-row').forEach(row=>{row.style.display=row.textContent.toLowerCase().includes(q)?'':'none';});
+      const root=e.target.id==='campaign-meta-search'?document.querySelector('.ads-account-list'):document;
+      root?.querySelectorAll('.meta-account-row').forEach(row=>{row.style.display=row.textContent.toLowerCase().includes(q)?'':'none';});
       return;
     }
     if(e.target.id!=='global-search')return;
