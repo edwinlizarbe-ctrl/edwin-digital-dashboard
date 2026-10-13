@@ -94,7 +94,7 @@ function metaValidBusinessId(id) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 async function metaPilotBusiness(env, session, businessId) {
-  if (!metaValidBusinessId(businessId)) return false;
+  if (session.user.role==='admin' || !metaValidBusinessId(businessId)) return false;
   // Use the user's JWT; Supabase RLS must authorize the business.
   const endpoint = String(env.SUPABASE_URL).replace(/\/$/,'') +
     '/rest/v1/businesses?select=id,slug&id=eq.'+encodeURIComponent(businessId)+'&limit=1';
