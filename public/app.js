@@ -272,7 +272,7 @@
     return '<div class="bar-list">'+pages.slice(0,6).map((p,i)=>{
       const raw=String(p.pagePath||'/'),path=raw.split('?')[0],name=path==='/'?'Página de inicio':(path.split('/').filter(Boolean).pop()||'Página de inicio').replace(/[-_]+/g,' ').replace(/\.[a-z0-9]+$/i,'');
       const views=Math.max(0,number(p.screenPageViews)),share=base?views/base*100:0;
-      return '<div class="bar-item"><div class="bar-row"><span title="'+clean(raw)+'"><b class="bar-index">'+String(i+1).padStart(2,'0')+'</b>'+clean(name)+'</span><strong>'+fmt(views)+' · '+share.toFixed(1)+'%</strong></div><div class="bar-track"><div class="bar-fill" style="width:'+Math.min(100,share).toFixed(2)+'%"></div></div></div>';
+      return '<div class="bar-item"><div class="bar-row"><button type="button" class="text-action" data-act="page-detail" data-path="'+clean(raw)+'" title="Ver estadísticas de '+clean(raw)+'"><b class="bar-index">'+String(i+1).padStart(2,'0')+'</b>'+clean(name)+'</button><strong>'+fmt(views)+' · '+share.toFixed(1)+'%</strong></div><div class="bar-track"><div class="bar-fill" style="width:'+Math.min(100,share).toFixed(2)+'%"></div></div></div>';
     }).join('')+'</div><button type="button" class="text-action" data-act="nav" data-page="content">Consultar estadísticas de las páginas →</button>';
   }
   function cleanRows(data){return filterList(data||[]);}
@@ -1296,6 +1296,7 @@ function sidebar(){
     else if(action==='campaign-menu'){state.campaignsMenuOpen=!state.campaignsMenuOpen;render();}
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
+    else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
     else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin())await loadAccounts();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
