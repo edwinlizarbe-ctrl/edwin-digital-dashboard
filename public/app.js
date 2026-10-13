@@ -95,6 +95,8 @@
     'mouse-pointer':'<path d="M5 3l14 9-7 1-3 7z"/><path d="m12 13 4 7"/>',
     megaphone:'<path d="M3 11v3a2 2 0 0 0 2 2h3l3 4h3l-3-5 9-5V5l-9 5H5a2 2 0 0 0-2 1z"/><path d="M20 9a3 3 0 0 1 0 6"/>',
     user:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
+    power:'<path d="M12 2v10"/><path d="M6.2 5.7a9 9 0 1 0 11.6 0"/>',
+    'panel-left-close':'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18m8-12-3 3 3 3"/>',
     users:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m1 4a5 5 0 0 1 3 5"/>',
     camera:'<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1-3h6l1 3"/>',
     'file-text':'<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7"/>',
@@ -191,7 +193,7 @@
   function mainKpis(interactive=false) {
     if(state.gaLoading)return '<div class="kpi-grid" role="status" aria-label="Cargando estadísticas">'+[1,2,3,4].map(()=>'<div class="ga-skeleton-kpi"><span class="ga-skeleton-shine"></span><span class="ga-skeleton-value"></span><span class="ga-skeleton-note"></span></div>').join('')+'</div>';
     const ok=gaReady(), v=m();
-    const selectable=(html,key)=>interactive?html.replace('<article class="kpi">',`<button type="button" class="kpi analytic-primary-pick ${state.analyticMetric===key?'selected':''}" data-act="analytic-select" data-metric="${key}" aria-pressed="${state.analyticMetric===key}">`).replace('</article>','</button>'):html;
+    const selectable=(html,key)=>interactive?html.replace('<article class="kpi">',`<button type="button" class="kpi analytic-primary-pick ${(state.page==='overview'?state.overviewMetric:state.analyticMetric)===key?'selected':''}" data-act="analytic-select" data-metric="${key}" aria-pressed="${(state.page==='overview'?state.overviewMetric:state.analyticMetric)===key}">`).replace('</article>','</button>'):html;
     return `<div class="kpi-grid">${selectable(kpi('Usuarios totales',ok?fmt(v.totalUsers):'—','users','purple','totalUsers','totalUsers'),'totalUsers')}${selectable(kpi('Sesiones',ok?fmt(v.sessions):'—','activity','cyan','sessions','sessions'),'sessions')}${selectable(kpi('Vistas de páginas',ok?fmt(v.screenPageViews):'—','eye','coral','screenPageViews','screenPageViews'),'screenPageViews')}${selectable(kpi('Eventos clave',ok?fmt(v.keyEvents):'—','target','mint','keyEvents','keyEvents','Eventos que tu propiedad GA4 haya marcado como clave.'),'keyEvents')}</div>`;
   }
   const dateLabel = val => { const v=String(val || ''); return /^\d{8}$/.test(v) ? `${v.slice(6,8)}/${v.slice(4,6)}` : /^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v.slice(8)}/${v.slice(5,7)}` : v; };
@@ -1043,7 +1045,7 @@ async function loadAccounts(){
 }
 
   function settings(){
- const theme=[['light','Claro'],['dark','Oscuro']];
+ const theme=[['light','Claro'],['dark','Oscuro'],['black','Negro']];
  const palettes=[['purple','Violeta'],['blue','Azul'],['teal','Turquesa'],['coral','Coral'],['amber','Ámbar'],['rose','Rosa'],['graphite','Grafito']];
  const sidebar=[['auto','Según tema'],['white','Blanco'],['blue','Azul oscuro'],['navy','Azul marino'],['graphite','Grafito oscuro'],['black','Negro']];
  const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${key==='accent'?`<i class="accent-swatch swatch-${v}" aria-hidden="true"></i>`:''}${t}</button>`).join('')}</div>`;
@@ -1241,16 +1243,16 @@ function sidebar(){
     if(action==='theme'){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('ed-theme-v3',state.theme);render();}
     else if(action==='set-pref'){
       const key=b.dataset.key,value=b.dataset.value;
-      if(key==='theme'&&['light','dark'].includes(value)){state.theme=value;localStorage.setItem('ed-theme-v3',value);}
+      if(key==='theme'&&['light','dark','black'].includes(value)){state.theme=value;localStorage.setItem('ed-theme-v3',value);}
       else if(key==='accent'&&['purple','blue','teal','coral','amber','rose','graphite'].includes(value)){state.accent=value;localStorage.setItem('ed-accent-v7',value);}
-      else if(key==='sidebar'&&['auto','white','blue','navy','graphite'].includes(value)){state.sidebarTone=value;localStorage.setItem('ed-sidebar-v7',value);}
+      else if(key==='sidebar'&&['auto','white','blue','navy','graphite','black'].includes(value)){state.sidebarTone=value;localStorage.setItem('ed-sidebar-v7',value);}
       render();
     }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
     else if(action==='campaign-menu'){state.campaignsMenuOpen=!state.campaignsMenuOpen;render();}
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();}
-    else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){state.analyticMetric=b.dataset.metric;render();}}
+    else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin())await loadAccounts();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
