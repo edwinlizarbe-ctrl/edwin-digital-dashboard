@@ -53,3 +53,10 @@
 @media(max-width:600px){.eda-dialog{width:auto;right:10px;left:10px;bottom:calc(78px + env(safe-area-inset-bottom))}.eda-message-text{font-size:13px}.eda-shortcuts button{font-size:11px}.eda-shortcuts{padding:10px 12px 8px}}
 
 .eda-mic{min-width:38px;border-radius:10px;color:var(--accent,#2563eb);background:var(--accent-soft,#dbeafe);border:1px solid var(--border,#dce5f2)}
+
+/* Friendly compact robot inspired by supplied reference, drawn as scalable vector. */
+.eda-launcher{background:#E8F3FF;border:1px solid #ACD7F5;border-radius:20px;box-shadow:0 10px 25px rgba(15,58,111,.18)}
+.eda-launcher .eda-robot-art{height:54px;width:54px;display:block}
+.eda-bot-icon{background:transparent;padding:0}
+.eda-bot-icon .eda-robot-art{height:43px;width:43px}
+@media(prefers-reduced-motion:no-preference){.eda-launcher:hover .eda-robot-art{animation:eda-friendly-wave .9s ease-in-out}@keyframes eda-friendly-wave{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}}
