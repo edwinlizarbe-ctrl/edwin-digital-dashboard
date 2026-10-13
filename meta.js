@@ -1,3 +1,4 @@
+import { ensureBusinessFeature } from './feature-access.js';
 /**
  * Meta Ads pilot — per-tenant, per-user session, read-only.
  * OAuth handled entirely on Cloudflare Worker. No third-party intermediary.
@@ -146,6 +147,7 @@ export async function handleMetaApi(req,env,s) {
   if(path==='/api/meta/status' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
     if(!await metaPilotBusiness(env,s,businessId))return error('No tienes acceso a este negocio.',403);
+    if(!await ensureBusinessFeature(env,s,businessId,'meta_ads'))return reply({configured:false,connected:false,disabled_by_admin:true,reason:'Meta Ads no está habilitado para tu empresa.'});
     if(!config.ready)return reply({configured:false,connected:false,reason:'Meta Ads todavía no está configurado en los secretos de Cloudflare.'});
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId))return reply({configured:true,connected:false});
@@ -159,6 +161,7 @@ export async function handleMetaApi(req,env,s) {
     if(url.origin!==new URL(config.redirect).origin)return error('El dominio no coincide con el dominio configurado para Meta.',403);
     const businessId=url.searchParams.get('business_id')||'';
     if(!await metaPilotBusiness(env,s,businessId))return error('No tienes acceso a esta conexión piloto.',403);
+    if(!await ensureBusinessFeature(env,s,businessId,'meta_ads'))return error('Meta Ads no está habilitado para esta empresa.',403);
     const state=metaBytesTo64(crypto.getRandomValues(new Uint8Array(24)));
     const returnTo=url.searchParams.get('return_to')==='campaigns'?'campaigns':'integrations';
     const pending=await sealMeta(env,{state,business:businessId,user:s.user.id,returnTo,expires:Date.now()+10*60*1000});
@@ -178,6 +181,7 @@ export async function handleMetaApi(req,env,s) {
       pending.state!==url.searchParams.get('state');
     if(expired)return error('La autorización ha caducado o no coincide con esta sesión. Vuelve a conectar Meta.',403);
     if(!await metaPilotBusiness(env,s,pending.business))return error('Acceso a negocio no autorizado.',403);
+    if(!await ensureBusinessFeature(env,s,pending.business,'meta_ads'))return error('Meta Ads no está habilitado para esta empresa.',403);
     if(url.searchParams.has('error'))return metaRedirect(metaResultUrl(config,'cancelled',pending.returnTo,pending.business),cookies,[metaCookie(META_PENDING,'',0)]);
     const code=url.searchParams.get('code')||'';
     if(!code || code.length>2000)return error('Meta no devolvió un código de autorización válido.');
@@ -215,6 +219,7 @@ export async function handleMetaApi(req,env,s) {
     let input;try{input=JSON.parse(raw);}catch{return error('Solicitud no válida.');}
     const businessId=input?.business_id||'';
     if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    if(!await ensureBusinessFeature(env,s,businessId,'meta_ads'))return error('Meta Ads no está habilitado para esta empresa.',403);
     const accountIds=Array.isArray(input?.account_ids)?input.account_ids:
       (input?.account_id?[input.account_id]:[]);
     if(accountIds.length>5||new Set(accountIds).size!==accountIds.length||
@@ -234,6 +239,7 @@ export async function handleMetaApi(req,env,s) {
   if(path==='/api/meta/report' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
     if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    if(!await ensureBusinessFeature(env,s,businessId,'meta_ads'))return error('Meta Ads no está habilitado para esta empresa.',403);
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId))return error('Vuelve a conectar Meta Ads.',401);
     const ids=(connection.accounts||[connection.account]).filter(id=>/^act_\d+$/.test(id||'')).slice(0,5);
@@ -259,6 +265,7 @@ export async function handleMetaApi(req,env,s) {
   if(path==='/api/meta/campaigns' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
     if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    if(!await ensureBusinessFeature(env,s,businessId,'meta_ads'))return error('Meta Ads no está habilitado para esta empresa.',403);
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId))return error('Conecta Meta Ads nuevamente.',401);
     const ids=(connection.accounts||[connection.account]).filter(id=>/^act_\d+$/.test(id||'')).slice(0,5);
