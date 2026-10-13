@@ -4,7 +4,7 @@
   const root = document.getElementById('app');
   const state = {
     user: null, businesses: [], sites: [], businessId: '', siteId: '',
-    page: 'overview', analyticMetric: 'totalUsers', period: '30', theme: localStorage.getItem('ed-theme-v3') || 'light',
+    page: 'overview', analyticMetric: 'totalUsers', period: '7', theme: localStorage.getItem('ed-theme-v3') || 'light',
     loading: true, gaLoading: false, hmLoading: false, ga: null, hm: null,
     gaError: '', hmError: '', startupError: '', loginError: '', loginBusy: false,
     mobileOpen: false, campaignsMenuOpen: true, sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
