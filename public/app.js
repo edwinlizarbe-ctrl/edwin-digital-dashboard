@@ -223,7 +223,7 @@
     'Email':'Correos electrónicos','Display':'Anuncios gráficos',
     'Cross-network':'Publicidad en varias redes','Organic Video':'Videos sin anuncios',
     'Paid Video':'Publicidad en video','Organic Shopping':'Compras sin anuncios',
-    'Paid Shopping':'Anuncios de compras','Unassigned':'Canal sin identificar',
+    'Paid Shopping':'Anuncios de compras',Other:'Otros canales','(Other)':'Otros canales','Unassigned':'Canal sin identificar',
     '(not set)':'Sin identificar'
   })[String(value||'')]||String(value||'Sin identificar');
   const friendlyTrafficSource = rawValue => {
@@ -280,7 +280,7 @@
     const total=list.reduce((a,r)=>a+number(r[valueKey]),0),palette=['#2563EB','#00c8e9','#fd708a','#3bc5a9','#f6bd66'];
     let soFar=0;
     const parts=list.map((r,i)=>{const percent=number(r[valueKey])/total*100,start=soFar;soFar+=percent;return `${palette[i]} ${start.toFixed(3)}% ${soFar.toFixed(3)}%`;});
-    return `<div class="donut-layout"><div class="donut-chart" style="background:conic-gradient(${parts.join(',')})"><div class="donut-center"><span>Sesiones</span><strong>${fmt(total)}</strong><small>Top 5 canales</small></div></div><div class="donut-legend">${list.map((r,i)=>`<div><span class="donut-name"><i style="background:${palette[i]}"></i>${clean(r[labelKey]||'(sin canal)')}</span><b>${fmt1(number(r[valueKey])/total*100)}%</b></div>`).join('')}</div></div>`;
+    return `<div class="donut-layout"><div class="donut-chart" style="background:conic-gradient(${parts.join(',')})"><div class="donut-center"><span>Sesiones</span><strong>${fmt(total)}</strong><small>Top 5 canales</small></div></div><div class="donut-legend">${list.map((r,i)=>`<div><span class="donut-name" title="${clean(({ 'Anuncios en redes sociales':'Visitas desde anuncios en redes sociales.', 'Acceso directo':'Visitas sin una fuente de referencia identificada.', 'Otros canales':'Sesiones agrupadas por Google Analytics en otros canales.', 'Sin identificar':'Google Analytics no pudo clasificar estas visitas.', 'Canal sin identificar':'Google Analytics no pudo asignar estas visitas a un canal.', 'Búsquedas gratuitas':'Visitas desde resultados no pagados de buscadores.', 'Enlaces desde otras páginas':'Visitas por enlaces en otros sitios web.', 'Redes sociales (sin anuncios)':'Visitas desde publicaciones sin publicidad pagada.' })[r[labelKey]]||'Canal de origen de las sesiones registrado por Google Analytics.')}"><i style="background:${palette[i]}"></i>${clean(r[labelKey]||'Sin identificar')}</span><b>${fmt1(number(r[valueKey])/total*100)}%</b></div>`).join('')}</div></div>`;
   }
   function flags() {
     const warnings=state.ga?.warnings||[];
