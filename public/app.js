@@ -37,6 +37,27 @@
   const periodLabel = () => ({ today:'Hoy', yesterday:'Ayer', '7':'Últimos 7 días', '30':'Últimos 30 días', '90':'Últimos 90 días', '365':'Últimos 12 meses' })[state.period] || 'Últimos 30 días';
   const site = () => state.sites.find(s => s.id === state.siteId);
   const isAdmin = () => state.user?.role === 'admin';
+  // Read-only metrics from the currently selected client. No passwords, keys or other tenants.
+  window.edigitalAssistantContext = () => {
+    const company = state.businesses.find(b => b.id === state.businessId);
+    const currentSite = state.sites.find(x => x.id === state.siteId);
+    const ga = state.ga?.configured && state.ga?.reports ? state.ga.metrics || null : null;
+    const prev = state.ga?.previous_metrics || null;
+    const meta = (state.metaReport?.account_reports || []).slice(0, 5).map(x => ({
+      name:x.name, currency:x.currency,
+      spend:x.metrics?.spend ?? null, clicks:x.metrics?.clicks ?? null,
+      impressions:x.metrics?.impressions ?? null, ctr:x.metrics?.ctr ?? null,
+      cpc:x.metrics?.cpc ?? null
+    }));
+    return {
+      loggedIn:!!state.user, admin:state.user?.role === 'admin',
+      company:company?.name || '', businessId:state.businessId,
+      site:currentSite?.name || '', siteId:state.siteId,
+      period:state.period, periodLabel:periodLabel(), ga, gaPrevious:prev,
+      metaConnected:!!state.meta?.connected, meta
+    };
+  };
+
   const gaReady = () => !!(state.ga?.configured && state.ga?.reports);
   const rows = name => state.ga?.reports?.[name] || [];
   const m = () => gaReady() ? state.ga.metrics || {} : {};
@@ -622,6 +643,8 @@ function sidebar(){
     function login(){root.innerHTML=`<div class="login-page"><div class="login-side"><div class="login-brand">${brand(true)}</div><div class="login-center"><div class="login-pill">${icon('spark',16)} Intelligence for better decisions</div><h1>Todos tus datos.<br><em>Una mejor perspectiva.</em></h1><p>Transforma información en decisiones. Un solo espacio para comprender tu sitio, tus usuarios y las ventas conectadas.</p><div class="login-feature-row"><span>${icon('check',15)} Datos reales</span><span>${icon('check',15)} Multiempresa</span><span>${icon('check',15)} Acceso seguro</span></div><div class="login-abstract" aria-hidden="true"><div class="abstract-blob"></div><div class="abstract-card a"><div class="abstract-dots"><i></i><i></i><i></i></div><span>Overview analytics</span><div class="abstract-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="abstract-card b"><div class="abstract-circle"></div><div class="abstract-lines"><i></i><i></i><i></i></div></div></div></div><div class="login-copyright">© eDigital · Analytics Platform</div></div><main class="login-form-side"><div class="login-theme"><button class="icon-button" data-act="theme" title="Cambiar tema">${icon(state.theme==='dark'?'sun':'moon')}</button></div><div class="login-panel"><div class="login-badge">ACCESO A TU DASHBOARD</div><h2>Bienvenido de nuevo <span>👋</span></h2><p class="login-sub">Ingresa con tu cuenta para ver todos tus reportes en un mismo lugar.</p>${state.startupError?alertBlock(state.startupError):''}${state.loginNotice?alertBlock(state.loginNotice,'info'):''}<form id="login-form"><label class="form-label" for="email">Correo electrónico</label><div class="form-input">${icon('users',17)}<input id="email" name="email" type="email" placeholder="tucorreo@empresa.com" autocomplete="username" required/></div><label class="form-label" for="password">Contraseña</label><div class="form-input">${icon('lock',17)}<input id="password" name="password" type="password" placeholder="Tu contraseña de acceso" autocomplete="current-password" required/><button type="button" class="password-toggle" data-act="show-password" title="Mostrar u ocultar contraseña">${icon('eye',18)}</button></div>${state.loginError?alertBlock(state.loginError):''}<button class="button button-primary sign-in" type="submit" ${state.loginBusy||state.startupError?'disabled':''}>${state.loginBusy?'<span class="spinner"></span> Validando cuenta…':'Ingresar a mi dashboard'} ${!state.loginBusy?icon('arrowUp',18):''}</button></form><div class="login-help">${icon('lock',14)} Acceso protegido por Supabase Auth. Nunca introduzcas claves de API aquí.</div></div><div class="login-contact">¿Necesitas acceso? Solicítalo al administrador de la plataforma.</div></main></div>`;}
   function render() {
     setTheme();
+    // Refresh floating helper after every screen transition, including sign-in/out.
+    queueMicrotask(() => window.dispatchEvent(new Event('edigital:render')));
     if(state.loading){root.innerHTML=`<div class="initial-load"><span class="spinner"></span><strong>Preparando eDigital…</strong></div>`;return;}
     if(!state.user){login();return;}
     if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
