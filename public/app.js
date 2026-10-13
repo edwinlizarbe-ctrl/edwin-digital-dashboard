@@ -93,7 +93,7 @@
     'layout-dashboard':'<rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/>',
     activity:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
     'mouse-pointer':'<path d="M5 3l14 9-7 1-3 7z"/><path d="m12 13 4 7"/>',
-    megaphone:'<path d="M3 11v3a2 2 0 0 0 2 2h3l3 4h3l-3-5 9-5V5l-9 5H5a2 2 0 0 0-2 1z"/><path d="M20 9a3 3 0 0 1 0 6"/>',
+    megaphone:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
     user:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
     power:'<path d="M12 2v10"/><path d="M6.2 5.7a9 9 0 1 0 11.6 0"/>',
     'panel-left-close':'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18m8-12-3 3 3 3"/>',
