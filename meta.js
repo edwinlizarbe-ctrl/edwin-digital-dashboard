@@ -142,7 +142,7 @@ export async function handleMetaApi(req,env,s) {
     if(!validMetaSession(connection,s,businessId))return reply({configured:true,connected:false});
     try {
       const accounts=await metaAccounts(env,connection.token);
-      return reply({configured:true,connected:true,accounts,selected_account:accounts.some(x=>x.id===connection.account)?connection.account:null,expires_at:new Date(connection.expires).toISOString()});
+      return reply({configured:true,connected:true,accounts,selected_account:accounts.some(x=>x.id===connection.account)?connection.account:null,selected_accounts:accounts.filter(x=>(connection.accounts||[connection.account]).includes(x.id)).map(x=>x.id),expires_at:new Date(connection.expires).toISOString()});
     }catch(e){return reply({configured:true,connected:false,error:String(e.message).slice(0,180)});}
   }
   if(path==='/api/meta/connect' && method==='GET') {
@@ -192,7 +192,7 @@ export async function handleMetaApi(req,env,s) {
     const seconds=Math.max(300,Math.min(86400,Number(info.expires_in)||3600)-120);
     const connection=await sealMeta(env,{
       user:s.user.id,business:pending.business,token:info.access_token,
-      account:null,expires:Date.now()+seconds*1000,
+      account:null,accounts:[],expires:Date.now()+seconds*1000,
     });
     return metaRedirect(metaResultUrl(env,'connected'),cookies,[
       metaCookie(META_PENDING,'',0),metaCookie(META_COOKIE,connection,seconds)
@@ -201,19 +201,25 @@ export async function handleMetaApi(req,env,s) {
   if(path==='/api/meta/select' && method==='POST') {
     if(!metaSameOriginJson(req))return error('Solicitud de origen o contenido no autorizado.',403);
     const raw=await req.text();
-    if(raw.length>1024)return error('Solicitud demasiado grande.',413);
+    if(raw.length>2048)return error('Solicitud demasiado grande.',413);
     let input;try{input=JSON.parse(raw);}catch{return error('Solicitud no válida.');}
-    const businessId=input?.business_id||'', accountId=input?.account_id||'';
+    const businessId=input?.business_id||'';
     if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
-    if(!/^act_\d+$/.test(accountId))return error('Selecciona una cuenta publicitaria válida.');
+    const accountIds=Array.isArray(input?.account_ids)?input.account_ids:
+      (input?.account_id?[input.account_id]:[]);
+    if(accountIds.length>5||new Set(accountIds).size!==accountIds.length||
+      accountIds.some(id=>typeof id!=='string'||!/^act_\d+$/.test(id))) {
+      return error('Puedes elegir hasta cinco cuentas publicitarias válidas sin repetir.');
+    }
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId))return error('Necesitas conectar Meta Ads nuevamente.',401);
     const accounts=await metaAccounts(env,connection.token);
-    if(!accounts.some(x=>x.id===accountId))return error('No tienes autorización para esa cuenta publicitaria.',403);
-    connection.account=accountId;
+    if(accountIds.some(id=>!accounts.some(x=>x.id===id)))return error('No tienes autorización para una de las cuentas seleccionadas.',403);
+    connection.accounts=accountIds;
+    connection.account=accountIds[0]||null;
     const updated=await sealMeta(env,connection);
     const seconds=Math.max(60,Math.floor((connection.expires-Date.now())/1000));
-    return reply({ok:true,account_id:accountId},200,[metaCookie(META_COOKIE,updated,seconds)]);
+    return reply({ok:true,account_ids:accountIds},200,[metaCookie(META_COOKIE,updated,seconds)]);
   }
   if(path==='/api/meta/report' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
