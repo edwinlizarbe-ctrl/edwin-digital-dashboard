@@ -461,3 +461,54 @@ input,select,textarea{max-width:100%}
  .ads-connected-compact{flex-wrap:wrap}
  .ads-connected-compact>.button{width:100%;justify-content:center}
 }
+
+
+/* E Digital.IA — calmer professional navigation and configurable brand colors */
+:root[data-accent=coral]{--accent:#e46c62;--accent2:#c94c46;--accent-soft:#fff0ee}
+:root[data-accent=amber]{--accent:#b56d0b;--accent2:#945508;--accent-soft:#fff5e4}
+:root[data-accent=rose]{--accent:#cb427d;--accent2:#a93267;--accent-soft:#fdeaf2}
+:root[data-accent=graphite]{--accent:#405e7a;--accent2:#293e58;--accent-soft:#eaf0f5}
+:root[data-theme=dark][data-accent=coral]{--accent:#ff968c;--accent2:#df7167;--accent-soft:#452322}
+:root[data-theme=dark][data-accent=amber]{--accent:#ffc06b;--accent2:#d89a42;--accent-soft:#382d1a}
+:root[data-theme=dark][data-accent=rose]{--accent:#fa83b3;--accent2:#d95a91;--accent-soft:#3b2636}
+:root[data-theme=dark][data-accent=graphite]{--accent:#b5cce2;--accent2:#84a7c5;--accent-soft:#24354b}
+.nav-wrapper{padding-top:2px}
+.sidebar .nav-link{height:39px;margin-bottom:2px;gap:11px;font-size:12.1px;font-weight:660;letter-spacing:.02px;color:#33455e;border-radius:8px}
+.sidebar .nav-link:hover{background:#edf3fa;color:#142a47}
+.sidebar .nav-link.active{font-weight:770;color:var(--accent);background:var(--accent-soft)}
+.sidebar .nav-link svg{width:17px;height:17px;stroke-width:1.85px}
+.sidebar .nav-group-title{font-size:9.5px;letter-spacing:1.25px;font-weight:770;color:#697c94;margin-top:17px;margin-bottom:7px}
+.sidebar-workspace{background:#ecf2fa;border-color:#dbe5f1;color:#294362;padding:11px;border-radius:10px}
+.sidebar-workspace b{color:#162a43;font-weight:800;font-size:12.2px}
+.sidebar-workspace small{color:#516882}
+.sidebar-workspace:hover{background:#e5effb}
+.sidebar .account b{color:#1a2c42}
+.brand-word{letter-spacing:-.35px;font-size:20px;font-weight:800}
+[data-sidebar-tone=navy] .sidebar{background:#122b48;--side:#122b48;--text:#f4f8ff;--surface2:#1d3a5c;--muted2:#c1d1e4;--border:#2c4b6c;--accent-soft:#2b5077;--accent:#a9d3ff}
+[data-sidebar-tone=graphite] .sidebar{background:#202c3c;--side:#202c3c;--text:#f4f8ff;--surface2:#29394d;--muted2:#c1ccd9;--border:#394c60;--accent-soft:#3c5270;--accent:#bfdaff}
+[data-sidebar-tone=navy] .sidebar .nav-link,[data-sidebar-tone=graphite] .sidebar .nav-link,
+[data-sidebar-tone=blue] .sidebar .nav-link{color:#dde9f7}
+[data-sidebar-tone=navy] .sidebar .nav-link:hover,[data-sidebar-tone=graphite] .sidebar .nav-link:hover{background:rgba(255,255,255,.08);color:white}
+[data-sidebar-tone=navy] .sidebar .nav-link.active,[data-sidebar-tone=graphite] .sidebar .nav-link.active{background:rgba(173,213,255,.16);color:#fff}
+[data-sidebar-tone=navy] .sidebar .nav-group-title,[data-sidebar-tone=graphite] .sidebar .nav-group-title{color:#a8bed8}
+[data-sidebar-tone=navy] .sidebar .sidebar-workspace,[data-sidebar-tone=graphite] .sidebar .sidebar-workspace{background:var(--surface2);border-color:var(--border);color:#eaf2ff}
+[data-sidebar-tone=navy] .sidebar .sidebar-workspace b,[data-sidebar-tone=graphite] .sidebar .sidebar-workspace b,
+[data-sidebar-tone=navy] .sidebar .sidebar-workspace small,[data-sidebar-tone=graphite] .sidebar .sidebar-workspace small,
+[data-sidebar-tone=navy] .sidebar .account b,[data-sidebar-tone=graphite] .sidebar .account b{color:#eaf2ff}
+[data-theme=dark][data-sidebar-tone=white] .sidebar,[data-sidebar-tone=white] .sidebar{background:#fff;--side:#fff;--text:#22344d;--surface2:#f5f7fa;--muted2:#516681;--border:#e2eaf2;--accent-soft:#eef2ff}
+[data-theme=dark][data-sidebar-tone=white] .sidebar .nav-link,[data-sidebar-tone=white] .sidebar .nav-link{color:#2c405a}
+[data-sidebar-tone=white] .sidebar .sidebar-workspace b,[data-theme=dark][data-sidebar-tone=white] .sidebar .sidebar-workspace b{color:#182a44}
+.accent-swatch{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:7px;vertical-align:-1px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.swatch-purple{background:#8255f7}.swatch-blue{background:#2479ec}.swatch-teal{background:#0a927d}
+.swatch-coral{background:#e46c62}.swatch-amber{background:#d48c28}.swatch-rose{background:#cb427d}.swatch-graphite{background:#405e7a}
+.pref-option{font-weight:650;color:var(--text);font-size:12px;min-height:39px}
+.ads-platform-tab{display:flex;align-items:center;justify-content:center;gap:10px;font-size:12px;font-weight:700}
+.ads-platform-tab .provider-logo{display:flex;width:29px;height:29px;flex:0 0 29px;background:transparent;border:0}
+.ads-platform-tab .provider-logo img{width:24px;height:24px}
+@media(max-width:640px){.ads-platform-tab{flex-direction:column;gap:4px;padding:9px 5px;font-size:10px}.ads-platform-tab .provider-logo{width:24px;height:24px;flex:0 0 24px}}
+/* Animated skeleton under the initial preparation stage and while GA4 loads */
+.initial-load{flex-direction:column;gap:14px;background:var(--bg)}
+.initial-load:after{content:'';width:min(315px,68vw);height:5px;background:linear-gradient(90deg,var(--border),var(--accent-soft),var(--accent),var(--accent-soft),var(--border));background-size:250% 100%;border-radius:20px;animation:ga-shimmer 2.1s ease-in-out infinite;opacity:.83}
+.ga-loading-state{background:var(--surface);border-radius:14px}
+.ga-loading-bars i{will-change:background-position}
+@media(prefers-reduced-motion:reduce){.initial-load:after{animation:none}}
