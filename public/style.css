@@ -810,3 +810,25 @@ input,select,textarea{max-width:100%}
 .brand-word span{color:var(--accent)}
 .avatar,.top-avatar{background:var(--accent-soft);color:var(--accent);box-shadow:none;border:1px solid var(--border)}
 .avatar svg,.top-avatar svg{display:block}
+
+/* Edwin CRM | Corporate Blue 2026. User-selectable color themes remain available. */
+:root{
+ --bg:#F4F7FC;--side:#FFFFFF;--surface:#FFFFFF;--surface2:#F8FAFD;
+ --text:#0F2747;--muted2:#64748B;--border:#E2E8F0;
+ --accent:#2563EB;--accent2:#1D4ED8;--accent-soft:#DBEAFE;
+ --grid:#E8EEF7;--area:#F4F7FC;--cyan:#06B6D4;--mint:#14B8A6;
+}
+[data-theme=dark]{
+ --bg:#0F172A;--side:#111C30;--surface:#1E293B;--surface2:#253449;
+ --text:#F8FAFC;--muted2:#CBD5E1;--border:#334155;
+ --accent:#60A5FA;--accent2:#3B82F6;--accent-soft:#1D375E;
+ --grid:#344359;--area:#152239;--cyan:#22D3EE;--mint:#2DD4BF;
+}
+:root[data-accent=blue]{--accent:#2563EB;--accent2:#1D4ED8;--accent-soft:#DBEAFE}
+[data-theme=dark][data-accent=blue]{--accent:#60A5FA;--accent2:#3B82F6;--accent-soft:#1D375E}
+.button-primary{background:#2563EB;color:#FFFFFF;box-shadow:0 5px 14px rgba(37,99,235,.16)}
+.button-primary:hover:not(:disabled){background:#1D4ED8;filter:none}
+.button-primary:focus-visible{outline:3px solid #93C5FD;outline-offset:2px}
+[data-theme=dark] .button-primary{background:#3B82F6;color:#FFFFFF}
+[data-theme=dark] .button-primary:hover:not(:disabled){background:#2563EB}
+.crm-brand-mark{background:var(--accent-soft);color:var(--accent)}
