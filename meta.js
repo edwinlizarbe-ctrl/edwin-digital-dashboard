@@ -1,8 +1,8 @@
 /**
- * Meta Ads pilot — Edwin Digital only.
+ * Meta Ads per authorized business — read-only OAuth connection.
  * OAuth handled entirely on Cloudflare Worker. No third-party intermediary.
  * Encrypted HttpOnly cookies avoid database/schema changes for the first test.
- * Pilot tradeoff: one connection per browser, expiring with the Meta token.
+ * Session tradeoff: one connection per browser at a time; tokens expire and are not shared across businesses.
  */
 const META_COOKIE = 'ed_meta_pilot';
 const META_PENDING = 'ed_meta_pending';
@@ -92,17 +92,18 @@ function metaSameOriginJson(req) {
 function metaValidBusinessId(id) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
-async function metaPilotBusiness(env, session, businessId) {
-  if (session.user.role!=='admin' || !metaValidBusinessId(businessId)) return false;
-  // Use the user's JWT; Supabase RLS must authorize the business.
+async function metaAuthorizedBusiness(env, session, businessId) {
+  if (!session?.user?.id || !metaValidBusinessId(businessId)) return false;
+  // Supabase JWT + RLS restrict businesses to the authenticated account.
+  // No service-role credentials are used to bypass per-business visibility.
   const endpoint = String(env.SUPABASE_URL).replace(/\/$/,'') +
-    '/rest/v1/businesses?select=id,slug&id=eq.'+encodeURIComponent(businessId)+'&limit=1';
+    '/rest/v1/businesses?select=id&id=eq.'+encodeURIComponent(businessId)+'&limit=1';
   const r=await fetch(endpoint,{headers:{
     apikey:env.SUPABASE_ANON_KEY, Authorization:'Bearer '+session.access, Accept:'application/json',
   }});
   if(!r.ok)return false;
   const rows=await r.json();
-  return rows.length===1 && rows[0].slug==='edwin-digital';
+  return Array.isArray(rows) && rows.length===1 && rows[0].id===businessId;
 }
 async function metaGraph(env, urlPath, token, fields) {
   const config=metaConfig(env);
@@ -135,7 +136,7 @@ export async function handleMetaApi(req,env,s) {
   const error=(message,status=400)=>reply({error:message},status);
   if(path==='/api/meta/status' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
-    if(!await metaPilotBusiness(env,s,businessId))return error('Esta conexión piloto solo está disponible para el administrador de Edwin Digital.',403);
+    if(!await metaAuthorizedBusiness(env,s,businessId))return error('No tienes acceso a Meta Ads para este negocio autorizado.',403);
     if(!config.ready)return reply({configured:false,connected:false,reason:'Meta Ads todavía no está configurado en los secretos de Cloudflare.'});
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId))return reply({configured:true,connected:false});
@@ -148,7 +149,7 @@ export async function handleMetaApi(req,env,s) {
     if(!config.ready)return error('Configura primero META_APP_ID, META_APP_SECRET, META_REDIRECT_URI y META_SESSION_KEY en Cloudflare.',503);
     if(url.origin!==new URL(config.redirect).origin)return error('El dominio no coincide con el dominio configurado para Meta.',403);
     const businessId=url.searchParams.get('business_id')||'';
-    if(!await metaPilotBusiness(env,s,businessId))return error('No tienes acceso a esta conexión piloto.',403);
+    if(!await metaAuthorizedBusiness(env,s,businessId))return error('No tienes acceso a Meta Ads para este negocio.',403);
     const state=metaBytesTo64(crypto.getRandomValues(new Uint8Array(24)));
     const pending=await sealMeta(env,{state,business:businessId,user:s.user.id,expires:Date.now()+10*60*1000});
     const authorize=new URL('https://www.facebook.com/'+config.version+'/dialog/oauth');
@@ -166,7 +167,7 @@ export async function handleMetaApi(req,env,s) {
     const expired=!pending || pending.expires<Date.now() || pending.user!==s.user.id ||
       pending.state!==url.searchParams.get('state');
     if(expired)return error('La autorización ha caducado o no coincide con esta sesión. Vuelve a conectar Meta.',403);
-    if(!await metaPilotBusiness(env,s,pending.business))return error('Acceso a negocio no autorizado.',403);
+    if(!await metaAuthorizedBusiness(env,s,pending.business))return error('Acceso a negocio no autorizado.',403);
     if(url.searchParams.has('error'))return metaRedirect(metaResultUrl(env,'cancelled'),cookies,[metaCookie(META_PENDING,'',0)]);
     const code=url.searchParams.get('code')||'';
     if(!code || code.length>2000)return error('Meta no devolvió un código de autorización válido.');
@@ -203,7 +204,7 @@ export async function handleMetaApi(req,env,s) {
     if(raw.length>1024)return error('Solicitud demasiado grande.',413);
     let input;try{input=JSON.parse(raw);}catch{return error('Solicitud no válida.');}
     const businessId=input?.business_id||'', accountId=input?.account_id||'';
-    if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    if(!await metaAuthorizedBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
     if(!/^act_\d+$/.test(accountId))return error('Selecciona una cuenta publicitaria válida.');
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId))return error('Necesitas conectar Meta Ads nuevamente.',401);
@@ -216,7 +217,7 @@ export async function handleMetaApi(req,env,s) {
   }
   if(path==='/api/meta/report' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
-    if(!await metaPilotBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    if(!await metaAuthorizedBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId)||!/^act_\d+$/.test(connection?.account||''))return error('Primero conecta Meta y selecciona una cuenta.',401);
     // Dates use Meta's account-level timezone and aggregate at account level.
@@ -230,6 +231,38 @@ export async function handleMetaApi(req,env,s) {
     return reply({configured:true,account_id:connection.account,currency:(await metaAccounts(env,connection.token)).find(a=>a.id===connection.account)?.currency||'',
       period,metrics:values?{spend:values.spend??null,clicks:values.clicks??null,impressions:values.impressions??null,
         ctr:values.ctr??null,cpc:values.cpc??null}:null});
+  }
+  if(path==='/api/meta/campaigns' && method==='GET') {
+    const businessId=url.searchParams.get('business_id')||'';
+    if(!await metaAuthorizedBusiness(env,s,businessId))return error('Negocio no autorizado.',403);
+    const connection=await unsealMeta(env,jar[META_COOKIE]);
+    if(!validMetaSession(connection,s,businessId)||!/^act_\d+$/.test(connection?.account||''))
+      return error('Conecta Meta Ads y selecciona una cuenta publicitaria.',401);
+    const period=url.searchParams.get('period')||'30';
+    if(!META_PERIODS.has(period))return error('Período no válido.');
+    const level=url.searchParams.get('level')||'campaign';
+    if(!['campaign','adset','ad'].includes(level))return error('Nivel de anuncios no válido.');
+    const presets={today:'today',yesterday:'yesterday','7':'last_7d','30':'last_30d','90':'last_90d','365':'last_year'};
+    // Only data from the account previously selected and checked against /me/adaccounts.
+    const account=await metaAccounts(env,connection.token);
+    const selected=account.find(a=>a.id===connection.account);
+    if(!selected)return error('Esta cuenta publicitaria ya no está autorizada.',403);
+    const fields=level==='campaign'?'campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc':
+      level==='adset'?'campaign_name,adset_id,adset_name,spend,impressions,clicks,ctr,cpc':
+      'campaign_name,adset_name,ad_id,ad_name,spend,impressions,clicks,ctr,cpc';
+    const report=await metaGraph(env,'/'+connection.account+'/insights',connection.token,{
+      fields,date_preset:presets[period],level,limit:100,
+    });
+    const results=(report.data||[]).map(row=>({
+      id:String(row.ad_id||row.adset_id||row.campaign_id||''),
+      name:String(row.ad_name||row.adset_name||row.campaign_name||'Sin nombre'),
+      campaign_name:String(row.campaign_name||''),
+      adset_name:String(row.adset_name||''),
+      spend:row.spend??null,impressions:row.impressions??null,clicks:row.clicks??null,
+      ctr:row.ctr??null,cpc:row.cpc??null,
+    }));
+    return reply({account_id:connection.account,currency:selected.currency||'',period,level,
+      rows:results,has_more:!!report.paging?.next});
   }
   if(path==='/api/meta/disconnect' && method==='POST') {
     if(!metaSameOriginJson(req))return error('Solicitud no autorizada.',403);
