@@ -128,11 +128,14 @@ function validMetaSession(value,s,businessId) {
   return !!(value && value.user===s.user.id && value.business===businessId && value.token &&
     Number(value.expires)>Date.now());
 }
-function metaResultUrl(config, flag,returnTo='') {
-  // Do not accept arbitrary redirects. Only predeclared dashboard destinations.
+function metaResultUrl(config, flag,returnTo='',businessId='') {
+  // No arbitrary redirects. The selected company is authorized in the signed-in session.
   const home=new URL('/',config.redirect);
   home.searchParams.set('meta',flag);
-  if(returnTo==='campaigns')home.searchParams.set('return_to','campaigns');
+  if(returnTo==='campaigns'){
+    home.searchParams.set('return_to','campaigns');
+    if(metaValidBusinessId(businessId))home.searchParams.set('business_id',businessId);
+  }
   return home.toString();
 }
 export async function handleMetaApi(req,env,s) {
@@ -175,7 +178,7 @@ export async function handleMetaApi(req,env,s) {
       pending.state!==url.searchParams.get('state');
     if(expired)return error('La autorización ha caducado o no coincide con esta sesión. Vuelve a conectar Meta.',403);
     if(!await metaPilotBusiness(env,s,pending.business))return error('Acceso a negocio no autorizado.',403);
-    if(url.searchParams.has('error'))return metaRedirect(metaResultUrl(config,'cancelled',pending.returnTo),cookies,[metaCookie(META_PENDING,'',0)]);
+    if(url.searchParams.has('error'))return metaRedirect(metaResultUrl(config,'cancelled',pending.returnTo,pending.business),cookies,[metaCookie(META_PENDING,'',0)]);
     const code=url.searchParams.get('code')||'';
     if(!code || code.length>2000)return error('Meta no devolvió un código de autorización válido.');
     const exchange=new URL('https://graph.facebook.com/'+config.version+'/oauth/access_token');
@@ -201,7 +204,7 @@ export async function handleMetaApi(req,env,s) {
       user:s.user.id,business:pending.business,token:info.access_token,
       account:null,accounts:[],expires:Date.now()+seconds*1000,
     });
-    return metaRedirect(metaResultUrl(config,'connected',pending.returnTo),cookies,[
+    return metaRedirect(metaResultUrl(config,'connected',pending.returnTo,pending.business),cookies,[
       metaCookie(META_PENDING,'',0),metaCookie(META_COOKIE,connection,seconds)
     ]);
   }
