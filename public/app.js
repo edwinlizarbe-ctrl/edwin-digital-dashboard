@@ -128,7 +128,7 @@
     link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2m3 6a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2"/>',
   };
   const icon = (name, size=19) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.activity}</svg>`;
-  const brand = large => `<div class="brand ${large ? 'brand-large' : ''}" aria-label="eDigital"><div class="brand-word">eDigital</div></div>`;
+  const brand = large => `<div class="brand ${large ? 'brand-large' : ''}" aria-label="E Digital.IA"><div class="brand-word">E Digital<span>.IA</span></div></div>`;
 
   async function api(path, options={}) {
     // Ensure a stalled authentication service does not leave the splash screen forever.
@@ -372,7 +372,7 @@ function campaigns(){
  const connected=state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account);
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
  const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']];
- const controls=`<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">${choices.map(([value,label])=>`<button type="button" class="ads-platform-tab ${platform===value?'active':''}" data-act="ads-platform" data-platform="${value}" aria-pressed="${platform===value}" >${label}</button>`).join('')}</div><div class="ads-toolbar"><label class="form-label">Detalle<select id="ads-level" class="meta-select">${[['campaign','Campañas'],['adset','Conjuntos'],['ad','Anuncios']].map(([value,label])=>`<option value="${value}" ${level===value?'selected':''}>${label}</option>`).join('')}</select></label><button class="button button-outline" data-act="ads-refresh">${icon('refresh',16)} Actualizar</button></div>`;
+ const controls=`<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">${choices.map(([value,label])=>`<button type="button" class="ads-platform-tab ${platform===value?'active':''}" data-act="ads-platform" data-platform="${value}" aria-pressed="${platform===value}" >${providerLogo(label)}<span>${label}</span></button>`).join('')}</div><div class="ads-toolbar"><label class="form-label">Detalle<select id="ads-level" class="meta-select">${[['campaign','Campañas'],['adset','Conjuntos'],['ad','Anuncios']].map(([value,label])=>`<option value="${value}" ${level===value?'selected':''}>${label}</option>`).join('')}</select></label><button class="button button-outline" data-act="ads-refresh">${icon('refresh',16)} Actualizar</button></div>`;
  let result='';
  if(platform!=='meta')result=empty('Esta plataforma aún necesita autorización de la API oficial.','Integración pendiente');
  else if(!connected)result=campaignMetaSetup();
@@ -693,9 +693,9 @@ async function loadAccounts(){
 
   function settings(){
  const theme=[['light','Claro'],['dark','Oscuro']];
- const palettes=[['purple','Violeta'],['blue','Azul'],['teal','Turquesa']];
- const sidebar=[['auto','Según tema'],['white','Blanco'],['blue','Azul oscuro']];
- const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${t}</button>`).join('')}</div>`;
+ const palettes=[['purple','Violeta'],['blue','Azul'],['teal','Turquesa'],['coral','Coral'],['amber','Ámbar'],['rose','Rosa'],['graphite','Grafito']];
+ const sidebar=[['auto','Según tema'],['white','Blanco'],['blue','Azul oscuro'],['navy','Azul marino'],['graphite','Grafito oscuro']];
+ const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${key==='accent'?`<i class="accent-swatch swatch-${v}" aria-hidden="true"></i>`:''}${t}</button>`).join('')}</div>`;
  return `${heading('Preferencias','Mi cuenta y seguridad','Acceso, contraseña y colores del panel en un mismo lugar.')}
  <div class="content-grid account-grid">
  <div class="col-7">${card('Cambiar mi contraseña','Tu seguridad, siempre a la vista',`<form id="change-password-form" class="security-form" autocomplete="off">
@@ -719,7 +719,7 @@ async function loadAccounts(){
  <button type="submit" class="button button-outline" ${state.emailBusy?'disabled':''}>${state.emailBusy?'Solicitando…':'Solicitar cambio de correo'}</button>
  </form></details>
  <p class="fine-print">Cambiar el correo requiere confirmar tu identidad y puede necesitar una confirmación enviada por Supabase.</p>`)}</div>
- <div class="col-12">${card('Personalización de colores','Una apariencia discreta para tu panel',`
+ <div class="col-12">${card('Personalización de colores','Elige colores y estilo del menú según tu marca',`
  <div class="appearance-grid"><div><h4>Apariencia general</h4>${picker('theme',theme,state.theme)}</div>
  <div><h4>Color de acento</h4>${picker('accent',palettes,state.accent)}</div>
  <div><h4>Menú lateral</h4>${picker('sidebar',sidebar,state.sidebarTone)}</div></div>
@@ -744,7 +744,7 @@ function sidebar(){
     setTheme();
     // Refresh floating helper after every screen transition, including sign-in/out.
     queueMicrotask(() => window.dispatchEvent(new Event('edigital:render')));
-    if(state.loading){root.innerHTML=`<div class="initial-load"><span class="spinner"></span><strong>Preparando eDigital…</strong></div>`;return;}
+    if(state.loading){root.innerHTML=`<div class="initial-load"><span class="spinner"></span><strong>Preparando E Digital.IA…</strong></div>`;return;}
     if(!state.user){login();return;}
     if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
     if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
@@ -755,7 +755,7 @@ function sidebar(){
       console.error('Unable to render eDigital view:',error);
       pageMarkup=`<section class="card page-render-error"><h2>No pudimos cargar esta sección</h2><p>La información de tu cuenta sigue protegida. Intenta actualizar el panel; si continúa ocurriendo, avisa al administrador.</p><button type="button" class="button button-primary" data-act="refresh">Reintentar</button></section>`;
     }
-    root.innerHTML=`<div class="layout ${state.sidebarCollapsed?'sidebar-collapsed':''}">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${pageMarkup}</main><footer class="footer"><span>© ${new Date().getFullYear()} eDigital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
+    root.innerHTML=`<div class="layout ${state.sidebarCollapsed?'sidebar-collapsed':''}">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${pageMarkup}</main><footer class="footer"><span>© ${new Date().getFullYear()} E Digital.IA · Plataforma de análisis</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
   }
   async function loadAds(){
  if(isAdmin()||!state.businessId||state.adsPlatform!=='meta'){state.metaCampaigns=null;state.adsLoading=false;render();return;}
@@ -888,8 +888,8 @@ function sidebar(){
     else if(action==='set-pref'){
       const key=b.dataset.key,value=b.dataset.value;
       if(key==='theme'&&['light','dark'].includes(value)){state.theme=value;localStorage.setItem('ed-theme-v3',value);}
-      else if(key==='accent'&&['purple','blue','teal'].includes(value)){state.accent=value;localStorage.setItem('ed-accent-v7',value);}
-      else if(key==='sidebar'&&['auto','white','blue'].includes(value)){state.sidebarTone=value;localStorage.setItem('ed-sidebar-v7',value);}
+      else if(key==='accent'&&['purple','blue','teal','coral','amber','rose','graphite'].includes(value)){state.accent=value;localStorage.setItem('ed-accent-v7',value);}
+      else if(key==='sidebar'&&['auto','white','blue','navy','graphite'].includes(value)){state.sidebarTone=value;localStorage.setItem('ed-sidebar-v7',value);}
       render();
     }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
