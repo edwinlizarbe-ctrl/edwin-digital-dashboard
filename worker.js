@@ -283,7 +283,12 @@ async function handleApi(req, env) {
       fetch(base+'/rest/v1/profiles?select=id,role,email&limit=1000',{headers}),
       fetch(base+'/auth/v1/admin/users?per_page=200&page=1',{headers})
     ]);
-    if(!pResponse.ok||!uResponse.ok)return json({error:'No se pudieron consultar las cuentas. Comprueba la configuración administrativa.'},502,s.cookies);
+    if(!pResponse.ok||!uResponse.ok){
+      const failed=!pResponse.ok?'perfiles':'Supabase Auth';
+      const status=!pResponse.ok?pResponse.status:uResponse.status;
+      console.error('Admin accounts upstream failed:',failed,status);
+      return json({error:'No se pudo consultar '+failed+' (HTTP '+status+'). Verifica la clave administrativa y los permisos de Supabase.',source:failed},502,s.cookies);
+    }
     const profiles=await pResponse.json(),auth=await uResponse.json();
     const known=new Map((Array.isArray(profiles)?profiles:[]).map(p=>[p.id,p]));
     const users=Array.isArray(auth.users)?auth.users:[];
