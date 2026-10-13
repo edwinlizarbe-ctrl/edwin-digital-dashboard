@@ -791,6 +791,7 @@ function sidebar(){
     try{
       const status=await api('/api/status');if(!status.configured)throw new Error(`Configuración pendiente: ${(status.missing||[]).join(', ')}`);
       const user=await api('/api/me');const companies=await api('/api/businesses');
+      const returnBusiness=new URLSearchParams(location.search).get('business_id');
       state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){
         const parameters=new URLSearchParams(location.search),campaignReturn=parameters.get('return_to')==='campaigns';
         state.page=campaignReturn?'campaigns':'integrations';
@@ -799,7 +800,10 @@ function sidebar(){
         history.replaceState({},'',location.pathname+location.hash);
       }state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
       if(isAdmin())await loadAdminStats();
-      else if(state.businesses.length){await chooseBusiness(state.businesses[0].id);if(state.page==='campaigns')await loadAds();}
+      else if(state.businesses.length){
+        const targetBusiness=state.businesses.find(x=>x.id===returnBusiness)?.id||state.businesses[0].id;
+        await chooseBusiness(targetBusiness);if(state.page==='campaigns')await loadAds();
+      }
     }catch(e){state.loading=false;state.user=null;state.loginBusy=false;if(e.status!==401)state.startupError=e.message;render();}
   }
   function doCsv(dataset=''){
