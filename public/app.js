@@ -10,6 +10,7 @@
     mobileOpen: false, search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
+    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -362,6 +363,17 @@ function sidebar(){
     const contents={overview,analytics,acquisition,campaigns,utm,audience,content,events,hotmart,reports,clients,clientDetail,adminHome,adminIntegrations,integrations,settings};
     root.innerHTML=`<div class="layout">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${(contents[state.page]||overview)()}</main><footer class="footer"><span>© ${new Date().getFullYear()} Edwin Digital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
   }
+  async function loadAds(){
+ if(isAdmin()||!state.businessId||state.adsPlatform!=='meta'){state.metaCampaigns=null;state.adsLoading=false;render();return;}
+ const businessId=state.businessId,period=state.period,level=state.adsLevel;
+ if(!state.meta?.connected||!state.meta?.selected_account){state.metaCampaigns=null;state.adsLoading=false;render();return;}
+ state.adsLoading=true;state.adsError='';state.metaCampaigns=null;render();
+ try{
+  const rows=await api('/api/meta/campaigns?business_id='+encodeURIComponent(businessId)+'&period='+encodeURIComponent(period)+'&level='+encodeURIComponent(level));
+  if(state.businessId===businessId&&state.period===period&&state.adsLevel===level)state.metaCampaigns=rows;
+ }catch(e){if(state.businessId===businessId)state.adsError=e.message;}
+ finally{if(state.businessId===businessId){state.adsLoading=false;render();}}
+}
   async function refresh() {
     const generation=++state.requestId, b=state.businessId, s=state.siteId, p=state.period;
     state.ga=null;state.hm=null;state.gaError='';state.hmError='';
@@ -375,7 +387,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.meta=null;state.metaReport=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await refresh();if(metaPilotEligible())await loadMeta();}
@@ -406,10 +418,11 @@ function sidebar(){
     const action=b.dataset.act;
     if(action==='theme'){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('ed-theme-v3',state.theme);render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
-    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();}
+    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await refresh();
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
     else if(action==='meta-refresh')await loadMeta();
+    else if(action==='ads-refresh'){await loadMeta();await loadAds();}
     else if(action==='meta-disconnect'){
       if(confirm('¿Desconectar Meta Ads de este navegador? Puedes volver a autorizarla.')){
         try{await api('/api/meta/disconnect',{method:'POST',body:'{}'});await loadMeta();}
@@ -438,10 +451,12 @@ function sidebar(){
     else if(e.target.id==='site-selector'){state.siteId=e.target.value;await refresh();}
     else if(e.target.id==='meta-ad-account'){
       if(!e.target.value)return;
-      try{await api('/api/meta/select',{method:'POST',body:JSON.stringify({business_id:state.businessId,account_id:e.target.value})});await loadMeta();}
+      try{await api('/api/meta/select',{method:'POST',body:JSON.stringify({business_id:state.businessId,account_id:e.target.value})});state.metaCampaigns=null;await loadMeta();}
       catch(error){state.metaError=error.message;render();}
     }
-    else if(e.target.id==='date-period'){state.period=e.target.value;await refresh();if(state.page==='integrations')await loadMeta();}
+    else if(e.target.id==='ads-platform'){state.adsPlatform=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
+    else if(e.target.id==='ads-level'){state.adsLevel=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
+    else if(e.target.id==='date-period'){state.period=e.target.value;await refresh();if(state.page==='integrations'||state.page==='campaigns')await loadMeta();if(state.page==='campaigns')await loadAds();}
   });
   document.addEventListener('input',e=>{
     if(e.target.id!=='global-search')return;
