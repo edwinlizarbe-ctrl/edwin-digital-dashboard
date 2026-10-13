@@ -60,6 +60,20 @@ export async function handleFeaturesApi(req,env,s){
  }
  if(!path.startsWith('/api/admin/business-features'))return response({error:'Ruta inexistente.'},404,s.cookies);
  if(s.user.role!=='admin')return response({error:'Acceso exclusivo del administrador.'},403,s.cookies);
+ if(path==='/api/admin/business-features/health'&&method==='GET'){
+  const serviceRoleConfigured=!!env.SUPABASE_SERVICE_ROLE_KEY;
+  if(!serviceRoleConfigured)return response({configured:false,service_role_configured:false,migration_applied:null,reason:'Falta SUPABASE_SERVICE_ROLE_KEY en Cloudflare.'},200,s.cookies);
+  const key=env.SUPABASE_SERVICE_ROLE_KEY;
+  try{
+   const check=await fetch(supaBase(env)+'/rest/v1/ed_business_features?select=business_id&limit=0',{
+    headers:{apikey:key,Authorization:'Bearer '+key,Accept:'application/json'}
+   });
+   return response({configured:check.ok,service_role_configured:true,migration_applied:check.ok,
+    ...(!check.ok?{reason:'No se puede consultar la tabla de permisos. Verifica la migración y la credencial del servidor.'}:{})},200,s.cookies);
+  }catch{
+   return response({configured:false,service_role_configured:true,migration_applied:null,reason:'No se pudo comprobar la conexión con Supabase.'},200,s.cookies);
+  }
+ }
  if(method==='GET'&&url.searchParams.get('list')==='1'){
   if(!env.SUPABASE_SERVICE_ROLE_KEY)return response({configured:false,plans:[],reason:'Falta SUPABASE_SERVICE_ROLE_KEY.'},200,s.cookies);
   const permitted=await fetch(supaBase(env)+'/rest/v1/businesses?select=id&limit=500',{headers:{apikey:env.SUPABASE_ANON_KEY,Authorization:'Bearer '+s.access}});
