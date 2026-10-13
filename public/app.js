@@ -339,7 +339,7 @@
     const saved=m.selected_accounts||[m.selected_account].filter(Boolean),accounts=m.accounts||[];
     const isOpen=state.campaignConnectionOpen;
     if(!isOpen){
-      return '<div class="ads-connected-compact"><span class="ads-connected-dot '+(connected?'':'pending')+'" aria-hidden="true"></span><div><strong>'+(connected?'Meta Ads conectado':'Conecta Meta Ads desde aquí')+'</strong><small>'+(connected?saved.length+' cuenta(s) autorizadas para '+clean(displayBusiness()):'Conecta Facebook y selecciona tus cuentas sin salir del dashboard')+'</small></div><button type="button" class="button '+(connected?'button-outline':'button-primary')+'" data-act="campaign-connect-toggle">'+(connected?'Administrar cuentas':'Conectar Meta Ads')+'</button></div>';
+      return '<div class="ads-connected-compact"><span class="ads-connected-dot '+(connected?'':'pending')+'" aria-hidden="true"></span><div><strong>'+(connected?'Meta Ads conectado':'Conecta Meta Ads desde aquí')+'</strong><small>'+(connected?saved.length+' cuenta(s) autorizadas para '+clean(displayBusiness()):'Conecta Facebook y selecciona tus cuentas sin salir del dashboard')+'</small></div><div class="ads-connection-actions"><button type="button" class="button '+(connected?'button-outline':'button-primary')+'" data-act="campaign-connect-toggle">'+(connected?'Administrar cuentas':'Conectar Meta Ads')+'</button>'+(connected?'<button type="button" class="button button-outline ads-disconnect-button" data-act="meta-disconnect" aria-label="Desconectar Meta Ads de este navegador">Desconectar</button>':'')+'</div></div>';
     }
     const stage=state.campaignWizardStage==='confirm'&&connected?'confirm':connected?'accounts':'authorize';
     const chosen=state.campaignWizardSelectedIds||saved;
@@ -386,7 +386,7 @@
         '<span class="connector-account-currency">'+clean(a.currency||'—')+'</span></label>').join('');
       content='<div class="connector-form-heading"><div><h3>Seleccionar cuentas publicitarias</h3><p>Selecciona hasta cinco cuentas de Facebook. Puedes buscar por nombre o identificador.</p></div>'+
         '<span class="connector-account-total" id="connector-account-total">'+selectedIds.length+' seleccionada(s)</span></div>'+
-        '<button class="connector-reconnect" type="button" data-act="meta-connect" data-return="campaigns">'+icon('refresh',14)+' Volver a autorizar Facebook</button>'+
+        '<div class="connector-account-toolbar"><button class="connector-reconnect" type="button" data-act="meta-connect" data-return="campaigns">'+icon('refresh',14)+' Volver a autorizar Facebook</button><button class="connector-reconnect connector-disconnect" type="button" data-act="meta-disconnect">'+icon('logout',14)+' Desconectar Meta Ads</button></div>'+
         '<label class="connector-search"><span>'+icon('search',17)+'</span><input id="campaign-meta-search" type="search" placeholder="Buscar cuentas" autocomplete="off" aria-label="Buscar cuentas publicitarias"/></label>'+
         '<div class="connector-account-table"><div class="connector-account-head"><label class="connector-account-check"><input type="checkbox" id="campaign-meta-select-all" aria-label="Seleccionar hasta cinco cuentas visibles"/></label>'+
           '<span>Nombre de la cuenta</span><span>ID de cuenta</span><span>Moneda</span></div>'+
@@ -1126,11 +1126,20 @@ function sidebar(){
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
     else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
-    else if(action==='meta-disconnect'){state.metaPanelOpen=false;
-      if(confirm('¿Desconectar Meta Ads de este navegador? Puedes volver a autorizarla.')){
-        try{await api('/api/meta/disconnect',{method:'POST',body:'{}'});await loadMeta();}
-        catch(e){state.metaError=e.message;render();}
-      }
+    else if(action==='meta-disconnect'){
+      if(!confirm('¿Desconectar Meta Ads de este navegador? Se dejarán de mostrar sus anuncios y métricas en eDigital. Tus campañas en Meta no se borrarán.'))return;
+      const current=state.businessId;
+      try{
+        await api('/api/meta/disconnect',{method:'POST',body:'{}'});
+        if(state.businessId!==current)return;
+        state.metaPanelOpen=false;
+        state.campaignConnectionOpen=false;
+        state.campaignWizardSelectedIds=[];
+        state.metaCampaigns=null;
+        state.adsError='';
+        state.campaignAccountNotice='';
+        await loadMeta();
+      }catch(e){if(state.businessId===current){state.metaError=e.message;render();}}
     }
     else if(action==='choose'){state.page='overview';await chooseBusiness(b.dataset.id);}
     else if(action==='client-detail'){if(isAdmin()){state.page='clientDetail';await chooseBusiness(b.dataset.id);window.scrollTo(0,0);}}
