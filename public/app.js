@@ -15,7 +15,7 @@
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
     adminHealth: null, adminHealthError: '',
-    adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsError: '', accountNotice: '',
+    adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsError: '', accountNotice: '', temporaryAccess: null,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -450,12 +450,13 @@ async function loadAccounts(){
   const results=list.map(u=>`<div class="client-site-row account-access-row">
     <div class="client-avatar compact">${icon('users',19)}</div>
     <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Rol: ${clean(u.role||'Cliente')} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
-    <button class="button button-outline" data-act="account-recovery" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Recuperar acceso</button>
+    <div class="account-access-actions"><button class="button button-outline" data-act="account-recovery" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Enviar enlace</button><button class="button button-soft" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Clave temporal</button></div>
   </div>`).join('');
   return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
     <div class="account-access-toolbar"><button class="button button-outline" data-act="accounts-refresh" ${state.accountsLoading?'disabled':''}>${icon('refresh',16)} ${state.accountsLoading?'Consultando…':'Actualizar usuarios'}</button><span>${fmt(list.length)} cuentas visibles</span></div>
     ${state.accountsError?alertBlock(state.accountsError,'info'):''}
     ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
+    ${state.temporaryAccess?`<div class="temporary-credential" role="status"><strong>Clave temporal de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code>${clean(state.temporaryAccess.password)}</code><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar</button></div><p>Se muestra solo ahora. Envíala de forma privada y pide al cliente que la cambie en Mi cuenta.</p></div>`:''}
     ${card('Usuarios de clientes','Correos registrados en Supabase Auth',results||empty(state.accountsLoading?'Consultando cuentas…':state.accountsLoaded?'No hay cuentas de clientes disponibles.':'Pulsa Actualizar usuarios para consultar las cuentas.'))}
     <p class="fine-print">Las contraseñas no se almacenan ni pueden consultarse aquí. La recuperación envía un enlace al correo del cliente mediante Supabase Auth. Los accesos a empresas siguen sujetos a permisos.</p>`;
 }
@@ -742,11 +743,22 @@ function sidebar(){
     }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
-    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin())await loadAdminHealth();if(state.page==='accounts'&&isAdmin())await loadAccounts();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin())await loadAdminHealth();if(state.page==='accounts'&&isAdmin())await loadAccounts();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
-    else if(action==='accounts-refresh'&&isAdmin())await loadAccounts();
+    else if(action==='accounts-refresh'&&isAdmin()){state.temporaryAccess=null;await loadAccounts();}
+    else if(action==='account-copy-temp'&&isAdmin()&&state.temporaryAccess){
+      try{await navigator.clipboard.writeText(state.temporaryAccess.password);state.accountNotice='Clave copiada al portapapeles. Compártela por un canal privado.';}
+      catch{state.accountNotice='Selecciona y copia la clave de forma manual.';}render();
+    }
+    else if(action==='account-temp'&&isAdmin()){
+      const email=b.dataset.email||'',id=b.dataset.id||'';
+      if(!confirm('¿Generar una contraseña temporal nueva para '+email+'? La contraseña anterior dejará de funcionar.'))return;
+      state.temporaryAccess=null;state.accountNotice='';state.accountsError='';
+      try{const out=await api('/api/admin/accounts/temporary-password',{method:'POST',body:JSON.stringify({user_id:id})});state.temporaryAccess={email:out.email,password:out.temporary_password};state.accountNotice=out.message||'Clave temporal creada.';}
+      catch(e){state.accountsError=e.message;}render();
+    }
     else if(action==='account-recovery'&&isAdmin()){
       const email=b.dataset.email||'',id=b.dataset.id||'';
       if(!confirm('¿Enviar un enlace de recuperación de contraseña a '+email+'?'))return;
@@ -776,7 +788,7 @@ function sidebar(){
     else if(action==='show-password'){const input=document.getElementById('password');if(input)input.type=input.type==='password'?'text':'password';}
     else if(action==='logout'){
       ++state.requestId;await api('/api/auth/logout',{method:'POST',body:'{}'}).catch(()=>{});
-      Object.assign(state,{user:null,businesses:[],sites:[],businessId:'',siteId:'',ga:null,hm:null,gaError:'',hmError:'',meta:null,metaReport:null,metaError:'',page:'overview',mobileOpen:false,search:''});render();
+      Object.assign(state,{user:null,temporaryAccess:null,businesses:[],sites:[],businessId:'',siteId:'',ga:null,hm:null,gaError:'',hmError:'',meta:null,metaReport:null,metaError:'',page:'overview',mobileOpen:false,search:''});render();
     }
   });
   document.addEventListener('keydown', e=>{
