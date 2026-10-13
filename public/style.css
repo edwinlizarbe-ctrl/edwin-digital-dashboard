@@ -551,3 +551,25 @@ input,select,textarea{max-width:100%}
 .ads-modal-shell .ads-account-list{max-height:280px}
 .ads-connected-dot.pending{background:#e7ad53;box-shadow:0 0 0 4px #e7ad531b}
 @media(max-width:650px){.ads-modal-shell{width:calc(100vw - 18px);max-height:calc(100dvh - 22px);border-radius:14px}.ads-modal-shell .ads-connection-panel{padding:17px 14px}.ads-modal-shell .ads-wizard-body{padding:16px 13px}}
+
+
+/* E Digital.IA · plan assignment and transparent per-company feature access. */
+.admin-feature-plan-summary{display:flex;flex-direction:column;gap:5px}
+.admin-plan-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:14px 0}
+.admin-plan-option{border:1px solid var(--border);background:var(--surface2);border-radius:13px;padding:17px;display:flex;gap:14px;align-items:center;justify-content:space-between;min-width:0}
+.admin-plan-option.selected{border-color:var(--accent);background:var(--accent-soft)}
+.admin-plan-option b{font-size:13px;color:var(--text)}
+.admin-plan-option p{font-size:11px;line-height:1.6;color:var(--muted2);margin-top:6px;max-width:310px}
+.admin-plan-option .button{flex-shrink:0;font-size:11px}
+.admin-feature-shortcuts{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:12px 0 21px}
+.admin-feature-shortcuts .button{font-size:11px;min-height:40px}
+.admin-permissions-heading{display:flex;justify-content:space-between;gap:18px;align-items:center;margin:19px 0 13px}
+.admin-permissions-heading h3{color:var(--text);font-size:15px}
+.admin-permissions-heading p{color:var(--muted2);font-size:11px;line-height:1.55;margin-top:4px}
+.admin-feature-pill{color:var(--accent);background:var(--accent-soft);border-radius:50px;padding:8px 11px;font-size:11px;font-weight:760;white-space:nowrap}
+.admin-feature-row{min-height:86px}
+.admin-feature-switch input:disabled:checked+span{background:#6bb69b}
+.admin-feature-switch input:disabled:not(:checked)+span{background:#c9d3df}
+.admin-feature-state{font-size:10px;letter-spacing:.4px}
+@media(max-width:880px){.admin-plan-options{grid-template-columns:1fr}.admin-plan-option{gap:12px}}
+@media(max-width:630px){.admin-plan-option{flex-direction:column;align-items:stretch}.admin-plan-option .button{justify-content:center}.admin-feature-shortcuts .button{width:100%;justify-content:center}}
