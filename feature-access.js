@@ -92,10 +92,22 @@ export async function handleFeaturesApi(req,env,s){
  if(feature&&!ED_FEATURES.includes(feature))return response({error:'Integración desconocida.'},400,s.cookies);
  if(feature&&typeof input.enabled!=='boolean')return response({error:'Selecciona Activado o Desactivado.'},400,s.cookies);
  if(!feature&&!['premium','free'].includes(input.plan))return response({error:'Plan no reconocido.'},400,s.cookies);
- if(input.plan==='free')return response({error:'El plan Free todavía no está habilitado para asignaciones.'},409,s.cookies);
- const before=current.row,plan=feature?(before?.plan||'premium'):input.plan;
- const features={...DEFAULT_FEATURES,...(before?.features||{})};
- if(feature)features[feature]=input.enabled;
+ const before=current.row;
+ // Premium always includes every feature entitlement; this does NOT imply that
+ // a provider API marked as coming soon is already operational.
+ const plan=feature?(before?.plan||null):input.plan;
+ if(feature&&plan!=='free')
+  return response({error:'Premium incluye todos los accesos. Para personalizar interruptores asigna primero Free.'},409,s.cookies);
+ const freeDefault={...DEFAULT_FEATURES,meta_ads:false};
+ let features;
+ if(!feature){
+   if(plan==='premium')features=Object.fromEntries(ED_FEATURES.map(key=>[key,true]));
+   else features={...freeDefault};
+ }else{
+   features={...freeDefault,...(before?.features||{})};
+   features[feature]=input.enabled;
+ }
+ if(!['free','premium'].includes(plan))return response({error:'Selecciona un plan antes de modificar los permisos.'},409,s.cookies);
  const key=env.SUPABASE_SERVICE_ROLE_KEY;
  const r=await fetch(supaBase(env)+'/rest/v1/ed_business_features?on_conflict=business_id',{
   method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=representation'},
