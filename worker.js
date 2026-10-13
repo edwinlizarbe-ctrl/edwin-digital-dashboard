@@ -1,5 +1,6 @@
 import { handleMetaApi } from './meta.js';
 import { handleAssistantApi } from './assistant-api.js';
+import { handleFeaturesApi, ensureBusinessFeature } from './feature-access.js';
 /**
  * Edwin Digital Dashboard · Cloudflare Workers
  * Credentials stay in Cloudflare runtime secrets; browser never gets these values.
@@ -150,6 +151,7 @@ async function handleApi(req, env) {
   }
   const s = await session(req, env);
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
+  if(path==='/api/client/features'||path.startsWith('/api/admin/business-features'))return handleFeaturesApi(req,env,s);
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
   if (path.startsWith('/api/assistant/')) return handleAssistantApi(req, env, s);
   if (path === '/api/me' && method === 'GET') return json({ user: s.user }, 200, s.cookies);
@@ -332,6 +334,7 @@ async function handleApi(req, env) {
     const siteId = url.searchParams.get('site_id') || '';
     const period = requestedPeriod(url);
     if (!isUuid(businessId) || !isUuid(siteId)) return json({ error: 'Selecciona un negocio y un sitio válidos.' }, 400, s.cookies);
+    if(!await ensureBusinessFeature(env,s,businessId,'ga4'))return json({error:'Google Analytics no está habilitado para esta empresa.'},403,s.cookies);
     // This REST request is authenticated as the user. Supabase RLS determines
     // which business/site this user can read; NEVER trust a property ID from the browser.
     const allowed = await supaRest(env, `sites?select=id,name,ga4_property_id&business_id=eq.${businessId}&id=eq.${siteId}&limit=1`, s.access);
