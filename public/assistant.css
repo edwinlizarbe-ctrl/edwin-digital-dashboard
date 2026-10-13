@@ -36,3 +36,18 @@
  .eda-message-text{font-size:13px}
 }
 @media(prefers-reduced-motion:reduce){.eda-launcher{transition:none}}
+
+
+/* Polished floating assistant v2 */
+.eda-dialog{width:405px;border-radius:19px;box-shadow:0 16px 60px rgba(22,31,57,.18),0 3px 14px rgba(22,31,57,.05)}
+.eda-head{height:69px;flex-basis:69px}
+.eda-shortcuts{display:flex;gap:7px;padding:11px 14px 9px;border-bottom:1px solid var(--border,#e9ebf3);flex-shrink:0}
+.eda-shortcuts button{flex:1;min-width:0;border:1px solid var(--border,#e9ebf3);background:var(--surface2,#f7f8fc);color:var(--text,#1d2d45);height:33px;border-radius:8px;font-size:11px;font-weight:650;cursor:pointer}
+.eda-shortcuts button:hover,.eda-shortcuts button:focus-visible{color:var(--accent,#7354ed);background:var(--accent-soft,#eee8ff);border-color:var(--accent,#7354ed)}
+.eda-messages{padding:16px 15px;gap:12px}
+.eda-message-text{max-width:90%;font-size:12.5px;line-height:1.58;padding:11px 13px}
+.eda-message-bot .eda-message-text{border-radius:14px 14px 14px 4px}
+.eda-message-user .eda-message-text{border-radius:14px 14px 4px 14px}
+.eda-form{margin:0 13px 0}
+.eda-disclaimer{font-size:10px;line-height:1.35;padding:8px 12px 12px}
+@media(max-width:600px){.eda-dialog{width:auto;right:10px;left:10px;bottom:calc(78px + env(safe-area-inset-bottom))}.eda-message-text{font-size:13px}.eda-shortcuts button{font-size:11px}.eda-shortcuts{padding:10px 12px 8px}}
