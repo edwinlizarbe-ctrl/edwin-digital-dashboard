@@ -12,6 +12,7 @@
     meta: null, metaReport: null, metaLoading: false, metaError: '',
     metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign',
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
+    emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
     adminHealth: null, adminHealthError: '',
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false,
@@ -545,7 +546,15 @@
  <div class="settings-line"><span>Acceso</span><b>${isAdmin()?'Superadministrador':'Cliente'}</b></div>
  <div class="settings-line"><span>Mi empresa</span><b>${isAdmin()?'Plataforma':clean(displayBusiness())}</b></div>
  ${!isAdmin()?`<button class="button button-outline" data-act="nav" data-page="company">${icon('building',15)} Editar mi empresa</button>`:''}
- <p class="fine-print">El correo identifica a tu usuario. Tu empresa tiene un nombre comercial independiente.</p>`)}</div>
+ <details class="account-email-change"><summary>Cambiar correo electrónico</summary>
+ <form id="change-email-form" autocomplete="off">
+ <label class="form-label" for="account-next-email">Nuevo correo</label><input class="simple-input" id="account-next-email" type="email" name="email" maxlength="254" required/>
+ <label class="form-label" for="account-email-pass">Contraseña actual</label><div class="form-input">${icon('lock',16)}<input id="account-email-pass" type="password" name="currentPassword" autocomplete="current-password" required/></div>
+ ${state.emailError?alertBlock(state.emailError):''}
+ ${state.emailNotice?`<p class="company-message">${clean(state.emailNotice)}</p>`:''}
+ <button type="submit" class="button button-outline" ${state.emailBusy?'disabled':''}>${state.emailBusy?'Solicitando…':'Solicitar cambio de correo'}</button>
+ </form></details>
+ <p class="fine-print">Cambiar el correo requiere confirmar tu identidad y puede necesitar una confirmación enviada por Supabase.</p>`)}</div>
  <div class="col-12">${card('Personalización de colores','Una apariencia discreta para tu panel',`
  <div class="appearance-grid"><div><h4>Apariencia general</h4>${picker('theme',theme,state.theme)}</div>
  <div><h4>Color de acento</h4>${picker('accent',palettes,state.accent)}</div>
@@ -776,6 +785,16 @@ function sidebar(){
     state.search=q;render();const input=document.getElementById('global-search');if(input){input.focus();input.setSelectionRange(selStart,selEnd);}
   });
   document.addEventListener('submit',async e=>{
+    if(e.target.id==='change-email-form'){
+      e.preventDefault();if(state.emailBusy)return;
+      const data=new FormData(e.target);state.emailBusy=true;state.emailError='';state.emailNotice='';
+      try{const response=await api('/api/auth/change-email',{method:'POST',body:JSON.stringify({
+        email:String(data.get('email')||'').trim(),currentPassword:String(data.get('currentPassword')||'')})});
+        state.emailNotice=response.message||'Solicitud enviada. Revisa el correo para confirmar.';
+      }catch(err){state.emailError=err.message;}
+      finally{state.emailBusy=false;render();}
+      return;
+    }
     if(e.target.id==='company-profile-form'){e.preventDefault();await saveCompany(e.target);return;}
     if(e.target.id==='site-edit-form'){e.preventDefault();await saveSite(e.target);return;}
     if(e.target.id==='change-password-form'){
