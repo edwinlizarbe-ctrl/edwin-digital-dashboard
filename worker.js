@@ -102,7 +102,7 @@ async function companyPatch(env,session,table,filter,changes){
 
 function requestedPeriod(url) {
   const p = url.searchParams.get('period');
-  if (['today','yesterday','7','30','90','365'].includes(p)) return p;
+  if (['today','yesterday','3','7','30','90','365'].includes(p)) return p;
   const days = url.searchParams.get('days'); // Backwards-compatible with V3.1 links.
   if (['7','30','90','365'].includes(days)) return days;
   return '30';
