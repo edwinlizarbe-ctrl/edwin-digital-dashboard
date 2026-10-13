@@ -412,6 +412,7 @@ async function ga4FullReport(env, property, periodKey) {
     previous: {dims:[], metrics:coreMetrics, limit:1, previous:true},
     previous_extra: {dims:[], metrics:extraMetrics, limit:1, previous:true},
     trend: {dims:['date'], metrics:['sessions','totalUsers','screenPageViews','keyEvents'], limit:370, sort:'date'},
+    trend_detail: {dims:['date'], metrics:['activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'], limit:370, sort:'date'},
     channels: {dims:['sessionDefaultChannelGroup'],metrics:['sessions','totalUsers','keyEvents'],limit:12},
     sources: {dims:['sessionSourceMedium'],metrics:['sessions','totalUsers'],limit:12},
     pages: {dims:['pagePath'],metrics:['screenPageViews','totalUsers'],limit:12},
