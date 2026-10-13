@@ -146,9 +146,10 @@ function metaFinish(config,flag,pending,inherited=[],cookies=[]){
  const nonce=metaBytesTo64(crypto.getRandomValues(new Uint8Array(16)));
  const safeFlag=flag==='connected'?'connected':'cancelled';
  const safeBusiness=metaValidBusinessId(pending.business)?pending.business:'';
+ const safeReturn=pending.returnTo==='campaigns'?'campaigns':'integrations';
  const script='try{if(window.opener){window.opener.postMessage({type:"edigital:meta-oauth",status:'+JSON.stringify(safeFlag)+',business_id:'+JSON.stringify(safeBusiness)+'},'+JSON.stringify(origin)+');window.close();}}catch(e){}';
  const content='<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conexión Meta · E Digital.IA</title></head>'+
-  '<body style="font:16px system-ui;background:#f6f8fc;color:#17233d;display:grid;place-items:center;min-height:90vh;text-align:center"><main><h1>Autorización '+(safeFlag==='connected'?'completada':'cancelada')+'</h1><p>Ya puedes volver a E Digital.IA.</p><a href="'+origin+'/?meta='+safeFlag+'&return_to=campaigns&business_id='+safeBusiness+'">Volver a Campañas Ads</a></main><script nonce="'+nonce+'">'+script+'</script></body></html>';
+  '<body style="font:16px system-ui;background:#f6f8fc;color:#17233d;display:grid;place-items:center;min-height:90vh;text-align:center"><main><h1>Autorización '+(safeFlag==='connected'?'completada':'cancelada')+'</h1><p>Ya puedes volver a E Digital.IA.</p><a href="'+origin+'/?meta='+safeFlag+'&return_to='+safeReturn+'&business_id='+safeBusiness+'">Volver a Campañas Ads</a></main><script nonce="'+nonce+'">'+script+'</script></body></html>';
  const headers=new Headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'"});
  [...inherited,...cookies].forEach(x=>headers.append('Set-Cookie',x));
  return new Response(content,{status:200,headers});
