@@ -222,3 +222,19 @@ input,select,textarea{max-width:100%}
   .login-panel{margin:0 auto}
   .login-contact{margin:4px 0 0}
 }
+
+/* V6: compact provider tiles and account analytics shown in Overview */
+.integration-grid .integration-card{min-width:0}
+.integration-compact-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.integration-compact-footer>span{font-size:12px;color:var(--muted2);font-weight:650}
+.ads-source-kpi{padding:16px 0;border-bottom:1px solid var(--border)}
+.ads-source-kpi:last-of-type{border-bottom:0}
+.ads-source-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.ads-source-title strong{font-size:13px}
+.ads-source-title small{font-size:11px;color:var(--muted2)}
+.ads-source-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.ads-source-metrics>div{border-radius:10px;background:var(--surface2);padding:12px;min-width:0}
+.ads-source-metrics span{display:block;color:var(--muted2);font-size:10.5px;margin-bottom:6px}
+.ads-source-metrics b{display:block;overflow-wrap:anywhere;font-size:15px}
+@media(max-width:900px){.ads-source-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:540px){.ads-source-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ads-source-metrics>div{padding:10px}.ads-source-metrics b{font-size:14px}}
