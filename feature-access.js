@@ -57,6 +57,19 @@ export async function handleFeaturesApi(req,env,s){
  }
  if(!path.startsWith('/api/admin/business-features'))return response({error:'Ruta inexistente.'},404,s.cookies);
  if(s.user.role!=='admin')return response({error:'Acceso exclusivo del administrador.'},403,s.cookies);
+ if(method==='GET'&&url.searchParams.get('list')==='1'){
+  if(!env.SUPABASE_SERVICE_ROLE_KEY)return response({configured:false,plans:[],reason:'Falta SUPABASE_SERVICE_ROLE_KEY.'},200,s.cookies);
+  const permitted=await fetch(supaBase(env)+'/rest/v1/businesses?select=id&limit=500',{headers:{apikey:env.SUPABASE_ANON_KEY,Authorization:'Bearer '+s.access}});
+  if(!permitted.ok)return response({error:'No fue posible consultar las empresas autorizadas.'},403,s.cookies);
+  const allowed=(await permitted.json()).map(x=>x.id).filter(validId);
+  if(!allowed.length)return response({configured:true,plans:[]},200,s.cookies);
+  const key=env.SUPABASE_SERVICE_ROLE_KEY;
+  const r=await fetch(supaBase(env)+'/rest/v1/ed_business_features?select=business_id,plan,updated_at&business_id=in.('+allowed.join(',')+')&limit=500',{
+   headers:{apikey:key,Authorization:'Bearer '+key}
+  });
+  if(!r.ok)return response({configured:false,plans:[],reason:'La tabla de permisos todavía necesita la migración.'},200,s.cookies);
+  return response({configured:true,plans:await r.json()},200,s.cookies);
+ }
  if(method==='GET'){
   const id=url.searchParams.get('business_id')||'';
   const data=await readBusinessEntitlements(env,s,id);
