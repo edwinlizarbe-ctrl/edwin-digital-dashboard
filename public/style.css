@@ -867,3 +867,10 @@ input,select,textarea{max-width:100%}
 .analytic-visual-kpis .analytic-mini-chart{flex-shrink:0;height:64px;min-height:64px;margin-top:12px;width:100%;background:linear-gradient(180deg,rgba(37,99,235,.05),transparent);border-bottom:1px solid var(--grid)}
 .analytic-visual-kpis .analytic-rate-track{height:9px;margin-top:24px;background:var(--grid)}
 .analytic-visual-kpis .analytic-chart-unavailable{margin-top:16px;display:block;font-size:11px}
+
+/* Click-to-explore GA4 cards */
+.analytic-metric-pick{font:inherit;text-align:left;cursor:pointer;border:1px solid var(--border);color:var(--text);background:var(--surface);width:100%;transition:border-color .18s,box-shadow .18s,background .18s}
+.analytic-metric-pick.selected{border:2px solid #2563EB;background:var(--surface);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.analytic-metric-pick:hover{border-color:#2563EB}
+.analytic-metric-pick:focus-visible{outline:3px solid #93C5FD;outline-offset:2px}
+[data-theme=dark] .analytic-metric-pick.selected{border-color:#60A5FA}
