@@ -462,7 +462,7 @@ async function loadAccounts(){
   const results=list.map(u=>`<div class="client-site-row account-access-row">
     <div class="client-avatar compact">${icon('users',19)}</div>
     <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Rol: ${clean(u.role||'Cliente')} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
-    <div class="account-access-actions"><button class="button button-outline" data-act="account-recovery" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Enviar enlace</button><button class="button button-soft" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Clave temporal</button></div>
+    <div class="account-access-actions"><button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button></div>
   </div>`).join('');
   return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
     <div class="account-access-toolbar"><button class="button button-outline" data-act="accounts-refresh" ${state.accountsLoading?'disabled':''}>${icon('refresh',16)} ${state.accountsLoading?'Consultando…':'Actualizar usuarios'}</button><span>${fmt(list.length)} cuentas visibles</span></div>
@@ -470,7 +470,7 @@ async function loadAccounts(){
     ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
     ${state.temporaryAccess?`<div class="temporary-credential" role="status"><strong>Clave temporal de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code>${clean(state.temporaryAccess.password)}</code><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar</button></div><p>Se muestra solo ahora. Envíala de forma privada y pide al cliente que la cambie en Mi cuenta.</p></div>`:''}
     ${card('Usuarios de clientes','Correos registrados en Supabase Auth',results||empty(state.accountsLoading?'Consultando cuentas…':state.accountsLoaded?'No hay cuentas de clientes disponibles.':'Pulsa Actualizar usuarios para consultar las cuentas.'))}
-    <p class="fine-print">Las contraseñas no se almacenan ni pueden consultarse aquí. La recuperación envía un enlace al correo del cliente mediante Supabase Auth. Los accesos a empresas siguen sujetos a permisos.</p>`;
+    <p class="fine-print">Las contraseñas no se almacenan ni pueden consultarse aquí. El administrador puede generar una clave temporal y entregarla al cliente de forma privada. Los accesos a empresas siguen sujetos a permisos.</p>`;
 }
   function clients(){
  if(!isAdmin())return overview();
@@ -769,12 +769,6 @@ function sidebar(){
       if(!confirm('¿Generar una contraseña temporal nueva para '+email+'? La contraseña anterior dejará de funcionar.'))return;
       state.temporaryAccess=null;state.accountNotice='';state.accountsError='';
       try{const out=await api('/api/admin/accounts/temporary-password',{method:'POST',body:JSON.stringify({user_id:id})});state.temporaryAccess={email:out.email,password:out.temporary_password};state.accountNotice=out.message||'Clave temporal creada.';}
-      catch(e){state.accountsError=e.message;}render();
-    }
-    else if(action==='account-recovery'&&isAdmin()){
-      const email=b.dataset.email||'',id=b.dataset.id||'';
-      if(!confirm('¿Enviar un enlace de recuperación de contraseña a '+email+'?'))return;
-      state.accountNotice='';try{const out=await api('/api/admin/accounts/recovery',{method:'POST',body:JSON.stringify({user_id:id})});state.accountNotice=out.message||'Solicitud enviada.';state.accountsError='';}
       catch(e){state.accountsError=e.message;}render();
     }
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
