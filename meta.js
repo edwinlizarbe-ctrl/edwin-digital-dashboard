@@ -9,16 +9,21 @@ const META_COOKIE = 'ed_meta_pilot';
 const META_PENDING = 'ed_meta_pending';
 const META_PERIODS = new Set(['today', 'yesterday', '7', '30', '90', '365']);
 
-function metaConfig(env) {
+function metaConfig(env, requestOrigin='') {
   const version = /^v\d+\.\d+$/.test(env.META_GRAPH_VERSION || '') ? env.META_GRAPH_VERSION : 'v24.0';
-  const redirect = env.META_REDIRECT_URI || '';
+  // The deployed worker may safely derive its own callback address. This is not
+  // an OAuth credential and doesn't bypass the Facebook Login allowlist.
+  const canonicalOrigin='https://edwin-digital-dashboard.edwinlizarbe.workers.dev';
+  const automatic = !env.META_REDIRECT_URI && requestOrigin===canonicalOrigin;
+  const redirect = env.META_REDIRECT_URI || (automatic?canonicalOrigin+'/api/meta/callback':'');
   let validRedirect = false;
   try {
     const u = new URL(redirect);
-    validRedirect = u.protocol === 'https:' && u.pathname === '/api/meta/callback' && !u.search && !u.hash;
-  } catch { /* Configuration not yet provided. */ }
+    validRedirect = u.protocol === 'https:' && u.pathname === '/api/meta/callback' && !u.search && !u.hash &&
+      (requestOrigin ? u.origin===requestOrigin : true);
+  } catch { /* Explicit configuration may be needed for another domain. */ }
   return {
-    version, redirect,
+    version, redirect, automatic,
     ready: !!(env.META_APP_ID && env.META_APP_SECRET && /^[0-9a-fA-F]{64}$/.test(env.META_SESSION_KEY || '') && validRedirect),
   };
 }
@@ -123,15 +128,15 @@ function validMetaSession(value,s,businessId) {
   return !!(value && value.user===s.user.id && value.business===businessId && value.token &&
     Number(value.expires)>Date.now());
 }
-function metaResultUrl(env, flag) {
-  // Always redirect to configured application origin; never accept a browser-provided URL.
-  const home=new URL('/',metaConfig(env).redirect);
+function metaResultUrl(config, flag) {
+  // Always redirect to the validated platform origin, never browser query data.
+  const home=new URL('/',config.redirect);
   home.searchParams.set('meta',flag);
   return home.toString();
 }
 export async function handleMetaApi(req,env,s) {
   const url=new URL(req.url),path=url.pathname,method=req.method.toUpperCase();
-  const config=metaConfig(env),cookies=s.cookies||[],jar=metaJar(req);
+  const config=metaConfig(env,url.origin),cookies=s.cookies||[],jar=metaJar(req);
   const reply=(data,status=200,extra=[])=>metaReply(data,status,cookies,extra);
   const error=(message,status=400)=>reply({error:message},status);
   if(path==='/api/meta/status' && method==='GET') {
@@ -168,7 +173,7 @@ export async function handleMetaApi(req,env,s) {
       pending.state!==url.searchParams.get('state');
     if(expired)return error('La autorización ha caducado o no coincide con esta sesión. Vuelve a conectar Meta.',403);
     if(!await metaPilotBusiness(env,s,pending.business))return error('Acceso a negocio no autorizado.',403);
-    if(url.searchParams.has('error'))return metaRedirect(metaResultUrl(env,'cancelled'),cookies,[metaCookie(META_PENDING,'',0)]);
+    if(url.searchParams.has('error'))return metaRedirect(metaResultUrl(config,'cancelled'),cookies,[metaCookie(META_PENDING,'',0)]);
     const code=url.searchParams.get('code')||'';
     if(!code || code.length>2000)return error('Meta no devolvió un código de autorización válido.');
     const exchange=new URL('https://graph.facebook.com/'+config.version+'/oauth/access_token');
@@ -194,7 +199,7 @@ export async function handleMetaApi(req,env,s) {
       user:s.user.id,business:pending.business,token:info.access_token,
       account:null,accounts:[],expires:Date.now()+seconds*1000,
     });
-    return metaRedirect(metaResultUrl(env,'connected'),cookies,[
+    return metaRedirect(metaResultUrl(config,'connected'),cookies,[
       metaCookie(META_PENDING,'',0),metaCookie(META_COOKIE,connection,seconds)
     ]);
   }
