@@ -303,28 +303,6 @@ async function handleApi(req, env) {
     return json({ok:true,email:user.email,temporary_password:temporaryPassword,
       message:'Contraseña temporal generada. Entrégala al cliente por un canal seguro y pídele cambiarla al ingresar.'},200,s.cookies);
   }
-  if(path==='/api/admin/accounts/recovery' && method==='POST') {
-    if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
-    if(!companyJsonRequest(req,1500))return json({error:'Solicitud no autorizada.'},403,s.cookies);
-    let input;try{input=await companyParse(req,1500);}catch{return json({error:'Solicitud inválida.'},400,s.cookies);}
-    const id=String(input?.user_id||'');
-    if(!isUuid(id))return json({error:'Selecciona un usuario válido.'},400,s.cookies);
-    const key=env.SUPABASE_SERVICE_ROLE_KEY;
-    if(!key)return json({error:'Configura SUPABASE_SERVICE_ROLE_KEY en Cloudflare para administrar las cuentas.'},503,s.cookies);
-    const base=String(env.SUPABASE_URL).replace(/\/$/,'');
-    const headers={apikey:key,Authorization:'Bearer '+key,Accept:'application/json'};
-    const [pResponse,uResponse]=await Promise.all([
-      fetch(base+'/rest/v1/profiles?select=id,role&id=eq.'+encodeURIComponent(id)+'&limit=1',{headers}),
-      fetch(base+'/auth/v1/admin/users/'+encodeURIComponent(id),{headers})
-    ]);
-    if(!pResponse.ok||!uResponse.ok)return json({error:'No se pudo verificar el usuario solicitado.'},502,s.cookies);
-    const profiles=await pResponse.json(),record=await uResponse.json();
-    if(!Array.isArray(profiles)||profiles.length!==1||profiles[0].role==='admin'||!record.email||record.id!==id)
-      return json({error:'Esta cuenta no puede gestionarse desde este panel.'},403,s.cookies);
-    const sent=await supaAuth(env,'recover',{method:'POST',body:JSON.stringify({email:record.email})});
-    if(!sent.ok)return json({error:'Supabase no pudo enviar el enlace. Revisa los ajustes de correo en Auth.'},502,s.cookies);
-    return json({ok:true,message:'Se solicitó un enlace de recuperación al correo del cliente.'},200,s.cookies);
-  }
   if(path==='/api/admin/integrations/health' && method==='GET') {
     if(s.user.role!=='admin')return json({error:'Acceso exclusivo del administrador.'},403,s.cookies);
     let callback=false;
