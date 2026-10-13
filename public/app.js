@@ -334,6 +334,7 @@
   function acquisition(){return `${heading('Adquisición','Descubre cómo te encuentran','Analiza canales, fuentes y medios de tráfico, sin confundir visitas con conversiones de anuncios.')}${statusStrip()}<div class="content-grid"><div class="col-5">${card('Mezcla de canales','Sesiones por categoría de adquisición',gaReady()?donut(rows('channels').map(r=>({...r,channelLabel:friendlyChannel(r.sessionDefaultChannelGroup)})),'channelLabel','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Principales fuentes y medios','Origen de las visitas · datos reales de Google Analytics',gaReady()?barList(rows('sources').map(r=>({...r,sourceLabel:friendlyTrafficSource(r.sessionSourceMedium),rawSource:r.sessionSourceMedium})),'sourceLabel','sessions',10)+'<p class="traffic-glossary">Publicidad pagada = anuncios. Acceso directo = no se identificó otro origen. Enlace desde otra web = visitas procedentes de otra página. Pasa el cursor sobre una fuente para ver su código original de GA4.</p>':dataPlaceholder())}</div><div class="col-12">${card('Detalle de canales','Usuarios, sesiones y eventos clave por canal',gaReady()?dataTable(rows('channels'),[{key:'sessionDefaultChannelGroup',label:'Canal',display:friendlyChannel},{key:'sessions',label:'Sesiones',display:fmt},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
   
   function campaignMetaSetup(){
+    if(!featureEnabled('meta_ads'))return `<div class="ads-connected-compact"><span class="ads-connected-dot pending"></span><div><strong>Meta Ads no está incluido</strong><small>Esta conexión no está habilitada para ${clean(displayBusiness())}.</small></div></div>`;
     const m=state.meta||{},isReady=!!m.configured,connected=!!m.connected;
     const selected=m.selected_accounts||[m.selected_account].filter(Boolean);
     const accounts=m.accounts||[],expanded=state.campaignConnectionOpen;
@@ -697,6 +698,7 @@ async function loadAccounts(){
  return `<div class="provider-logo" aria-hidden="true"><img src="${local}" alt="" loading="lazy" width="32" height="32" onerror="this.onerror=null;this.src='/logos/platform.svg'"/></div>`;
 }
     function metaCard(){
+ if(!featureEnabled('meta_ads'))return `<article class="integration-card provider-card" data-connected="false"><div class="integration-head">${providerLogo('Meta Ads')}${tag('No incluida','neutral')}</div><h3>Meta Ads</h3><p>Publicidad de Facebook e Instagram.</p><div class="integration-status"><span>Esta empresa no tiene habilitada esta conexión. Consulta las opciones de tu plan.</span></div></article>`;
  if(!metaPilotEligible())return '';
  const m=state.meta||{},list=m.accounts||[],selected=m.selected_accounts||[m.selected_account].filter(Boolean);
  const accounts=list.map(x=>`<label class="meta-account-row"><input class="meta-account-check" type="checkbox" value="${clean(x.id)}" ${selected.includes(x.id)?'checked':''}/><span><strong>${clean(x.name)}</strong><small>${clean(x.id)} · ${clean(x.currency)}</small></span></label>`).join('');
@@ -747,6 +749,8 @@ async function loadAccounts(){
    {name:'LinkedIn Ads',info:'Publicidad profesional en LinkedIn.',status:'Próximamente',details:'Autorización de LinkedIn pendiente.'}] ]
  ];
  const cardFor=(p)=>{
+  const feature=businessFeatureKey(p.name);
+  if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false"><div class="integration-head">${providerLogo(p.name)}${tag('No incluida','neutral')}</div><h3>${clean(p.name)}</h3><p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span></div></article>`;
   if(p.name==='Meta Ads')return metaCard();
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
    <div class="integration-head">${providerLogo(p.name)}${tag(p.status,p.connected?'success':'neutral')}</div>
