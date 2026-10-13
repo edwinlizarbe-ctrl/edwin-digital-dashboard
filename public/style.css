@@ -861,3 +861,9 @@ input,select,textarea{max-width:100%}
 .analytic-rate-track>span{display:block;height:100%;background:#2563EB;border-radius:20px}
 .analytic-chart-unavailable{font-size:10px;color:var(--muted2);margin-top:auto}
 [data-theme=dark] .analytic-rate-track>span{background:#60A5FA}
+
+/* Clearly visible GA4 KPI microcharts across the web analytics dashboard */
+.analytic-visual-kpis .small-kpi{min-height:185px;justify-content:flex-start}
+.analytic-visual-kpis .analytic-mini-chart{flex-shrink:0;height:64px;min-height:64px;margin-top:12px;width:100%;background:linear-gradient(180deg,rgba(37,99,235,.05),transparent);border-bottom:1px solid var(--grid)}
+.analytic-visual-kpis .analytic-rate-track{height:9px;margin-top:24px;background:var(--grid)}
+.analytic-visual-kpis .analytic-chart-unavailable{margin-top:16px;display:block;font-size:11px}
