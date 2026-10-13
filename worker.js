@@ -1,3 +1,4 @@
+import { handleMetaApi } from './meta.js';
 /**
  * Edwin Digital Dashboard · Cloudflare Workers
  * Credentials stay in Cloudflare runtime secrets; browser never gets these values.
@@ -20,7 +21,7 @@ function cookie(name, value, maxAge) {
   return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
 }
 function clearCookies() {
-  return [cookie('ed_access', '', 0), cookie('ed_refresh', '', 0)];
+  return [cookie('ed_access', '', 0), cookie('ed_refresh', '', 0), cookie('ed_meta_pilot', '', 0), cookie('ed_meta_pending', '', 0)];
 }
 function cookieJar(req) {
   const jar = Object.create(null);
@@ -129,6 +130,7 @@ async function handleApi(req, env) {
   }
   const s = await session(req, env);
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
+  if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
   if (path === '/api/me' && method === 'GET') return json({ user: s.user }, 200, s.cookies);
   if (path === '/api/auth/change-password' && method === 'POST') {
     if (corsPostDenied(req)) return json({ error: 'Origen no autorizado.' }, 403, s.cookies);

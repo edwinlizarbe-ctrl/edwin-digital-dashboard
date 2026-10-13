@@ -28,3 +28,15 @@
 @media(max-width:560px){.client-detail-actions .button{flex:1;justify-content:center}.client-site-row{flex-wrap:wrap}.client-site-badge{margin-left:0}.client-site-row .button{margin-left:auto}.security-form{max-width:100%}}
 
 .client-card-clickable{cursor:pointer;transition:border-color .15s ease,transform .15s ease}.client-card-clickable:hover{border-color:var(--accent);transform:translateY(-2px)}.client-card-clickable:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+
+/* Meta Ads pilot — small addition, preserves V3 layout and theme. */
+.meta-full{grid-column:span 2}
+.meta-select{display:block;width:100%;max-width:450px;border:1px solid var(--border);border-radius:9px;padding:11px;background:var(--surface);color:var(--text);margin:9px 0 13px;font-size:12px}
+.meta-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.meta-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:17px}
+.meta-kpi-grid>div{background:var(--surface2);padding:13px 12px;border:1px solid var(--border);border-radius:10px}
+.meta-kpi-grid small,.meta-kpi-grid strong{display:block}
+.meta-kpi-grid small{color:var(--muted2);font-size:10px;margin-bottom:7px}
+.meta-kpi-grid strong{color:var(--text);font-size:17px;overflow-wrap:anywhere}
+@media(max-width:560px){.meta-full{grid-column:span 1}.meta-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

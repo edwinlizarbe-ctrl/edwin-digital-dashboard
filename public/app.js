@@ -9,6 +9,7 @@
     gaError: '', hmError: '', startupError: '', loginError: '', loginBusy: false,
     mobileOpen: false, search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
+    meta: null, metaReport: null, metaLoading: false, metaError: '',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -239,9 +240,55 @@
       ${statusStrip()}${mainKpis()}
       <div class="content-grid"><div class="col-7">${card('Sitios del cliente','Selecciona una propiedad para ver sus estadísticas',siteRows||empty('Todavía no hay sitios registrados para este negocio.'))}</div><div class="col-5">${card('Estado de acceso','Resumen de la configuración autorizada',`<div class="settings-line"><span>Negocio</span><b>${clean(b.name)}</b></div><div class="settings-line"><span>Propiedades</span><b>${fmt(state.sites.length)}</b></div><div class="settings-line"><span>Sitio seleccionado</span><b>${clean(site()?.name||'Sin sitio')}</b></div><div class="settings-line"><span>Acceso</span><b>Según permisos RLS</b></div><p class="fine-print">Esta ficha no muestra datos personales de otros usuarios ni permite cambiar permisos sin autorización.</p>`)}</div></div>`;
   }
+
+  function metaPilotEligible() { return isAdmin() && business()?.slug === 'edwin-digital'; }
+  function metaMetric(value, digits=0) {
+    const n=Number(value);
+    return value===null || value===undefined || !Number.isFinite(n) ? '—' :
+      new Intl.NumberFormat('es-PE',{maximumFractionDigits:digits}).format(n);
+  }
+  function metaCard() {
+    if (!metaPilotEligible()) return `<article class="integration-card"><div class="integration-head"><div class="integration-logo meta">M</div>${tag('Próximamente')}</div><h3>Meta Ads</h3><p>Estadísticas de Facebook e Instagram Ads.</p><div class="integration-status"><strong>No habilitado para este negocio</strong><span>El piloto se limita a la empresa Edwin Digital. Más adelante cada negocio autorizará sus cuentas por separado.</span></div></article>`;
+    const a=state.meta || {}, accounts=a.accounts||[];
+    const options=accounts.map(x=>`<option value="${clean(x.id)}" ${x.id===a.selected_account?'selected':''}>${clean(x.name)} (${clean(x.id)})</option>`).join('');
+    const metrics=state.metaReport?.metrics, currency=state.metaReport?.currency||'';
+    const stats=metrics ? `<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${clean(currency)} ${metaMetric(metrics.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(metrics.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(metrics.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(metrics.ctr,2)}%</strong></div><div><small>CPC</small><strong>${clean(currency)} ${metaMetric(metrics.cpc,2)}</strong></div></div>` :
+      (a.selected_account && !state.metaLoading ? '<p class="fine-print">No hay estadísticas disponibles para el período seleccionado.</p>' : '');
+    const controls=!a.configured ? '<p class="fine-print">La conexión requiere una configuración inicial del administrador en Cloudflare y Meta for Developers.</p>' :
+      !a.connected ? `<button class="button button-primary" data-act="meta-connect" type="button">${icon('link',16)} Conectar con Facebook</button>` :
+      `<label class="form-label" for="meta-ad-account">Cuenta publicitaria</label>
+         <select class="meta-select" id="meta-ad-account"><option value="">Selecciona una cuenta</option>${options}</select>
+         <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh" type="button">${icon('refresh',15)} Actualizar datos</button>
+         <button class="button button-soft" data-act="meta-disconnect" type="button">Desconectar</button></div>
+         ${stats}
+         <p class="fine-print">Consulta de solo lectura. Piloto personal en este navegador; las conexiones caducan y pueden requerir una nueva autorización.</p>`;
+    return `<article class="integration-card meta-full"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(a.connected?'Conectado':state.metaLoading?'Comprobando':a.configured?'Listo para conectar':'Sin configurar',a.connected?'success':'neutral')}</div>
+      <h3>Meta Ads · piloto</h3><p>Conecta tu cuenta y consulta gasto, clics, impresiones, CTR y CPC sin intermediarios.</p>
+      ${state.metaError?alertBlock(state.metaError):''}
+      <div class="integration-status">${controls}</div>
+      ${state.metaLoading?'<span class="fine-print">Consultando Meta Ads…</span>':''}
+    </article>`;
+  }
+  async function loadMeta() {
+    if(!metaPilotEligible()) {state.meta=null;state.metaReport=null;state.metaError='';render();return;}
+    const current=state.businessId;
+    state.metaLoading=true;state.metaError='';state.metaReport=null;render();
+    try {
+      const info=await api('/api/meta/status?business_id='+encodeURIComponent(current));
+      if(state.businessId!==current)return;
+      state.meta=info;
+      if(info.error)state.metaError=info.error;
+      if(info.connected && info.selected_account) {
+        try {
+          state.metaReport=await api('/api/meta/report?business_id='+encodeURIComponent(current)+'&period='+encodeURIComponent(state.period));
+        } catch(e) {state.metaError=e.message;}
+      }
+    }catch(e) {if(state.businessId===current)state.metaError=e.message;}
+    finally {if(state.businessId===current){state.metaLoading=false;render();}}
+  }
   function integrations(){
     const entries=[{name:'Google Analytics 4',initials:'G',cls:'google',desc:'Sesiones, usuarios, contenido, eventos, ubicación y adquisición.',active:gaReady(),state:site()?.ga4_property_id?`Propiedad ${site().ga4_property_id}`:'Falta registrar una propiedad GA4',detail:gaReady()?'Los datos están respondiendo correctamente.':state.ga?.reason||state.gaError||'Hace falta una credencial de servicio válida en Cloudflare.'},{name:'Hotmart',initials:'H',cls:'hotmart',desc:'Ventas, productos, métodos de pago e ingresos agrupados por moneda.',active:!!state.hm && selectedBusinessIsHotmart(),state:selectedBusinessIsHotmart()?'Cuenta piloto de Edwin Digital':'No vinculado para este negocio',detail:'El piloto utiliza secretos privados del administrador. Clientes nuevos necesitan OAuth independiente.'},{name:'Google Ads',initials:'A',cls:'google',desc:'Coste, clics, impresiones, CTR, CPC y conversiones de anuncios.',active:false,state:'Integración pendiente',detail:'Requiere una conexión autorizada a Google Ads API; GA4 no proporciona por sí solo todos estos costos.'},{name:'Meta Ads',initials:'M',cls:'meta',desc:'Gasto, alcance, clics, leads, CPA y rendimiento publicitario.',active:false,state:'Integración pendiente',detail:'Requiere conexión autorizada a Marketing API de Meta con permisos del anunciante.'}];
-    return `${heading('Conexiones','Tus fuentes de información','Información clara sobre qué servicios ya entregan datos y cuáles necesitan autorización.')}${statusStrip()}<div class="integration-grid">${entries.map(s=>`<article class="integration-card"><div class="integration-head"><div class="integration-logo ${s.cls}">${clean(s.initials)}</div>${tag(s.active?'Conectado':'Pendiente',s.active?'success':'neutral')}</div><h3>${s.name}</h3><p>${s.desc}</p><div class="integration-status"><strong>${clean(s.state)}</strong><span>${clean(s.detail)}</span></div></article>`).join('')}</div>${alertBlock('Las claves de Google y Hotmart deben permanecer en los secretos de Cloudflare. Nunca las pegues en el chat, ni las incluyas en GitHub o en código del navegador.','info')}`;
+    return `${heading('Conexiones','Tus fuentes de información','Información clara sobre qué servicios ya entregan datos y cuáles necesitan autorización.')}${statusStrip()}<div class="integration-grid">${entries.filter(s=>s.name!=='Meta Ads').map(s=>`<article class="integration-card"><div class="integration-head"><div class="integration-logo ${s.cls}">${clean(s.initials)}</div>${tag(s.active?'Conectado':'Pendiente',s.active?'success':'neutral')}</div><h3>${s.name}</h3><p>${s.desc}</p><div class="integration-status"><strong>${clean(s.state)}</strong><span>${clean(s.detail)}</span></div></article>`).join('')}${metaCard()}</div>${alertBlock('Las claves de Google y Hotmart deben permanecer en los secretos de Cloudflare. Nunca las pegues en el chat, ni las incluyas en GitHub o en código del navegador.','info')}`;
   }
   function settings(){
     return `${heading('Preferencias','Mi cuenta y seguridad','Gestiona tu acceso y personaliza tu espacio de trabajo.')}
@@ -289,17 +336,18 @@
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.meta=null;state.metaReport=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     await refresh();
+    if(metaPilotEligible())await loadMeta();
   }
   async function init(){
     state.loading=true;render();
     try{
       const status=await api('/api/status');if(!status.configured)throw new Error(`Configuración pendiente: ${(status.missing||[]).join(', ')}`);
       const user=await api('/api/me');const companies=await api('/api/businesses');
-      state.user=user.user;state.businesses=companies.businesses||[];state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
+      state.user=user.user;state.businesses=companies.businesses||[];if(new URLSearchParams(location.search).has('meta')){state.page='integrations';const result=new URLSearchParams(location.search).get('meta');if(result==='cancelled')state.metaError='Se canceló la autorización con Facebook.';history.replaceState({},'',location.pathname+location.hash);}state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
       if(state.businesses.length) await chooseBusiness(state.businesses.find(b=>b.slug==='edwin-digital')?.id||state.businesses[0].id);
     }catch(e){state.loading=false;state.user=null;state.loginBusy=false;if(e.status!==401)state.startupError=e.message;render();}
   }
@@ -320,8 +368,16 @@
     const action=b.dataset.act;
     if(action==='theme'){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('ed-theme-v3',state.theme);render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
-    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);}
+    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations')await loadMeta();}
     else if(action==='refresh')await refresh();
+    else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
+    else if(action==='meta-refresh')await loadMeta();
+    else if(action==='meta-disconnect'){
+      if(confirm('¿Desconectar Meta Ads de este navegador? Puedes volver a autorizarla.')){
+        try{await api('/api/meta/disconnect',{method:'POST',body:'{}'});await loadMeta();}
+        catch(e){state.metaError=e.message;render();}
+      }
+    }
     else if(action==='choose'){state.page='overview';await chooseBusiness(b.dataset.id);}
     else if(action==='client-detail'){if(isAdmin()){state.page='clientDetail';await chooseBusiness(b.dataset.id);window.scrollTo(0,0);}}
     else if(action==='client-site'){if(isAdmin()&&state.sites.some(s=>s.id===b.dataset.id)){state.siteId=b.dataset.id;state.page='analytics';await refresh();window.scrollTo(0,0);}}
@@ -331,7 +387,7 @@
     else if(action==='show-password'){const input=document.getElementById('password');if(input)input.type=input.type==='password'?'text':'password';}
     else if(action==='logout'){
       ++state.requestId;await api('/api/auth/logout',{method:'POST',body:'{}'}).catch(()=>{});
-      Object.assign(state,{user:null,businesses:[],sites:[],businessId:'',siteId:'',ga:null,hm:null,gaError:'',hmError:'',page:'overview',mobileOpen:false,search:''});render();
+      Object.assign(state,{user:null,businesses:[],sites:[],businessId:'',siteId:'',ga:null,hm:null,gaError:'',hmError:'',meta:null,metaReport:null,metaError:'',page:'overview',mobileOpen:false,search:''});render();
     }
   });
   document.addEventListener('keydown', e=>{
@@ -342,7 +398,12 @@
   document.addEventListener('change', async e=>{
     if(e.target.id==='business-selector')await chooseBusiness(e.target.value);
     else if(e.target.id==='site-selector'){state.siteId=e.target.value;await refresh();}
-    else if(e.target.id==='date-period'){state.period=e.target.value;await refresh();}
+    else if(e.target.id==='meta-ad-account'){
+      if(!e.target.value)return;
+      try{await api('/api/meta/select',{method:'POST',body:JSON.stringify({business_id:state.businessId,account_id:e.target.value})});await loadMeta();}
+      catch(error){state.metaError=error.message;render();}
+    }
+    else if(e.target.id==='date-period'){state.period=e.target.value;await refresh();if(state.page==='integrations')await loadMeta();}
   });
   document.addEventListener('input',e=>{
     if(e.target.id!=='global-search')return;
