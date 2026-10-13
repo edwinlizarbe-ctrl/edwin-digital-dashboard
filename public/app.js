@@ -432,7 +432,16 @@
     return value===null || value===undefined || !Number.isFinite(n) ? '—' :
       new Intl.NumberFormat('es-PE',{maximumFractionDigits:digits}).format(n);
   }
-  function metaCard(){
+  function providerLogo(name){
+ const dict={
+ 'Meta Ads':['meta','0866FF'],'Google Ads':['googleads','4285F4'],'TikTok Ads':['tiktok','111111'],'LinkedIn Ads':['linkedin','0A66C2'],
+ 'Google Analytics 4':['googleanalytics','E37400'],'Google Search Console':['googlesearchconsole','4285F4'],
+ 'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
+ };
+ const [slug,color]=dict[name]||['google','4285F4'];
+ return `<div class="provider-logo" aria-hidden="true"><img src="https://cdn.simpleicons.org/${slug}/${color}" alt="" loading="lazy" width="30" height="30" /></div>`;
+}
+    function metaCard(){
  if(!metaPilotEligible())return '';
  const m=state.meta||{},list=m.accounts||[],selected=m.selected_accounts||[m.selected_account].filter(Boolean);
  const accounts=list.map(x=>`<label class="meta-account-row"><input class="meta-account-check" type="checkbox" value="${clean(x.id)}" ${selected.includes(x.id)?'checked':''}/><span><strong>${clean(x.name)}</strong><small>${clean(x.id)} · ${clean(x.currency)}</small></span></label>`).join('');
@@ -448,7 +457,7 @@
  <div class="meta-account-list">${accounts||'<p>No se encontraron cuentas autorizadas.</p>'}</div>
  <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh">${icon('refresh',16)} Actualizar datos</button><button class="button button-soft" data-act="meta-disconnect">Desconectar</button><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas ${icon('chevron',15)}</button></div>
  <p class="fine-print">Consulta las estadísticas desde Resumen y Campañas Ads.</p>`;
- return `<article class="integration-card"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(m.connected?'Conectado':m.configured?'Disponible':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Publicidad de Facebook e Instagram.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${m.connected&&!state.metaPanelOpen?`<div class="integration-compact-footer"><span>${selected.length} cuenta(s) seleccionadas</span><button class="button button-outline" data-act="meta-panel-toggle">Administrar cuentas</button></div>`:body}${m.connected&&state.metaPanelOpen?`<button class="button button-soft" data-act="meta-panel-toggle">Cerrar detalles</button>`:''}</div>${state.metaLoading?'<span class="fine-print">Consultando conexión…</span>':''}</article>`;
+ return `<article class="integration-card provider-card" data-connected="${m.connected?'true':'false'}"><div class="integration-head">${providerLogo('Meta Ads')}${tag(m.connected?'Conectado':m.configured?'Disponible':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Publicidad de Facebook e Instagram.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${m.connected&&!state.metaPanelOpen?`<div class="integration-compact-footer"><span>${selected.length} cuenta(s) seleccionadas</span><button class="button button-outline" data-act="meta-panel-toggle">Administrar cuentas</button></div>`:body}${m.connected&&state.metaPanelOpen?`<button class="button button-soft" data-act="meta-panel-toggle">Cerrar detalles</button>`:''}</div>${state.metaLoading?'<span class="fine-print">Consultando conexión…</span>':''}</article>`;
 }
     async function loadMeta() {
     if(!metaPilotEligible()) {state.meta=null;state.metaReport=null;state.metaError='';render();return;}
@@ -467,21 +476,38 @@
     }catch(e) {if(state.businessId===current)state.metaError=e.message;}
     finally {if(state.businessId===current){state.metaLoading=false;render();}}
   }
-  function integrations(){
- const connected=gaReady();
- const groups=[
- ['Publicidad',[['Google Ads','A','Campañas de búsqueda y display.','Próximamente','OAuth oficial pendiente.'],['TikTok Ads','T','Campañas y resultados publicitarios.','Próximamente','API oficial pendiente.'],['LinkedIn Ads','L','Campañas profesionales B2B.','Próximamente','Autorización oficial pendiente.']]],
- ['Analítica y contenidos',[['Google Analytics 4','G','Usuarios, sesiones y eventos.',connected?'Conectado':'Sin conexión',connected?'Propiedad autorizada.':'Asigna una propiedad GA4 autorizada.'],['Google Search Console','G','Consultas y posicionamiento orgánico.','Próximamente','Autorización de Google pendiente.'],['Facebook / Instagram orgánico','F','Publicaciones y alcance orgánico.','Próximamente','Permisos de páginas pendientes.']]],
- ['Ventas y comercio',[['Hotmart','H','Ingresos, productos y reembolsos.','Próximamente','Falta OAuth individual por cliente.'],['Shopify','S','Pedidos y ventas de tienda.','Próximamente','Acceso por tienda pendiente.']]]
+    function integrations(){
+ const ga=gaReady(),lookup=[
+  ['Analítica y contenidos',[
+   {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Consulta al administrador del sitio para habilitar la propiedad GA4.'},
+   {name:'Google Search Console',info:'Consultas y posicionamiento SEO.',status:'Próximamente',details:'Necesita autorización de Google.'},
+   {name:'Facebook / Instagram orgánico',info:'Alcance y estadísticas de perfiles sociales.',status:'Próximamente',details:'Pendiente de permisos de páginas y perfiles.'}] ],
+  ['Ventas y e-commerce',[
+   {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'},
+   {name:'Shopify',info:'Pedidos, catálogo y ventas de tienda.',status:'Próximamente',details:'Pendiente de conexión individual por tienda.'}] ],
+  ['Publicidad',[
+   {name:'Meta Ads',info:'Facebook e Instagram Ads.'},
+   {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'Próximamente',details:'API oficial y OAuth pendientes.'},
+   {name:'TikTok Ads',info:'Anuncios y campañas en TikTok.',status:'Próximamente',details:'Permisos de TikTok Ads pendientes.'},
+   {name:'LinkedIn Ads',info:'Publicidad profesional en LinkedIn.',status:'Próximamente',details:'Autorización de LinkedIn pendiente.'}] ]
  ];
- const renderProvider=a=>`<article class="integration-card"><div class="integration-head"><div class="integration-logo google">${clean(a[1])}</div>${tag(a[3],a[3]==='Conectado'?'success':'neutral')}</div><h3>${clean(a[0])}</h3><p>${clean(a[2])}</p><small class="integration-note">${clean(a[4])}</small></article>`;
- return `${heading('Mis conexiones','Integraciones de mi empresa','Conecta proveedores desde aquí. Cuando haya datos autorizados, aparecerán en sus reportes correspondientes.')}
- <section class="integration-section"><div class="section-caption"><h2>Publicidad</h2><span>4 plataformas</span></div><div class="integration-grid">${metaCard()}${groups[0][1].map(renderProvider).join('')}</div></section>
- ${groups.slice(1).map(([title,items])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${fmt(items.length)} integraciones</span></div><div class="integration-grid">${items.map(renderProvider).join('')}</div></section>`).join('')}
- <p class="fine-print">Solo las conexiones autorizadas ofrecen métricas. Meta Ads continúa en fase piloto; otros proveedores requieren autorización oficial.</p>`;
+ const cardFor=(p)=>{
+  if(p.name==='Meta Ads')return metaCard();
+  return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
+   <div class="integration-head">${providerLogo(p.name)}${tag(p.status,p.connected?'success':'neutral')}</div>
+   <h3>${clean(p.name)}</h3><p>${clean(p.info)}</p>
+   <div class="integration-status"><span>${clean(p.details||'')}</span>${p.connected?`<button class="button button-outline" data-act="nav" data-page="analytics">Ver datos</button>`:''}</div>
+  </article>`;
+ };
+ return `${heading('Mis conexiones','Integraciones de mi empresa','Conecta tus plataformas una vez y consulta los datos autorizados en sus paneles.')}
+ <div class="integration-filter-bar"><label class="admin-search">${icon('search',18)}<input type="search" id="integration-search" placeholder="Buscar plataforma…" aria-label="Buscar integración"/></label>
+ <label class="company-checkbox"><input id="integration-only-connected" type="checkbox"/> Solo conectadas</label></div>
+ ${lookup.map(([group,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(group)}</h2><span>${providers.length} plataformas</span></div>
+ <div class="integration-grid">${providers.map(cardFor).join('')}</div></section>`).join('')}
+ <p class="fine-print">Las conexiones marcadas «Próximamente» todavía no tienen acceso a su API y no mostrarán datos ficticios. Meta Ads requiere que la plataforma esté autorizada en Cloudflare y Meta for Developers.</p>`;
 }
 
-    function settings(){
+  function settings(){
  const theme=[['light','Claro'],['dark','Oscuro']];
  const palettes=[['purple','Violeta'],['blue','Azul'],['teal','Turquesa']];
  const sidebar=[['auto','Según tema'],['white','Blanco'],['blue','Azul oscuro']];
@@ -690,6 +716,7 @@ function sidebar(){
     }
   });
   document.addEventListener('change', async e=>{
+    if(e.target.id==='integration-only-connected'){filterIntegrations();return;}
     if(e.target.id==='business-selector')await chooseBusiness(e.target.value);
     else if(e.target.id==='site-selector'){state.siteId=e.target.value;await refresh();}
     else if(e.target.classList?.contains('meta-account-check')){
@@ -702,11 +729,21 @@ function sidebar(){
     else if(e.target.id==='ads-level'){state.adsLevel=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
     else if(e.target.id==='date-period'){state.period=e.target.value;await refresh();if(state.page==='integrations'||state.page==='campaigns')await loadMeta();if(state.page==='campaigns')await loadAds();}
   });
+
+  function filterIntegrations(){
+    const text=(document.getElementById('integration-search')?.value||'').trim().toLowerCase();
+    const only=!!document.getElementById('integration-only-connected')?.checked;
+    document.querySelectorAll('.provider-card').forEach(card=>{
+      card.hidden=!!(text&&!card.textContent.toLowerCase().includes(text)) || (only&&card.dataset.connected!=='true');
+    });
+  }
+
   document.addEventListener('input',e=>{
     if(e.target.id==='admin-client-search'){
       const q=e.target.value, start=e.target.selectionStart, end=e.target.selectionEnd;
       state.adminQuery=q;render();const input=document.getElementById('admin-client-search');if(input){input.focus();if(start!==null&&end!==null)input.setSelectionRange(start,end);}return;
     }
+    if(e.target.id==='integration-search'){filterIntegrations();return;}
     if(e.target.id==='meta-account-search'){
       const q=e.target.value.trim().toLowerCase();
       document.querySelectorAll('.meta-account-row').forEach(row=>{row.style.display=row.textContent.toLowerCase().includes(q)?'':'none';});
