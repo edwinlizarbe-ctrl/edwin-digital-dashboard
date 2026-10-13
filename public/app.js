@@ -14,7 +14,7 @@
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
-    adminHealth: null, adminHealthError: '',
+    adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsError: '', accountNotice: '', temporaryAccess: null,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null,
   };
@@ -131,7 +131,19 @@
   const brand = large => `<div class="brand ${large ? 'brand-large' : ''}" aria-label="eDigital"><div class="brand-word">eDigital</div></div>`;
 
   async function api(path, options={}) {
-    const res = await fetch(path, { credentials:'same-origin', headers:{ 'Content-Type':'application/json' }, ...options });
+    // Ensure a stalled authentication service does not leave the splash screen forever.
+    const startup = ['/api/status','/api/me','/api/businesses'].includes(path.split('?')[0]);
+    const controller = startup ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 18000) : null;
+    let res;
+    try {
+      res = await fetch(path, { credentials:'same-origin', headers:{ 'Content-Type':'application/json' }, ...options, ...(controller ? { signal:controller.signal } : {}) });
+    } catch (error) {
+      if(controller?.signal.aborted) throw new Error('La conexión tardó demasiado. Comprueba tu internet e intenta ingresar nuevamente.');
+      throw error;
+    } finally {
+      if(timer !== null) clearTimeout(timer);
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { const error = new Error(data.error || `Error de servidor: ${res.status}`); error.status = res.status; throw error; }
     return data;
@@ -456,6 +468,8 @@
  <button type="button" class="button button-outline" data-act="admin-health-refresh">${icon('refresh',16)} Comprobar conexión</button></div>
  ${state.adminHealthError?alertBlock(state.adminHealthError):''}
  ${state.adminHealth&&!m.configured?`<p class="fine-print">Configuración pendiente o no válida: ${clean(failed.join(', '))}. Comprueba estas variables en Cloudflare → Worker → Production → Variables and Secrets. No compartas sus valores.</p>`:''}
+ ${state.adminHealth&&!checks.redirect?`<div class="admin-setup-guide"><strong>URL de retorno para Meta Ads</strong><p>En Cloudflare, agrega o corrige la variable <code>META_REDIRECT_URI</code> con esta URL exacta del Worker activo:</p><div class="admin-callback-row"><code>${clean(location.origin+'/api/meta/callback')}</code><button class="button button-outline" type="button" data-act="copy-meta-redirect">Copiar URL</button></div><p>Registra también la misma URL en Meta for Developers → Facebook Login → URI de redireccionamiento OAuth válidos. Luego pulsa «Comprobar conexión».</p></div>`:''}
+ ${state.adminSetupNotice?`<p class="fine-print" role="status">${clean(state.adminSetupNotice)}</p>`:''}
  ${m.configured?'<p class="fine-print">La configuración local está completa. Eso no confirma que la app de Meta tenga permisos para todos los clientes externos.</p>':''}
  `)}
  ${services.map(([title,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${providers.length} plataformas</span></div>
@@ -788,6 +802,12 @@ function sidebar(){
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
+    else if(action==='copy-meta-redirect'&&isAdmin()){
+      const callback=location.origin+'/api/meta/callback';
+      try{await navigator.clipboard.writeText(callback);state.adminSetupNotice='URL copiada. Agrégala en Cloudflare y en Meta for Developers.';}
+      catch{state.adminSetupNotice='Copia manualmente la URL que aparece arriba.';}
+      render();
+    }
     else if(action==='accounts-refresh'&&isAdmin()){state.temporaryAccess=null;await loadAccounts();}
     else if(action==='account-copy-temp'&&isAdmin()&&state.temporaryAccess){
       try{await navigator.clipboard.writeText(state.temporaryAccess.password);state.accountNotice='Clave copiada al portapapeles. Compártela por un canal privado.';}
