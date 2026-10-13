@@ -378,3 +378,14 @@ input,select,textarea{max-width:100%}
 .initial-load {min-height:100dvh}
 .loading-state {min-height:130px}
 @media(max-width:630px){.integration-grid{align-items:stretch}.integration-grid>.integration-card{width:100%}}
+
+
+/* Integration configuration guidance with copyable OAuth callback. */
+.admin-setup-guide{margin-top:14px;padding:15px 17px;background:var(--surface2);border:1px solid var(--border);border-radius:12px}
+.admin-setup-guide>strong{font-size:13px;color:var(--text)}
+.admin-setup-guide>p{margin-top:8px;color:var(--muted2);font-size:12px;line-height:1.65}
+.admin-setup-guide code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+.admin-callback-row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.admin-callback-row>code{flex:1;min-width:180px;overflow-wrap:anywhere;background:var(--surface);border:1px solid var(--border);padding:12px 14px;border-radius:9px;color:var(--text)}
+.admin-callback-row>.button{flex-shrink:0}
+@media(max-width:630px){.admin-callback-row{align-items:stretch;flex-direction:column}.admin-callback-row>.button{width:100%;justify-content:center}}
