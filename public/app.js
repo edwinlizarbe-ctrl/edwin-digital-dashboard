@@ -10,7 +10,7 @@
     mobileOpen: false, sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
-    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '',
+    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null,
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
@@ -336,9 +336,9 @@
   function campaignMetaSetup(){
     const m=state.meta||{},isReady=!!m.configured,connected=!!m.connected;
     const selected=m.selected_accounts||[m.selected_account].filter(Boolean);
-    const accounts=m.accounts||[],expanded=state.campaignConnectionOpen||!connected||!selected.length;
-    if(connected&&!expanded)
-      return '<div class="ads-connected-compact"><span class="ads-connected-dot" aria-hidden="true"></span><div><strong>Meta Ads conectado</strong><small>'+selected.length+' cuenta(s) seleccionadas para '+clean(displayBusiness())+'</small></div><button type="button" class="button button-outline" data-act="campaign-connect-toggle">Administrar cuentas</button></div>';
+    const accounts=m.accounts||[],expanded=state.campaignConnectionOpen;
+    if(!expanded)
+      return '<div class="ads-connected-compact"><span class="ads-connected-dot '+(connected?'':'pending')+'" aria-hidden="true"></span><div><strong>'+(connected?'Meta Ads conectado':'Conectar Meta Ads')+'</strong><small>'+(connected?selected.length+' cuenta(s) seleccionadas':'Autoriza Facebook y elige tus cuentas desde el dashboard')+'</small></div><button type="button" class="button '+(connected?'button-outline':'button-primary')+'" data-act="campaign-connect-toggle">'+(connected?'Administrar cuentas':'Configurar conexión')+'</button></div>';
     const step=(n,title,done)=>'<span class="ads-wizard-step '+(done?'completed':'')+'"><b>'+n+'</b>'+title+'</span>';
     let details='';
     if(state.metaLoading)details='<div class="ads-wizard-loading"><span class="spinner"></span><span>Verificando el acceso a Meta Ads…</span></div>';
@@ -360,14 +360,14 @@
         (state.campaignAccountSaving?'Guardando selección…':'Guardar y ver campañas')+'</button>'+
         '<button type="button" class="button button-outline" data-act="meta-connect" data-return="campaigns">Cambiar acceso de Facebook</button></div>';
     }
-    const close=connected&&selected.length?'<button type="button" class="ads-wizard-close" data-act="campaign-connect-toggle" aria-label="Ocultar selección de cuentas">'+icon('close',18)+'</button>':'';
-    return '<section class="ads-connection-panel" aria-label="Configuración de Meta Ads">'+
+    const close='<button type="button" class="ads-wizard-close" data-act="campaign-connect-toggle" aria-label="Cerrar asistente de conexión">'+icon('close',18)+'</button>';
+    return '<div class="ads-modal-backdrop" data-act="campaign-connect-toggle" aria-hidden="true"></div><div class="ads-modal-shell" role="dialog" aria-modal="true" aria-label="Conectar Meta Ads"><section class="ads-connection-panel" aria-label="Configuración de Meta Ads">'+
       '<div class="ads-connection-top"><div class="ads-connection-brand">'+providerLogo('Meta Ads')+
       '<div><strong>Meta Ads · '+clean(displayBusiness())+'</strong><small>Conexión directa en Campañas Ads</small></div></div>'+close+'</div>'+
       '<div class="ads-wizard-steps">'+step(1,'Conectar Facebook',connected)+step(2,'Seleccionar cuentas',selected.length>0)+step(3,'Consultar campañas',selected.length>0)+'</div>'+
       (state.metaError?alertBlock(state.metaError):'')+
       (state.campaignAccountNotice?'<div class="company-message" role="status">'+clean(state.campaignAccountNotice)+'</div>':'')+
-      '<div class="ads-wizard-body">'+details+'</div></section>';
+      '<div class="ads-wizard-body">'+details+'</div></section></div>';
   }
 
 function campaigns(){
@@ -992,10 +992,13 @@ function sidebar(){
     }
     else if(action==='meta-connect'){
       if(state.meta?.configured && metaPilotEligible()){
-        const returnTo=b.dataset.return==='campaigns'?'&return_to=campaigns':'';
-        window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId)+returnTo);
+        const fromCampaigns=b.dataset.return==='campaigns'||state.page==='campaigns';
+        const base='/api/meta/connect?business_id='+encodeURIComponent(state.businessId)+(fromCampaigns?'&return_to=campaigns':'');
+        const popup=window.open(base+'&popup=1','edigital_meta_oauth','popup=yes,width=580,height=720,resizable=yes,scrollbars=yes');
+        if(popup){state.metaPopup=popup;state.campaignConnectionOpen=fromCampaigns||state.campaignConnectionOpen;state.metaError='';render();popup.focus();}
+        else window.location.assign(base);
       }else{
-        state.metaError='La conexión estará disponible cuando Meta Ads termine de configurarse para eDigital.';
+        state.metaError='Esta integración aún no está habilitada para la empresa.';
         render();
       }
     }
@@ -1041,7 +1044,18 @@ function sidebar(){
       Object.assign(state,{user:null,temporaryAccess:null,businesses:[],sites:[],businessId:'',siteId:'',ga:null,hm:null,gaError:'',hmError:'',meta:null,metaReport:null,metaError:'',page:'overview',mobileOpen:false,search:''});render();
     }
   });
+  window.addEventListener('message',async event=>{
+    const data=event.data;
+    if(event.origin!==location.origin||!state.metaPopup||event.source!==state.metaPopup||
+      data?.type!=='edigital:meta-oauth'||data.business_id!==state.businessId)return;
+    state.metaPopup=null;
+    state.campaignConnectionOpen=true;
+    if(data.status==='cancelled'){state.metaError='Se canceló el acceso a Facebook.';render();return;}
+    await loadMeta();
+    if(state.page==='campaigns')await loadAds();
+  });
   document.addEventListener('keydown', e=>{
+    if(e.key==='Escape'&&state.campaignConnectionOpen){state.campaignConnectionOpen=false;render();return;}
     if((e.key==='Enter'||e.key===' ') && e.target.matches?.('.client-card-clickable')){
       e.preventDefault(); e.target.click();
     }
