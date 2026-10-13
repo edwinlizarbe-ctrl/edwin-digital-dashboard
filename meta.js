@@ -1,8 +1,9 @@
 /**
- * Meta Ads pilot — Edwin Digital only.
+ * Meta Ads pilot — per-tenant, per-user session, read-only.
  * OAuth handled entirely on Cloudflare Worker. No third-party intermediary.
  * Encrypted HttpOnly cookies avoid database/schema changes for the first test.
- * Pilot tradeoff: one connection per browser, expiring with the Meta token.
+ * Pilot tradeoff: one encrypted browser connection per signed-in user and authorized business.
+ * Development-mode Meta apps require explicitly permitted testers/admins.
  */
 const META_COOKIE = 'ed_meta_pilot';
 const META_PENDING = 'ed_meta_pending';
@@ -93,7 +94,7 @@ function metaValidBusinessId(id) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 async function metaPilotBusiness(env, session, businessId) {
-  if (session.user.role!=='admin' || !metaValidBusinessId(businessId)) return false;
+  if (!metaValidBusinessId(businessId)) return false;
   // Use the user's JWT; Supabase RLS must authorize the business.
   const endpoint = String(env.SUPABASE_URL).replace(/\/$/,'') +
     '/rest/v1/businesses?select=id,slug&id=eq.'+encodeURIComponent(businessId)+'&limit=1';
@@ -102,7 +103,7 @@ async function metaPilotBusiness(env, session, businessId) {
   }});
   if(!r.ok)return false;
   const rows=await r.json();
-  return rows.length===1 && rows[0].slug==='edwin-digital';
+  return rows.length===1 && rows[0].id===businessId;
 }
 async function metaGraph(env, urlPath, token, fields) {
   const config=metaConfig(env);
@@ -135,7 +136,7 @@ export async function handleMetaApi(req,env,s) {
   const error=(message,status=400)=>reply({error:message},status);
   if(path==='/api/meta/status' && method==='GET') {
     const businessId=url.searchParams.get('business_id')||'';
-    if(!await metaPilotBusiness(env,s,businessId))return error('Esta conexión piloto solo está disponible para el administrador de Edwin Digital.',403);
+    if(!await metaPilotBusiness(env,s,businessId))return error('No tienes acceso a este negocio.',403);
     if(!config.ready)return reply({configured:false,connected:false,reason:'Meta Ads todavía no está configurado en los secretos de Cloudflare.'});
     const connection=await unsealMeta(env,jar[META_COOKIE]);
     if(!validMetaSession(connection,s,businessId))return reply({configured:true,connected:false});
@@ -145,7 +146,7 @@ export async function handleMetaApi(req,env,s) {
     }catch(e){return reply({configured:true,connected:false,error:String(e.message).slice(0,180)});}
   }
   if(path==='/api/meta/connect' && method==='GET') {
-    if(!config.ready)return error('Configura primero META_APP_ID, META_APP_SECRET, META_REDIRECT_URI y META_SESSION_KEY en Cloudflare.',503);
+    if(!config.ready)return error('La integración Meta Ads aún necesita configuración del proveedor.',503);
     if(url.origin!==new URL(config.redirect).origin)return error('El dominio no coincide con el dominio configurado para Meta.',403);
     const businessId=url.searchParams.get('business_id')||'';
     if(!await metaPilotBusiness(env,s,businessId))return error('No tienes acceso a esta conexión piloto.',403);
