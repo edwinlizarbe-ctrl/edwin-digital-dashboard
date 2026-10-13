@@ -541,3 +541,13 @@ input,select,textarea{max-width:100%}
 .ga-wizard-pulse{min-height:65px;display:flex;align-items:center;color:var(--muted2);font-size:12px;animation:ga-pulse 1.5s infinite}
 @media(max-width:960px){.admin-feature-grid{grid-template-columns:1fr}}
 @media(max-width:630px){.admin-feature-header{grid-template-columns:1fr}.admin-feature-row{padding:12px 10px}}
+
+
+/* In-dashboard connector: native overlay; only Facebook consent opens a trusted popup. */
+.ads-modal-backdrop{position:fixed;inset:0;background:rgba(10,22,42,.55);z-index:140;backdrop-filter:blur(3px);cursor:pointer}
+.ads-modal-shell{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(780px,calc(100vw - 38px));max-height:calc(100dvh - 50px);overflow:auto;z-index:141;background:var(--surface);border:1px solid var(--border);border-radius:19px;box-shadow:0 30px 110px rgba(0,0,0,.3)}
+.ads-modal-shell .ads-connection-panel{box-shadow:none;border:0;margin:0;padding:27px 28px}
+.ads-modal-shell .ads-wizard-body{padding:22px 23px}
+.ads-modal-shell .ads-account-list{max-height:280px}
+.ads-connected-dot.pending{background:#e7ad53;box-shadow:0 0 0 4px #e7ad531b}
+@media(max-width:650px){.ads-modal-shell{width:calc(100vw - 18px);max-height:calc(100dvh - 22px);border-radius:14px}.ads-modal-shell .ads-connection-panel{padding:17px 14px}.ads-modal-shell .ads-wizard-body{padding:16px 13px}}
