@@ -316,3 +316,43 @@ input,select,textarea{max-width:100%}
 .temporary-credential code{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:14px;letter-spacing:.35px;overflow-wrap:anywhere;flex:1;user-select:all;min-width:190px}
 .temporary-credential p{color:var(--muted2);font-size:12px;margin-top:12px;line-height:1.5}
 @media(max-width:620px){.account-access-actions{margin-left:0;width:100%}.account-access-actions .button{flex:1}}
+
+
+/* eDigital V8 · compact premium layouts, accessible company media & provider cards */
+.sidebar-workspace{display:flex;width:calc(100% - 10px);font-family:inherit;text-align:left;cursor:pointer;appearance:none;-webkit-appearance:none;transition:border-color .18s,background .18s}
+.sidebar-workspace:hover,.sidebar-workspace:focus-visible{border-color:var(--accent);background:var(--accent-soft);outline:none}
+.sidebar-workspace>svg:last-child{flex-shrink:0;opacity:.85}
+.sidebar-workspace b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-workspace small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.company-logo-preview{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;width:94px;height:94px;flex:0 0 94px;border-radius:50%;overflow:visible;border:2px solid var(--border);background:var(--accent-soft);transition:border-color .18s,transform .18s}
+.company-logo-preview:hover{border-color:var(--accent);transform:translateY(-1px)}
+.company-logo-preview:focus-within{outline:2px solid var(--accent);outline-offset:4px}
+.company-photo-core{width:100%;height:100%;display:grid;place-items:center;border-radius:50%;overflow:hidden;color:var(--accent)}
+.company-photo-core>svg{width:38px;height:38px}
+.company-photo-core .company-logo-image{width:100%;height:100%;object-fit:cover}
+.company-photo-camera{position:absolute;right:-4px;bottom:-2px;width:33px;height:33px;background:var(--accent);color:white;border-radius:50%;border:3px solid var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(21,32,59,.22)}
+.company-photo-camera svg{width:15px;height:15px}
+.company-logo-instruction{display:flex;align-items:flex-start;gap:12px;padding:13px 15px;border:1px solid var(--border);border-radius:12px;background:var(--surface2);color:var(--text)}
+.company-logo-instruction>svg{color:var(--accent);flex-shrink:0;margin-top:2px}
+.company-logo-instruction span{display:flex;flex-direction:column;gap:5px;min-width:0}
+.company-logo-instruction b{font-size:12px}
+.company-logo-instruction small{font-size:11px;color:var(--muted2);line-height:1.55}
+.accessible-file{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.content-grid>.col-4,.content-grid>.col-5,.content-grid>.col-6,.content-grid>.col-7,.content-grid>.col-8,.content-grid>.col-12{min-width:0}
+.content-grid .card{height:auto;min-height:0}
+.integration-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.provider-card{min-width:0;min-height:200px;padding:19px 20px;border-radius:15px;box-shadow:0 2px 15px rgba(20,35,65,.035)}
+.provider-card .integration-head{margin-bottom:13px}
+.provider-logo{flex:0 0 51px;background:var(--surface2);border:1px solid var(--border);overflow:hidden}
+.provider-logo img{object-fit:contain;width:32px;height:32px}
+.provider-card h3{margin-bottom:5px}
+.provider-card .integration-status{margin-top:12px}
+.empty-data{min-height:145px;padding:20px 15px}
+.empty-compact{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding-bottom:22px}
+.empty-compact .empty-data{min-height:135px}
+.empty-compact>.button{margin:0 auto}
+.spacer-sm{height:9px}
+.form-input input,.simple-input,.admin-search input,.meta-search,.meta-select,.search-wrap input{font-size:16px}
+@media(max-width:900px){.integration-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.company-header-panel{gap:16px}}
+@media(max-width:630px){.integration-grid{grid-template-columns:1fr}.company-header-panel{padding:17px}.company-logo-preview{width:75px;height:75px;flex-basis:75px}.company-header-panel h2{font-size:18px}.company-photo-camera{width:30px;height:30px}.provider-card{min-height:unset}.empty-data{min-height:132px}}
