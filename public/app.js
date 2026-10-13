@@ -435,16 +435,26 @@
       (!q||[x.account_name,x.name,x.campaign_name,x.adset_name,x.id].some(v=>String(v||'').toLocaleLowerCase('es').includes(q))));
   }
   function metaAccountSummary(){
-    const reports=(state.metaReport?.account_reports||[]).filter(x=>!state.adsAccount||x.account_id===state.adsAccount);
-    const available=reports.filter(x=>x.metrics),currencies=new Set(available.map(x=>x.currency||'').filter(Boolean));
-    if(!available.length)return null;
-    const sum=field=>available.every(x=>x.metrics[field]!==null&&x.metrics[field]!==undefined&&Number.isFinite(Number(x.metrics[field])))
-      ?available.reduce((t,x)=>t+Number(x.metrics[field]),0):null;
-    const spend=currencies.size===1?sum('spend'):null,clicks=sum('clicks'),impressions=sum('impressions');
-    return {currency:currencies.size===1?[...currencies][0]:'',spend,clicks,impressions,
+    // Read only the campaign-report rows returned for the current Ads date/level.
+    // The general Meta summary can use a different period and must not be labeled as this report.
+    const report=state.metaCampaigns;
+    if(!report||report.partial||!Array.isArray(report.rows)||!report.rows.length)return null;
+    const selected=report.rows.filter(x=>!state.adsAccount||x.account_id===state.adsAccount);
+    if(!selected.length)return null;
+    const currencies=new Set(selected.map(x=>String(x.currency||'')).filter(Boolean));
+    const sum=field=>selected.every(x=>x[field]!==null&&x[field]!==undefined&&Number.isFinite(Number(x[field])))
+      ?selected.reduce((t,x)=>t+Number(x[field]),0):null;
+    const spend=currencies.size===1?sum('spend'):null,
+      clicks=sum('clicks'),impressions=sum('impressions');
+    return {
+      currency:currencies.size===1?[...currencies][0]:'',
+      spend,clicks,impressions,
       ctr:clicks!==null&&impressions>0?100*clicks/impressions:null,
       cpc:spend!==null&&clicks>0?spend/clicks:null,
-      currencyMixed:currencies.size>1,accounts:available.length};
+      currencyMixed:currencies.size>1,
+      accounts:new Set(selected.map(x=>x.account_id).filter(Boolean)).size,
+      recordCount:selected.length
+    };
   }
   function adsMetricsStrip(){
     const values=metaAccountSummary();if(!values)return '';
@@ -454,7 +464,7 @@
       ['CTR',values.ctr===null?'—':metaMetric(values.ctr,2)+'%'],
       ['CPC'+(values.currency?' ('+values.currency+')':''),values.cpc===null?'—':metaMetric(values.cpc,2)]
     ];
-    return '<section class="ads-kpi-section" aria-label="Resumen de Meta Ads"><div class="ads-kpi-context"><b>Rendimiento publicitario</b><span>'+clean(adsPeriodLabel())+' · '+values.accounts+' cuenta(s) con datos'+(values.currencyMixed?' · Monedas distintas: inversión y CPC sin sumar':'')+'</span></div><div class="small-kpis ads-five-kpis">'+metrics.map(([label,val])=>
+    return '<section class="ads-kpi-section" aria-label="Resumen de Meta Ads"><div class="ads-kpi-context"><b>Rendimiento publicitario</b><span>'+clean(adsPeriodLabel())+' · '+values.accounts+' cuenta(s) · '+values.recordCount+' registros'+(state.adsAccount?' · Cuenta filtrada':'')+(values.currencyMixed?' · Monedas distintas: inversión y CPC sin sumar':'')+'</span></div><div class="small-kpis ads-five-kpis">'+metrics.map(([label,val])=>
       '<div class="small-kpi"><span>'+clean(label)+'</span><strong>'+clean(val)+'</strong></div>').join('')+'</div></section>';
   }
 
@@ -509,7 +519,7 @@ function adsGuidance(platform,connected){
      'Tus cuentas usan monedas distintas. Revisa la inversión y el CPC por cuenta sin sumar montos incompatibles.':
      'Compara inversión y CPC entre campañas similares. Un costo menor no garantiza mejores clientes.']);
    suggestions.push(['Confirma los resultados','Los clics e impresiones no son ventas. Revisa los eventos y metas de tu web antes de atribuir conversiones.']);
-   if(report.partial)suggestions.push(['Informe parcial','Meta devolvió resultados parciales. El total podría no incluir todas las campañas.']);
+   if(report.partial)suggestions.push(['Informe parcial','Meta devolvió resultados parciales. Por esa razón, el resumen agregado no se muestra como si fuera un total completo.']);
   }
  }
  return '<section class="ads-guidance" aria-labelledby="ads-guidance-title"><div class="ads-guidance-heading"><span class="ads-guidance-icon">'+icon('lightbulb',21)+'</span><div><h3 id="ads-guidance-title">Consejos para analizar tus campañas</h3><p>Guía práctica basada en el estado de tus conexiones, sin resultados inventados.</p></div></div>'+
