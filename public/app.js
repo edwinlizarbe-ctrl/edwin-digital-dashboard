@@ -10,7 +10,7 @@
     mobileOpen: false, sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
-    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null,
+    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
@@ -924,7 +924,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.campaignConnectionOpen=false;state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await loadClientEntitlements(id);await refresh();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
@@ -1092,11 +1092,25 @@ function sidebar(){
     else if(action==='edit-site-cancel'){state.editSiteId='';state.siteError='';render();}
     else if(action==='company-logo-clear'){state.companyLogoClear=true;state.companyLogoDraft=null;state.companyNotice='';render();}
     else if(action==='meta-panel-toggle'){state.metaPanelOpen=!state.metaPanelOpen;render();}
-    else if(action==='campaign-connect-toggle'){state.campaignConnectionOpen=!state.campaignConnectionOpen;state.campaignAccountNotice='';render();}
-    else if(action==='campaign-meta-save'){
-      if(state.campaignAccountSaving||!state.meta?.connected)return;
+    else if(action==='campaign-connect-toggle'){
+      state.campaignConnectionOpen=!state.campaignConnectionOpen;
+      state.campaignAccountNotice='';state.metaError='';
+      state.campaignWizardStage='accounts';state.campaignWizardSelectedIds=null;
+      render();
+    }
+    else if(action==='campaign-meta-back'){
+      state.campaignWizardStage='accounts';state.metaError='';render();
+    }
+    else if(action==='campaign-meta-next'){
       const ids=[...document.querySelectorAll('.campaign-meta-account-check:checked')].map(x=>x.value);
       if(!ids.length||ids.length>5){state.metaError='Selecciona entre una y cinco cuentas publicitarias.';render();return;}
+      state.campaignWizardSelectedIds=ids;state.campaignWizardStage='confirm';state.metaError='';render();
+    }
+    else if(action==='campaign-meta-save'){
+      if(state.campaignAccountSaving||!state.meta?.connected)return;
+      const ids=Array.isArray(state.campaignWizardSelectedIds)?state.campaignWizardSelectedIds:[];
+      const authorized=(state.meta?.accounts||[]).map(a=>a.id);
+      if(!ids.length||ids.length>5||ids.some(id=>!authorized.includes(id))){state.metaError='Selecciona entre una y cinco cuentas autorizadas.';state.campaignWizardStage='accounts';render();return;}
       const current=state.businessId;
       state.campaignAccountSaving=true;state.metaError='';state.campaignAccountNotice='';render();
       try{
@@ -1105,8 +1119,8 @@ function sidebar(){
         state.metaCampaigns=null;
         state.campaignAccountNotice='Cuentas guardadas. Estamos consultando tus campañas.';
         await loadMeta();await loadAds();
-        state.campaignConnectionOpen=false;render();
-      }catch(error){if(state.businessId===current){state.metaError=error.message;state.campaignConnectionOpen=true;render();}}
+        state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';render();
+      }catch(error){if(state.businessId===current){state.metaError=error.message;state.campaignConnectionOpen=true;state.campaignWizardStage='confirm';render();}}
       finally{state.campaignAccountSaving=false;if(state.businessId===current)render();}
     }
     else if(action==='meta-refresh')await loadMeta();
@@ -1165,6 +1179,23 @@ function sidebar(){
       await saveAdminFeature(e.target.dataset.feature,requested,null);
       return;
     }
+    if(e.target.id==='campaign-meta-select-all'){
+      const visible=[...document.querySelectorAll('.connector-account-row')].filter(row=>row.style.display!=='none');
+      const target=e.target.checked;
+      const checked=[...document.querySelectorAll('.campaign-meta-account-check:checked')].map(x=>x.value);
+      if(target){let remaining=5-checked.length;for(const row of visible){const input=row.querySelector('.campaign-meta-account-check');if(input&&!input.checked&&remaining>0){input.checked=true;remaining--;}}}
+      else for(const row of visible){const input=row.querySelector('.campaign-meta-account-check');if(input)input.checked=false;}
+      state.campaignWizardSelectedIds=[...document.querySelectorAll('.campaign-meta-account-check:checked')].map(x=>x.value);
+      const label=document.getElementById('connector-account-total');if(label)label.textContent=state.campaignWizardSelectedIds.length+' seleccionada(s)';
+      return;
+    }
+    if(e.target.classList?.contains('campaign-meta-account-check')){
+      const checked=[...document.querySelectorAll('.campaign-meta-account-check:checked')];
+      if(checked.length>5){e.target.checked=false;state.metaError='Puedes seleccionar un máximo de cinco cuentas.';const msg=document.querySelector('.connector-content .alert-block');if(msg)msg.textContent=state.metaError;}
+      state.campaignWizardSelectedIds=[...document.querySelectorAll('.campaign-meta-account-check:checked')].map(x=>x.value);
+      const count=document.getElementById('connector-account-total');if(count)count.textContent=state.campaignWizardSelectedIds.length+' seleccionada(s)';
+      return;
+    }
     if(e.target.id==='integration-only-connected'){filterIntegrations();return;}
     if(e.target.id==='business-selector')await chooseBusiness(e.target.value);
     else if(e.target.id==='site-selector'){state.siteId=e.target.value;await refresh();}
@@ -1193,10 +1224,20 @@ function sidebar(){
       state.adminQuery=q;render();const input=document.getElementById('admin-client-search');if(input){input.focus();if(start!==null&&end!==null)input.setSelectionRange(start,end);}return;
     }
     if(e.target.id==='integration-search'){filterIntegrations();return;}
-    if(e.target.id==='meta-account-search'||e.target.id==='campaign-meta-search'){
+    if(e.target.id==='campaign-provider-search'){
+      const q=e.target.value.trim().toLocaleLowerCase('es');
+      document.querySelectorAll('.connector-provider[data-provider-name]').forEach(item=>{item.style.display=item.dataset.providerName.includes(q)?'':'none';});
+      return;
+    }
+    if(e.target.id==='campaign-meta-search'){
+      const q=e.target.value.trim().toLocaleLowerCase('es');
+      document.querySelectorAll('.connector-account-row').forEach(row=>{row.style.display=(row.dataset.accountSearch||'').includes(q)?'':'none';});
+      const selectAll=document.getElementById('campaign-meta-select-all');if(selectAll)selectAll.checked=false;
+      return;
+    }
+    if(e.target.id==='meta-account-search'){
       const q=e.target.value.trim().toLowerCase();
-      const root=e.target.id==='campaign-meta-search'?document.querySelector('.ads-account-list'):document;
-      root?.querySelectorAll('.meta-account-row').forEach(row=>{row.style.display=row.textContent.toLowerCase().includes(q)?'':'none';});
+      document.querySelectorAll('.meta-account-row').forEach(row=>{row.style.display=row.textContent.toLowerCase().includes(q)?'':'none';});
       return;
     }
     if(e.target.id!=='global-search')return;
