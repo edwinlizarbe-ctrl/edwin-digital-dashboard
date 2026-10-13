@@ -307,11 +307,14 @@ async function handleApi(req, env) {
   }
   if(path==='/api/admin/integrations/health' && method==='GET') {
     if(s.user.role!=='admin')return json({error:'Acceso exclusivo del administrador.'},403,s.cookies);
+    const currentOrigin=new URL(req.url).origin;
+    const automatic=!env.META_REDIRECT_URI && currentOrigin==='https://edwin-digital-dashboard.edwinlizarbe.workers.dev';
+    const redirect=env.META_REDIRECT_URI||(automatic?currentOrigin+'/api/meta/callback':'');
     let callback=false;
-    try{const u=new URL(env.META_REDIRECT_URI||'');callback=u.protocol==='https:'&&u.pathname==='/api/meta/callback'&&!u.search&&!u.hash;}catch{}
+    try{const u=new URL(redirect);callback=u.protocol==='https:'&&u.origin===currentOrigin&&u.pathname==='/api/meta/callback'&&!u.search&&!u.hash;}catch{}
     const checks={app_id:!!env.META_APP_ID,app_secret:!!env.META_APP_SECRET,
       session_key:/^[0-9a-fA-F]{64}$/.test(env.META_SESSION_KEY||''),redirect:callback};
-    return json({meta:{configured:Object.values(checks).every(Boolean),checks},ga4:{service_account:!!env.GOOGLE_SERVICE_ACCOUNT_JSON}},200,s.cookies);
+    return json({meta:{configured:Object.values(checks).every(Boolean),checks,automatic_redirect:automatic,callback_url:callback?redirect:null},ga4:{service_account:!!env.GOOGLE_SERVICE_ACCOUNT_JSON}},200,s.cookies);
   }
 
   if (path === '/api/businesses' && method === 'GET') {
