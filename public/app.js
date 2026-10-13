@@ -15,6 +15,7 @@
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
     adminHealth: null, adminHealthError: '',
+    adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsError: '', accountNotice: '',
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -57,6 +58,7 @@
     hotmart: ['Ventas Hotmart', 'shopping-bag'],
     reports: ['Reportes', 'file-bar-chart'],
     clients: ['Mis clientes', 'building'],
+    accounts: ['Accesos de clientes', 'users'],
     clientDetail: ['Ficha del cliente', 'building'],
     integrations: ['Integraciones', 'plug'],
     settings: ['Configuración', 'settings'],
@@ -429,6 +431,34 @@
  catch(e){state.adminHealthError=e.message;state.adminHealth=null;}
  if(isAdmin())render();
 }
+async function loadAccounts(){
+  if(!isAdmin())return;
+  state.accountsLoading=true;state.accountsError='';render();
+  try{
+    const data=await api('/api/admin/accounts');
+    state.accountsLoaded=true;
+    state.adminAccounts=Array.isArray(data.accounts)?data.accounts:[];
+    state.accountsError=data.configured===false?(data.reason||'Configuración administrativa pendiente.'):'';
+    if(data.truncated)state.accountsError='El directorio muestra como máximo 200 usuarios en esta fase de prueba.';
+  }catch(e){state.accountsLoaded=true;state.adminAccounts=[];state.accountsError=e.message;}
+  finally{state.accountsLoading=false;render();}
+}
+  function accounts(){
+  if(!isAdmin())return overview();
+  const list=state.adminAccounts||[];
+  const date=v=>{if(!v)return 'Sin registro';const d=new Date(v);return Number.isNaN(d.valueOf())?'Sin registro':d.toLocaleDateString('es-PE',{year:'numeric',month:'short',day:'numeric'});};
+  const results=list.map(u=>`<div class="client-site-row account-access-row">
+    <div class="client-avatar compact">${icon('users',19)}</div>
+    <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Rol: ${clean(u.role||'Cliente')} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
+    <button class="button button-outline" data-act="account-recovery" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Recuperar acceso</button>
+  </div>`).join('');
+  return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
+    <div class="account-access-toolbar"><button class="button button-outline" data-act="accounts-refresh" ${state.accountsLoading?'disabled':''}>${icon('refresh',16)} ${state.accountsLoading?'Consultando…':'Actualizar usuarios'}</button><span>${fmt(list.length)} cuentas visibles</span></div>
+    ${state.accountsError?alertBlock(state.accountsError,'info'):''}
+    ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
+    ${card('Usuarios de clientes','Correos registrados en Supabase Auth',results||empty(state.accountsLoading?'Consultando cuentas…':state.accountsLoaded?'No hay cuentas de clientes disponibles.':'Pulsa Actualizar usuarios para consultar las cuentas.'))}
+    <p class="fine-print">Las contraseñas no se almacenan ni pueden consultarse aquí. La recuperación envía un enlace al correo del cliente mediante Supabase Auth. Los accesos a empresas siguen sujetos a permisos.</p>`;
+}
   function clients(){
  if(!isAdmin())return overview();
  const query=state.adminQuery.trim().toLowerCase(), filtered=state.businesses.filter(b=>(b.name+' '+(b.slug||'')).toLowerCase().includes(query));
@@ -471,13 +501,13 @@
   const v=x.metrics;
   return `<div class="meta-account-result"><strong>${clean(x.name)} · ${clean(x.currency)}</strong>${v?`<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${metaMetric(v.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(v.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(v.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(v.ctr,2)}%</strong></div><div><small>CPC</small><strong>${metaMetric(v.cpc,2)}</strong></div></div>`:'<p class="fine-print">Sin datos en el período.</p>'}</div>`;
  }).join('');
- const body=!m.configured?'<p>Esta conexión aún no está disponible. Puedes continuar usando las otras áreas del panel.</p>':
+ const body=!m.configured?`<p>${clean(m.reason||'Esta conexión aún no está configurada.')} Puedes continuar usando las otras áreas del panel.</p>`:
  !m.connected?`<button class="button button-primary" data-act="meta-connect">${icon('link',16)} Conectar con Facebook</button>`:
  `<label class="form-label">Elige hasta cinco cuentas publicitarias</label>
  <input class="meta-search" id="meta-account-search" placeholder="Buscar cuenta publicitaria…" autocomplete="off"/>
  <div class="meta-account-list">${accounts||'<p>No se encontraron cuentas autorizadas.</p>'}</div>
  <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh">${icon('refresh',16)} Actualizar datos</button><button class="button button-soft" data-act="meta-disconnect">Desconectar</button><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas ${icon('chevron',15)}</button></div>
- <p class="fine-print">Consulta las estadísticas desde Resumen y Campañas Ads.</p>`;
+ <p class="fine-print">Consulta las estadísticas desde Resumen y Campañas Ads. Esta conexión piloto está vinculada al navegador actual y no es permanente entre dispositivos.</p>`;
  return `<article class="integration-card provider-card" data-connected="${m.connected?'true':'false'}"><div class="integration-head">${providerLogo('Meta Ads')}${tag(m.connected?'Conectado':m.configured?'Disponible':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Publicidad de Facebook e Instagram.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${m.connected&&!state.metaPanelOpen?`<div class="integration-compact-footer"><span>${selected.length} cuenta(s) seleccionadas</span><button class="button button-outline" data-act="meta-panel-toggle">Administrar cuentas</button></div>`:body}${m.connected&&state.metaPanelOpen?`<button class="button button-soft" data-act="meta-panel-toggle">Cerrar detalles</button>`:''}</div>${state.metaLoading?'<span class="fine-print">Consultando conexión…</span>':''}</article>`;
 }
     async function loadMeta() {
@@ -566,8 +596,8 @@
     const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}" title="${clean(pages[id][0])}" aria-label="${clean(pages[id][0])}" ${state.page===id?'aria-current="page"':''}>${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
 function sidebar(){
- const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
- `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition','campaigns','audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['hotmart','reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
+ const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','accounts','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
+ `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition','campaigns','audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
  return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('menu',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><div class="sidebar-workspace"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Superadministrador':'Espacio de análisis'}</small></span>${icon('chevronDown',16)}</div>${menu}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Superadministrador':'Usuario de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
 }
     function topbar(){
@@ -581,10 +611,10 @@ function sidebar(){
     setTheme();
     if(state.loading){root.innerHTML=`<div class="initial-load"><span class="spinner"></span><strong>Preparando E Digital…</strong></div>`;return;}
     if(!state.user){login();return;}
-    if(isAdmin()&&!['adminHome','clients','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
-    if(!isAdmin()&&['adminHome','clients','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
-    const contents={overview,analytics,acquisition,campaigns,utm,audience,content,events,hotmart,reports,clients,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
-    root.innerHTML=`<div class="layout ${state.sidebarCollapsed?'sidebar-collapsed':''}">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${(contents[state.page]||overview)()}</main><footer class="footer"><span>© ${new Date().getFullYear()} Edwin Digital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
+    if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
+    if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
+    const contents={overview,analytics,acquisition,campaigns,utm,audience,content,events,hotmart,reports,clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
+    root.innerHTML=`<div class="layout ${state.sidebarCollapsed?'sidebar-collapsed':''}">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${(contents[state.page]||overview)()}</main><footer class="footer"><span>© ${new Date().getFullYear()} eDigital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
   }
   async function loadAds(){
  if(isAdmin()||!state.businessId||state.adsPlatform!=='meta'){state.metaCampaigns=null;state.adsLoading=false;render();return;}
@@ -712,10 +742,17 @@ function sidebar(){
     }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
-    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin())await loadAdminHealth();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin())await loadAdminHealth();if(state.page==='accounts'&&isAdmin())await loadAccounts();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
+    else if(action==='accounts-refresh'&&isAdmin())await loadAccounts();
+    else if(action==='account-recovery'&&isAdmin()){
+      const email=b.dataset.email||'',id=b.dataset.id||'';
+      if(!confirm('¿Enviar un enlace de recuperación de contraseña a '+email+'?'))return;
+      state.accountNotice='';try{const out=await api('/api/admin/accounts/recovery',{method:'POST',body:JSON.stringify({user_id:id})});state.accountNotice=out.message||'Solicitud enviada.';state.accountsError='';}
+      catch(e){state.accountsError=e.message;}render();
+    }
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
     else if(action==='edit-site'){state.editSiteId=b.dataset.id;state.siteError='';state.siteNotice='';render();}
     else if(action==='edit-site-cancel'){state.editSiteId='';state.siteError='';render();}
