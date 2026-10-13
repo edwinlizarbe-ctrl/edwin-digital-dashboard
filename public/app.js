@@ -564,7 +564,7 @@ function adsGuidance(platform,connected){
    suggestions.push(['Revisa costos',summ?.currencyMixed?
      'Tus cuentas usan monedas distintas. Revisa la inversión y el CPC por cuenta sin sumar montos incompatibles.':
      'Compara inversión y CPC entre campañas similares. Un costo menor no garantiza mejores clientes.']);
-   suggestions.push(['Confirma los resultados','Los clics e impresiones no son ventas. Revisa los eventos y metas de tu web antes de atribuir conversiones.']);
+   suggestions.push(['Evalúa resultados, no solo clics','Un CTR alto no garantiza conversiones. Si tu integración entrega resultados y costo por resultado, prioriza esas métricas; compara campañas del mismo objetivo y período.']);
    if(report.partial)suggestions.push(['Informe parcial','Meta devolvió resultados parciales. Por esa razón, el resumen agregado no se muestra como si fuera un total completo.']);
   }
  }
