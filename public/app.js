@@ -184,7 +184,7 @@
     return `<svg class="mini-graphic" viewBox="0 0 128 44" aria-hidden="true"><polyline points="${coords}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
   }
   function kpi(label,value,iconName,color,trendKey,sparkKey,note) {
-    return `<article class="kpi"><div class="kpi-header"><div class="kpi-icon ${color}">${icon(iconName,20)}</div><span class="kpi-dots">···</span></div><div class="kpi-name">${clean(label)}${note?tip(note):''}</div><div class="kpi-value">${value}</div><div class="kpi-bottom"><div class="kpi-change">${trendFor(trendKey)}</div>${miniSpark(sparkKey,color==='purple'?'#8453f5':color==='cyan'?'#00b8e6':color==='coral'?'#f56b7f':'#40bb9d')}</div></article>`;
+    return `<article class="kpi"><div class="kpi-header"><div class="kpi-icon ${color}">${icon(iconName,20)}</div><span class="kpi-dots">···</span></div><div class="kpi-name">${clean(label)}${note?tip(note):''}</div><div class="kpi-value">${value}</div><div class="kpi-bottom"><div class="kpi-change">${trendFor(trendKey)}</div>${miniSpark(sparkKey,color==='purple'?'#2563EB':color==='cyan'?'#00b8e6':color==='coral'?'#f56b7f':'#40bb9d')}</div></article>`;
   }
   function mainKpis() {
     if(state.gaLoading)return '<div class="kpi-grid" role="status" aria-label="Cargando estadísticas">'+[1,2,3,4].map(()=>'<div class="ga-skeleton-kpi"><span class="ga-skeleton-shine"></span><span class="ga-skeleton-value"></span><span class="ga-skeleton-note"></span></div>').join('')+'</div>';
@@ -207,7 +207,7 @@
     const xticks=tickIdx.map(i=>`<text x="${x(i)}" y="${H-11}" text-anchor="middle" class="plot-tick">${clean(dateLabel(list[i]?.date))}</text>`).join('');
     const spots=list.length<=50 ? list.map((r,i)=>`<circle cx="${x(i)}" cy="${y(r[k1])}" r="5" class="chart-spot"><title>${clean(dateLabel(r.date))} · ${clean(label1)}: ${fmt(r[k1])}</title></circle>${k2?`<circle cx="${x(i)}" cy="${y(r[k2])}" r="5" class="chart-spot"><title>${clean(dateLabel(r.date))} · ${clean(label2)}: ${fmt(r[k2])}</title></circle>`:''}`).join(''):'';
     const gradId=`grad-${clean(k1)}-${height}`;
-    return `<div class="chart-legend"><span><i class="legend-chip purple"></i>${clean(label1)}</span>${k2?`<span><i class="legend-chip cyan"></i>${clean(label2)}</span>`:''}</div><div class="chart-holder"><svg viewBox="0 0 ${W} ${H}" class="plot" role="img" aria-label="Evolución real de ${clean(label1)}"><defs><linearGradient id="${gradId}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8354f4" stop-opacity=".23"/><stop offset="1" stop-color="#8354f4" stop-opacity="0"/></linearGradient></defs>${stripes}<polygon points="${area}" fill="url(#${gradId})"/>${list.length>1?`<polyline points="${coords(k1)}" class="plot-line-a"/>`:''}${k2&&list.length>1?`<polyline points="${coords(k2)}" class="plot-line-b"/>`: ''}${spots}${xticks}</svg></div>`;
+    return `<div class="chart-legend"><span><i class="legend-chip purple"></i>${clean(label1)}</span>${k2?`<span><i class="legend-chip cyan"></i>${clean(label2)}</span>`:''}</div><div class="chart-holder"><svg viewBox="0 0 ${W} ${H}" class="plot" role="img" aria-label="Evolución real de ${clean(label1)}"><defs><linearGradient id="${gradId}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2563EB" stop-opacity=".23"/><stop offset="1" stop-color="#2563EB" stop-opacity="0"/></linearGradient></defs>${stripes}<polygon points="${area}" fill="url(#${gradId})"/>${list.length>1?`<polyline points="${coords(k1)}" class="plot-line-a"/>`:''}${k2&&list.length>1?`<polyline points="${coords(k2)}" class="plot-line-b"/>`: ''}${spots}${xticks}</svg></div>`;
   }
   function filterList(data) { const q=state.search.trim().toLowerCase(); return q?data.filter(x=>Object.values(x).some(v=>String(v).toLowerCase().includes(q))):data; }
 
@@ -272,7 +272,7 @@
   function donut(data,labelKey,valueKey) {
     const list=(data||[]).filter(r=>number(r[valueKey])>0).slice(0,5);
     if(!list.length)return empty('No hay fuentes registradas para este período.');
-    const total=list.reduce((a,r)=>a+number(r[valueKey]),0),palette=['#8051f7','#00c8e9','#fd708a','#3bc5a9','#f6bd66'];
+    const total=list.reduce((a,r)=>a+number(r[valueKey]),0),palette=['#2563EB','#00c8e9','#fd708a','#3bc5a9','#f6bd66'];
     let soFar=0;
     const parts=list.map((r,i)=>{const percent=number(r[valueKey])/total*100,start=soFar;soFar+=percent;return `${palette[i]} ${start.toFixed(3)}% ${soFar.toFixed(3)}%`;});
     return `<div class="donut-layout"><div class="donut-chart" style="background:conic-gradient(${parts.join(',')})"><div class="donut-center"><span>Sesiones</span><strong>${fmt(total)}</strong><small>Top 5 canales</small></div></div><div class="donut-legend">${list.map((r,i)=>`<div><span class="donut-name"><i style="background:${palette[i]}"></i>${clean(r[labelKey]||'(sin canal)')}</span><b>${fmt1(number(r[valueKey])/total*100)}%</b></div>`).join('')}</div></div>`;
@@ -1047,7 +1047,7 @@ async function loadAccounts(){
 }
 
     const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
-  const adsNavigation=()=>`<div class="crm-ads-nav"><button class="nav-link ${state.page==='campaigns'?'active':''}" data-act="campaign-menu" aria-expanded="${state.campaignsMenuOpen}" title="Campañas Ads">${icon('megaphone',19)}<span>Campañas Ads</span>${icon(state.campaignsMenuOpen?'chevronDown':'chevron',15)}</button>${state.campaignsMenuOpen?'<div class="crm-ads-subnav">'+[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']].map(([key,label])=>'<button class="crm-ads-subitem '+(state.page==='campaigns'&&state.adsPlatform===key?'active':'')+'" data-act="campaign-select" data-platform="'+key+'">'+providerLogo(label)+'<span>'+label+'</span></button>').join('')+'</div>':''}</div>`;
+  const adsNavigation=()=>`<div class="crm-ads-nav"><button class="nav-link ${state.page==='campaigns'?'active':''}" data-act="campaign-menu" aria-expanded="${state.campaignsMenuOpen}" title="Campañas Ads">${icon('megaphone',19)}<span>Campañas Ads</span>${icon(state.campaignsMenuOpen?'chevronDown':'chevron',15)}</button>${state.campaignsMenuOpen?'<div class="crm-ads-subnav">'+[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']].map(([key,label])=>'<button class="crm-ads-subitem '+(state.page==='campaigns'&&state.adsPlatform===key?'active':'')+'" data-act="campaign-select" data-platform="'+key+'"><span>'+label+'</span></button>').join('')+'</div>':''}</div>`;
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}" title="${clean(pages[id][0])}" aria-label="${clean(pages[id][0])}" ${state.page===id?'aria-current="page"':''}>${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','accounts','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
