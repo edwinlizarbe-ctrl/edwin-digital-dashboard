@@ -481,24 +481,34 @@
  <p class="fine-print">Solo las conexiones autorizadas ofrecen métricas. Meta Ads continúa en fase piloto; otros proveedores requieren autorización oficial.</p>`;
 }
 
-  function settings(){
-    return `${heading('Preferencias','Mi cuenta y seguridad','Gestiona tu acceso y personaliza tu espacio de trabajo.')}
-      ${card('Información de sesión','Cuenta autenticada con Supabase',`<div class="settings-line"><span>Correo electrónico</span><b>${clean(state.user.email)}</b></div><div class="settings-line"><span>Tipo de acceso</span><b>${isAdmin()?'Administrador':'Cliente'}</b></div><div class="settings-line"><span>Negocio activo</span><b>${clean(business()?.name||'Sin seleccionar')}</b></div><div class="settings-line"><span>Sitio activo</span><b>${clean(site()?.name||'Sin seleccionar')}</b></div>`)}
-      <div class="spacer-lg"></div>
-      ${card('Cambiar contraseña','Disponible tanto para administradores como para clientes',`<form id="change-password-form" class="security-form" autocomplete="off">
-        <p class="fine-print">Por seguridad, escribe tu contraseña actual y elige una nueva de al menos 10 caracteres. Después del cambio tendrás que volver a iniciar sesión.</p>
-        <label class="form-label" for="current-pass">Contraseña actual</label><div class="form-input">${icon('lock',17)}<input id="current-pass" type="password" name="currentPassword" autocomplete="current-password" required maxlength="512"/></div>
-        <label class="form-label" for="next-pass">Nueva contraseña</label><div class="form-input">${icon('lock',17)}<input id="next-pass" type="password" name="newPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
-        <label class="form-label" for="confirm-pass">Confirmar contraseña nueva</label><div class="form-input">${icon('check',17)}<input id="confirm-pass" type="password" name="confirmPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
-        ${state.passwordError?alertBlock(state.passwordError):''}
-        <button class="button button-primary security-submit" type="submit" ${state.passwordBusy?'disabled':''}>${state.passwordBusy?'<span class="spinner"></span> Actualizando…':`${icon('lock',17)} Guardar contraseña nueva`}</button>
-      </form>`)}
-      <div class="spacer-lg"></div>
-      ${card('Apariencia','Cambiar entre interfaz clara y oscura',`<div class="settings-line"><span>Tema</span><button class="button button-outline" data-act="theme">${icon(state.theme==='dark'?'sun':'moon',17)} ${state.theme==='dark'?'Usar modo claro':'Usar modo oscuro'}</button></div>`)}`;
-  }
+    function settings(){
+ const theme=[['light','Claro'],['dark','Oscuro']];
+ const palettes=[['purple','Violeta'],['blue','Azul'],['teal','Turquesa']];
+ const sidebar=[['auto','Según tema'],['white','Blanco'],['blue','Azul oscuro']];
+ const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${t}</button>`).join('')}</div>`;
+ return `${heading('Preferencias','Mi cuenta y seguridad','Acceso, contraseña y colores del panel en un mismo lugar.')}
+ <div class="content-grid account-grid">
+ <div class="col-7">${card('Cambiar mi contraseña','Tu seguridad, siempre a la vista',`<form id="change-password-form" class="security-form" autocomplete="off">
+  <label class="form-label" for="current-pass">Contraseña actual</label><div class="form-input">${icon('lock',17)}<input id="current-pass" type="password" name="currentPassword" autocomplete="current-password" required maxlength="512"/></div>
+  <label class="form-label" for="next-pass">Nueva contraseña</label><div class="form-input">${icon('lock',17)}<input id="next-pass" type="password" name="newPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
+  <label class="form-label" for="confirm-pass">Confirmar nueva contraseña</label><div class="form-input">${icon('check',17)}<input id="confirm-pass" type="password" name="confirmPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
+  ${state.passwordError?alertBlock(state.passwordError):''}
+  <button class="button button-primary security-submit" type="submit" ${state.passwordBusy?'disabled':''}>${state.passwordBusy?'Actualizando…':`${icon('lock',16)} Actualizar contraseña`}</button>
+  <p class="fine-print">Usa al menos 10 caracteres. Tendrás que iniciar sesión de nuevo cuando se guarde.</p>
+ </form>`)}</div>
+ <div class="col-5">${card('Información de mi cuenta','Identidad de acceso',`<div class="settings-line"><span>Correo</span><b>${clean(state.user.email)}</b></div>
+ <div class="settings-line"><span>Acceso</span><b>${isAdmin()?'Superadministrador':'Cliente'}</b></div>
+ <div class="settings-line"><span>Mi empresa</span><b>${isAdmin()?'Plataforma':clean(displayBusiness())}</b></div>
+ ${!isAdmin()?`<button class="button button-outline" data-act="nav" data-page="company">${icon('building',15)} Editar mi empresa</button>`:''}
+ <p class="fine-print">El correo identifica a tu usuario. Tu empresa tiene un nombre comercial independiente.</p>`)}</div>
+ <div class="col-12">${card('Personalización de colores','Una apariencia discreta para tu panel',`
+ <div class="appearance-grid"><div><h4>Apariencia general</h4>${picker('theme',theme,state.theme)}</div>
+ <div><h4>Color de acento</h4>${picker('accent',palettes,state.accent)}</div>
+ <div><h4>Menú lateral</h4>${picker('sidebar',sidebar,state.sidebarTone)}</div></div>
+ <p class="fine-print">Estas preferencias se guardan en este navegador.</p>`)}</div></div>`;
+}
 
-
-  const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
+    const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}" title="${clean(pages[id][0])}" aria-label="${clean(pages[id][0])}" ${state.page===id?'aria-current="page"':''}>${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
@@ -576,6 +586,13 @@ function sidebar(){
     const b=e.target.closest('[data-act]');if(!b)return;
     const action=b.dataset.act;
     if(action==='theme'){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('ed-theme-v3',state.theme);render();}
+    else if(action==='set-pref'){
+      const key=b.dataset.key,value=b.dataset.value;
+      if(key==='theme'&&['light','dark'].includes(value)){state.theme=value;localStorage.setItem('ed-theme-v3',value);}
+      else if(key==='accent'&&['purple','blue','teal'].includes(value)){state.accent=value;localStorage.setItem('ed-accent-v7',value);}
+      else if(key==='sidebar'&&['auto','white','blue'].includes(value)){state.sidebarTone=value;localStorage.setItem('ed-sidebar-v7',value);}
+      render();
+    }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
     else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
