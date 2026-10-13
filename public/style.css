@@ -40,3 +40,13 @@
 .meta-kpi-grid small{color:var(--muted2);font-size:10px;margin-bottom:7px}
 .meta-kpi-grid strong{color:var(--text);font-size:17px;overflow-wrap:anywhere}
 @media(max-width:560px){.meta-full{grid-column:span 1}.meta-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* SaaS role-specific navigation and platform/ads filters */
+.ads-toolbar{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:8px 0 18px}
+.ads-toolbar .form-label{min-width:175px;flex:0 1 230px}
+.ads-toolbar .meta-select{width:100%;max-width:none;margin:8px 0 0}
+.ads-toolbar>.button{margin-bottom:1px}
+.sidebar-workspace b{overflow-wrap:anywhere}
+.client-site-row>.button{margin-left:auto}
+.integration-card .fine-print{font-size:12px}
+@media(max-width:620px){.ads-toolbar{flex-direction:column;align-items:stretch}.ads-toolbar .form-label{width:100%;flex:unset}.ads-toolbar>.button{align-self:stretch}.client-site-row{flex-wrap:wrap}}
