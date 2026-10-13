@@ -416,3 +416,48 @@ input,select,textarea{max-width:100%}
 @keyframes ga-pulse{0%,100%{opacity:.6;transform:scale(.97)}50%{opacity:1;transform:scale(1.05)}}
 @keyframes ga-shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
 @media(prefers-reduced-motion:reduce){.ga-loading-pulse,.ga-loading-bars i,.ga-skeleton-kpi span,.ga-status-spinner{animation:none}}
+
+
+/* eDigital · Campaigns Ads: on-page provider onboarding with secure Facebook OAuth. */
+.ads-connection-panel{background:var(--surface);border:1px solid var(--border);border-radius:17px;padding:21px 24px;margin:18px 0;box-shadow:var(--shadow);max-width:100%;min-width:0}
+.ads-connection-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:19px}
+.ads-connection-brand{display:flex;align-items:center;gap:13px;min-width:0}
+.ads-connection-brand>.provider-logo{width:46px;height:46px;flex:0 0 46px}
+.ads-connection-brand>div:last-child{min-width:0;display:flex;flex-direction:column;gap:5px}
+.ads-connection-brand strong{font-size:14px;color:var(--text);line-height:1.35}
+.ads-connection-brand small{font-size:11px;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ads-wizard-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 20px}
+.ads-wizard-step{display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid var(--border);background:var(--surface2);border-radius:10px;color:var(--muted2);font-size:11px;font-weight:750}
+.ads-wizard-step b{width:22px;height:22px;flex:0 0 22px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--accent);font-size:11px}
+.ads-wizard-step.completed{border-color:var(--accent);color:var(--text)}
+.ads-wizard-step.completed b{border-color:var(--accent);background:var(--accent);color:#fff}
+.ads-wizard-body{padding:17px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px}
+.ads-wizard-body>h3{font-size:15px;font-weight:800;margin-bottom:9px;color:var(--text)}
+.ads-wizard-body>p{font-size:12px;line-height:1.7;color:var(--muted2);margin:8px 0 14px;max-width:770px}
+.ads-wizard-body>.button{margin-bottom:5px}
+.ads-wizard-body .meta-search{font-size:16px;max-width:100%;margin:14px 0}
+.ads-account-list{max-height:240px;overflow-y:auto;scrollbar-width:thin;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:7px 12px;margin-bottom:15px}
+.ads-account-list .ads-account-choice{padding:11px 9px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;cursor:pointer}
+.ads-account-list .ads-account-choice:last-child{border-bottom:0}
+.ads-account-choice input{width:18px;height:18px;flex:0 0 18px;accent-color:var(--accent)}
+.ads-wizard-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ads-wizard-close{display:grid;place-items:center;background:var(--surface2);border:1px solid var(--border);color:var(--muted2);border-radius:9px;width:36px;height:36px;cursor:pointer}
+.ads-wizard-close:hover{color:var(--accent);border-color:var(--accent)}
+.ads-connected-compact{display:flex;align-items:center;gap:13px;padding:13px 16px;margin:15px 0;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+.ads-connected-compact>div{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
+.ads-connected-compact strong{font-size:12px;color:var(--text)}
+.ads-connected-compact small{font-size:11px;color:var(--muted2)}
+.ads-connected-dot{width:11px;height:11px;border-radius:50%;background:#12a880;box-shadow:0 0 0 4px #12a88016}
+.ads-wizard-loading{display:flex;align-items:center;gap:12px;color:var(--muted2);min-height:74px;font-size:12px}
+.ads-unavailable-platform{display:flex;align-items:center;gap:15px;padding:12px 3px;max-width:520px}
+.ads-unavailable-platform strong{font-size:14px;color:var(--text)}
+.ads-unavailable-platform p{font-size:12px;line-height:1.6;color:var(--muted2);margin:7px 0}
+@media(max-width:720px){
+ .ads-connection-panel{padding:15px}
+ .ads-wizard-steps{gap:5px}
+ .ads-wizard-step{padding:9px 6px;flex-direction:column;align-items:flex-start;gap:6px;font-size:10px}
+ .ads-wizard-body{padding:15px}
+ .ads-wizard-actions>.button{width:100%;justify-content:center}
+ .ads-connected-compact{flex-wrap:wrap}
+ .ads-connected-compact>.button{width:100%;justify-content:center}
+}
