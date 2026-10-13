@@ -16,7 +16,7 @@
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
     adminHealth: null, adminHealthError: '',
     adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsError: '', accountNotice: '', temporaryAccess: null,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false,
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -91,6 +91,7 @@
     'mouse-pointer':'<path d="M5 3l14 9-7 1-3 7z"/><path d="m12 13 4 7"/>',
     megaphone:'<path d="M3 11v3a2 2 0 0 0 2 2h3l3 4h3l-3-5 9-5V5l-9 5H5a2 2 0 0 0-2 1z"/><path d="M20 9a3 3 0 0 1 0 6"/>',
     users:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m1 4a5 5 0 0 1 3 5"/>',
+    camera:'<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1-3h6l1 3"/>',
     'file-text':'<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7"/>',
     target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     'shopping-bag':'<path d="M4 8h16l-1 13H5zM9 9V6a3 3 0 0 1 6 0v3"/>',
@@ -281,7 +282,7 @@
  const controls=`<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">${choices.map(([value,label])=>`<button type="button" class="ads-platform-tab ${platform===value?'active':''}" data-act="ads-platform" data-platform="${value}" aria-pressed="${platform===value}" >${label}</button>`).join('')}</div><div class="ads-toolbar"><label class="form-label">Detalle<select id="ads-level" class="meta-select">${[['campaign','Campañas'],['adset','Conjuntos'],['ad','Anuncios']].map(([value,label])=>`<option value="${value}" ${level===value?'selected':''}>${label}</option>`).join('')}</select></label><button class="button button-outline" data-act="ads-refresh">${icon('refresh',16)} Actualizar</button></div>`;
  let result='';
  if(platform!=='meta')result=empty('Esta plataforma aún necesita autorización de la API oficial.','Integración pendiente');
- else if(!connected)result=empty('Conecta tu cuenta de Facebook desde Integraciones y selecciona una cuenta publicitaria.','Cuenta pendiente');
+ else if(!connected)result=`<div class="empty-compact">${empty('Conecta tu cuenta de Facebook desde Integraciones y selecciona una cuenta publicitaria.','Cuenta pendiente')}<button class="button button-primary" data-act="nav" data-page="integrations">Gestionar integración de Meta Ads</button></div>`;
  else if(state.adsLoading)result='<div class="loading-state"><span class="spinner"></span>Consultando campañas…</div>';
  else if(state.adsError)result=alertBlock(state.adsError);
  else if(!report)result=empty('Pulsa Actualizar para cargar las campañas autorizadas.','Sin datos');
@@ -293,7 +294,7 @@
  const m=state.metaReport?.metrics,curr=state.metaReport?.currency||'';
  const kpis=platform==='meta'&&connected&&m?`<div class="small-kpis"><div class="small-kpi"><span>Inversión ${clean(curr)}</span><strong>${metaMetric(m.spend,2)}</strong></div><div class="small-kpi"><span>Clics</span><strong>${metaMetric(m.clicks)}</strong></div><div class="small-kpi"><span>Impresiones</span><strong>${metaMetric(m.impressions)}</strong></div><div class="small-kpi"><span>CTR</span><strong>${metaMetric(m.ctr,2)}%</strong></div><div class="small-kpi"><span>CPC</span><strong>${metaMetric(m.cpc,2)}</strong></div></div>`:'';
  return `${heading('Publicidad','Campañas Ads','Campañas, conjuntos y anuncios de tus plataformas autorizadas; sin mezclar las cifras de GA4.')}${controls}${kpis}${card('Rendimiento de la cuenta',periodLabel(),result)}
- <div class="spacer-lg"></div>${card('Atribución UTM de Analytics','Es información diferente del costo publicitario',`<p class="fine-print">Los clics, sesiones y eventos de GA4 no equivalen necesariamente a ventas pagadas.</p><button class="button button-outline" data-act="nav" data-page="utm">Ver tráfico UTM</button>`)}`;
+ <div class="spacer-sm"></div>${card('Atribución UTM de Analytics','Es información diferente del costo publicitario',`<p class="fine-print">Los clics, sesiones y eventos de GA4 no equivalen necesariamente a ventas pagadas.</p><button class="button button-outline" data-act="nav" data-page="utm">Ver tráfico UTM</button>`)}`;
 }
     function utm(){return `${heading('Fuentes UTM · GA4','Campañas que llevan tráfico','Resultados de las campañas identificadas mediante etiquetado en Google Analytics 4.')}${statusStrip()}${alertBlock('Estas métricas corresponden al tráfico medido por GA4. No incluyen gasto publicitario, CPC, ROAS ni conversiones reportadas directamente por Meta Ads o Google Ads.', 'info')}<div class="content-grid"><div class="col-12">${card('Rendimiento por campaña','Sesiones y eventos clave atribuidos',gaReady()?dataTable(rows('campaigns'),[{key:'sessionCampaignName',label:'Campaña'},{key:'sessions',label:'Sesiones',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div><div class="col-6">${card('Campañas con más sesiones','Ranking de campañas etiquetadas',gaReady()?barList(rows('campaigns'),'sessionCampaignName','sessions',9):dataPlaceholder())}</div><div class="col-6">${card('Eventos clave por campaña','No equivale necesariamente a ventas confirmadas',gaReady()?barList([...rows('campaigns')].sort((a,b)=>number(b.keyEvents)-number(a.keyEvents)),'sessionCampaignName','keyEvents',9):dataPlaceholder())}</div></div>${flags()}`;}
   function audience(){return `${heading('Audiencia','Conoce a tus visitantes','Ubicación, dispositivos y procedencia de los usuarios.')}${statusStrip()}<div class="content-grid"><div class="col-6">${card('Países principales','Usuarios por país',gaReady()?barList(rows('countries'),'country','totalUsers',11):dataPlaceholder())}</div><div class="col-6">${card('Ciudades principales','Usuarios por ciudad',gaReady()?barList(rows('cities'),'city','totalUsers',11):dataPlaceholder())}</div><div class="col-5">${card('Dispositivos','Sesiones registradas por tipo',gaReady()?donut(rows('devices'),'deviceCategory','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Detalle geográfico','Usuarios y sesiones por país',gaReady()?dataTable(rows('countries'),[{key:'country',label:'País'},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'sessions',label:'Sesiones',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
@@ -343,7 +344,7 @@
  return `${heading('Perfil del negocio','Mi empresa','Personaliza la información que ves al entrar y administra tus sitios autorizados.')}
  ${state.companyNotice?`<div class="company-message">${icon('check',17)} ${clean(state.companyNotice)}</div>`:''}
  <div class="company-header-panel">
-  <div class="company-logo-preview">${companyImage(72)}</div>
+  <label for="company-logo-file" class="company-logo-preview" title="Haz clic para cambiar el logotipo"><span class="company-photo-core">${companyImage(72)}</span><span class="company-photo-camera" aria-hidden="true">${icon('camera',17)}</span><span class="sr-only">Cambiar logotipo de mi empresa</span></label>
   <div><h2>${clean(displayBusiness())}</h2><p>${clean(prefs.category||'Selecciona un sector')} · ${clean(prefs.country||'Indica tu país')}</p><span class="company-subline">Nombre registrado: ${clean(b?.name||'Sin registrar')}</span></div>
  </div>
  <div class="content-grid">
@@ -361,9 +362,8 @@
   </label>
  </div>
  <datalist id="business-categories"><option value="Marketing y publicidad"><option value="Comercio electrónico"><option value="Finanzas"><option value="Educación"><option value="Tecnología"><option value="Retail"><option value="Servicios profesionales"><option value="Restaurantes y gastronomía"><option value="Otros"></datalist>
- <label class="form-label" for="company-logo-file">Logotipo de tu empresa</label>
- <input id="company-logo-file" class="company-file-input" type="file" name="logo" accept="image/png,image/jpeg,image/webp" aria-describedby="logo-note"/>
- <p id="logo-note" class="fine-print">PNG, JPG o WebP. Se optimiza antes de guardar. Tu empresa puede usar su propio logotipo, distinto del nombre de la plataforma.</p>
+ <div class="company-logo-instruction">${icon('camera',16)}<span><b>Logotipo de mi empresa</b><small>Haz clic en la foto circular de arriba para elegir o cambiar tu imagen (PNG, JPG o WebP).</small></span></div>
+ <input id="company-logo-file" class="company-file-input accessible-file" type="file" name="logo" accept="image/png,image/jpeg,image/webp" aria-label="Seleccionar logotipo de empresa" />
  ${getCompanyLogo()?`<button class="button button-outline" type="button" data-act="company-logo-clear">${icon('close',14)} Quitar mi logotipo</button>`:''}
  ${state.companyLogoClear?'<p class="fine-print">El logotipo se quitará al guardar.</p>':''}
  <label class="company-checkbox"><input type="checkbox" name="sharedName" checked/> Intentar actualizar también el nombre oficial de la empresa para todos (según permisos)</label>
@@ -523,8 +523,10 @@ async function loadAccounts(){
  'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
  };
  const [slug,color]=dict[name]||['google','4285F4'];
- const src=name==='Hotmart'?'https://hotmart.com/favicon.ico':`https://cdn.simpleicons.org/${slug}/${color}`;
- return `<div class="provider-logo" aria-hidden="true"><img src="${src}" alt="" loading="lazy" width="30" height="30" /></div>`;
+ const local=name==='Hotmart'?'/logos/hotmart.svg':name==='LinkedIn Ads'?'/logos/linkedin.svg':'';
+ const src=local||`https://cdn.simpleicons.org/${slug}/${color}`;
+ const fallback=local||'/logos/platform.svg';
+ return `<div class="provider-logo" aria-hidden="true"><img src="${src}" alt="" loading="lazy" width="32" height="32" onerror="this.onerror=null;this.src='${fallback}'"/></div>`;
 }
     function metaCard(){
  if(!metaPilotEligible())return '';
@@ -535,7 +537,7 @@ async function loadAccounts(){
   const v=x.metrics;
   return `<div class="meta-account-result"><strong>${clean(x.name)} · ${clean(x.currency)}</strong>${v?`<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${metaMetric(v.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(v.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(v.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(v.ctr,2)}%</strong></div><div><small>CPC</small><strong>${metaMetric(v.cpc,2)}</strong></div></div>`:'<p class="fine-print">Sin datos en el período.</p>'}</div>`;
  }).join('');
- const body=!m.configured?`<p>${clean(m.reason||'Esta conexión aún no está configurada.')} Puedes continuar usando las otras áreas del panel.</p>`:
+ const body=!m.configured?`<p>La conexión de Meta Ads aún no está habilitada en esta plataforma. El administrador debe completar la autorización antes de que puedas conectar tu cuenta.</p><p class="fine-print">Tu cuenta y tus campañas no se verán afectadas mientras se completa esta configuración.</p>`:
  !m.connected?`<button class="button button-primary" data-act="meta-connect">${icon('link',16)} Conectar con Facebook</button>`:
  `<label class="form-label">Elige hasta cinco cuentas publicitarias</label>
  <input class="meta-search" id="meta-account-search" placeholder="Buscar cuenta publicitaria…" autocomplete="off"/>
@@ -632,7 +634,7 @@ async function loadAccounts(){
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','accounts','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
  `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition','campaigns','audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
- return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('menu',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><div class="sidebar-workspace"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Superadministrador':'Espacio de análisis'}</small></span>${icon('chevronDown',16)}</div>${menu}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Superadministrador':'Usuario de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
+ return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('menu',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><button type="button" class="sidebar-workspace" data-act="nav" data-page="${isAdmin()?'adminHome':'company'}" title="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}" aria-label="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Panel administrador':'Editar datos de mi empresa'}</small></span>${icon('chevron',16)}</button>${menu}</div><div class="sidebar-bottom"><div class="avatar">${clean((state.user?.email||'E')[0].toUpperCase())}</div><div class="account"><b>${clean((state.user?.email||'').split('@')[0])}</b><span>${isAdmin()?'Superadministrador':'Usuario de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
 }
     function topbar(){
  const places=!isAdmin()&&state.businesses.length>1?`<label class="select-wrap company-select">${icon('building',16)}<select id="business-selector">${state.businesses.map(x=>`<option value="${clean(x.id)}" ${state.businessId===x.id?'selected':''}>${clean(x.name)}</option>`).join('')}</select>${icon('chevronDown',14)}</label>`:'';
@@ -730,7 +732,8 @@ function sidebar(){
  state.companyBusy=true;state.companyError='';state.companyNotice='';
  try{
   let logo_data=state.companyLogoClear?'':getCompanyLogo();
-  if(selected&&selected.size)logo_data=await readCompanyLogo(selected);
+  if(state.companyLogoDraft)logo_data=state.companyLogoDraft;
+  else if(selected&&selected.size)logo_data=await readCompanyLogo(selected);
   const result=await api('/api/company/preferences',{method:'POST',
     body:JSON.stringify({business_id:id,display_name,category,country})});
   if(state.businessId!==id)return;
@@ -745,7 +748,7 @@ function sidebar(){
     shared=true;
    }catch(e){message=' El nombre oficial no se pudo modificar para todo el equipo porque faltan permisos de edición.';}
   }
-  state.companyLogoClear=false;
+  state.companyLogoClear=false;state.companyLogoDraft=null;
   state.companyNotice=(shared?'Nombre oficial actualizado.':'Nombre visual, sector y país guardados en tu cuenta.')+(logo_data?' El logotipo se guardó solo en este navegador.':'')+message;
  }catch(e){state.companyError=e.message||'No se pudieron guardar los cambios.';}
  finally{state.companyBusy=false;render();}
@@ -797,7 +800,7 @@ function sidebar(){
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
     else if(action==='edit-site'){state.editSiteId=b.dataset.id;state.siteError='';state.siteNotice='';render();}
     else if(action==='edit-site-cancel'){state.editSiteId='';state.siteError='';render();}
-    else if(action==='company-logo-clear'){state.companyLogoClear=true;state.companyNotice='';render();}
+    else if(action==='company-logo-clear'){state.companyLogoClear=true;state.companyLogoDraft=null;state.companyNotice='';render();}
     else if(action==='meta-panel-toggle'){state.metaPanelOpen=!state.metaPanelOpen;render();}
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
@@ -826,6 +829,18 @@ function sidebar(){
     }
   });
   document.addEventListener('change', async e=>{
+    if(e.target.id==='company-logo-file'){
+      const file=e.target.files?.[0];if(!file)return;
+      try{
+        state.companyLogoDraft=await readCompanyLogo(file);
+        state.companyLogoClear=false;
+        const node=document.querySelector('.company-photo-core');
+        if(node&&state.companyLogoDraft)node.innerHTML='<img class="company-logo-image" alt="Vista previa del logotipo" src="'+clean(state.companyLogoDraft)+'"/>';
+        const note=document.querySelector('.company-logo-instruction small');
+        if(note)note.textContent='Vista previa lista. Pulsa Guardar cambios para conservarla en este navegador.';
+      }catch(error){state.companyLogoDraft=null;state.companyError=error.message;render();}
+      return;
+    }
     if(e.target.id==='integration-only-connected'){filterIntegrations();return;}
     if(e.target.id==='business-selector')await chooseBusiness(e.target.value);
     else if(e.target.id==='site-selector'){state.siteId=e.target.value;await refresh();}
