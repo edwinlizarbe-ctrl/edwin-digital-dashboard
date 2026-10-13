@@ -272,6 +272,37 @@ async function handleApi(req, env) {
     }));
     return json({configured:true,accounts,truncated:users.length>=200},200,s.cookies);
   }
+
+  if(path==='/api/admin/accounts/temporary-password' && method==='POST') {
+    if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
+    if(!companyJsonRequest(req,1500))return json({error:'Solicitud no autorizada.'},403,s.cookies);
+    let input;try{input=await companyParse(req,1500);}catch{return json({error:'Solicitud inválida.'},400,s.cookies);}
+    const id=String(input?.user_id||'');
+    if(!isUuid(id))return json({error:'Usuario inválido.'},400,s.cookies);
+    const key=env.SUPABASE_SERVICE_ROLE_KEY;
+    if(!key)return json({error:'Configura SUPABASE_SERVICE_ROLE_KEY en Cloudflare para restablecer credenciales.'},503,s.cookies);
+    const base=String(env.SUPABASE_URL).replace(/\/$/,'');
+    const headers={apikey:key,Authorization:'Bearer '+key,Accept:'application/json'};
+    const [pr,ur]=await Promise.all([
+      fetch(base+'/rest/v1/profiles?select=id,role&id=eq.'+encodeURIComponent(id)+'&limit=1',{headers}),
+      fetch(base+'/auth/v1/admin/users/'+encodeURIComponent(id),{headers})
+    ]);
+    if(!pr.ok||!ur.ok)return json({error:'No fue posible comprobar la cuenta.'},502,s.cookies);
+    const profiles=await pr.json(),user=await ur.json();
+    if(!Array.isArray(profiles)||profiles.length!==1||profiles[0].role==='admin'||user.id!==id||!user.email)
+      return json({error:'No puedes cambiar las credenciales de esta cuenta.'},403,s.cookies);
+    // Contraseña aleatoria, generada en el servidor y mostrada solo en esta respuesta.
+    const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+    const bytes=crypto.getRandomValues(new Uint8Array(32));
+    const temporaryPassword=Array.from(bytes,b=>alphabet[b%alphabet.length]).join('');
+    const changed=await fetch(base+'/auth/v1/admin/users/'+encodeURIComponent(id),{
+      method:'PUT',headers:{...headers,'Content-Type':'application/json'},
+      body:JSON.stringify({password:temporaryPassword})
+    });
+    if(!changed.ok)return json({error:'Supabase no pudo restablecer la contraseña del cliente.'},502,s.cookies);
+    return json({ok:true,email:user.email,temporary_password:temporaryPassword,
+      message:'Contraseña temporal generada. Entrégala al cliente por un canal seguro y pídele cambiarla al ingresar.'},200,s.cookies);
+  }
   if(path==='/api/admin/accounts/recovery' && method==='POST') {
     if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
     if(!companyJsonRequest(req,1500))return json({error:'Solicitud no autorizada.'},403,s.cookies);
