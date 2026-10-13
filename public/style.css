@@ -928,3 +928,9 @@ input,select,textarea{max-width:100%}
 .business-pulse{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px;margin:18px 0;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text)}
 .business-pulse h2{margin:5px 0 9px;font-size:20px}.business-pulse p{margin:0 0 7px;line-height:1.5}.business-pulse small{color:var(--muted)}.pulse-kicker{font-size:11px;letter-spacing:.08em;font-weight:700;color:var(--accent)}
 @media(max-width:680px){.business-pulse{flex-direction:column;align-items:stretch;padding:18px}.business-pulse>.button{width:100%}}
+
+/* Animated daily points: subtle emphasis on hover and keyboard focus. */
+.chart-spot{fill:var(--surface);stroke:#2563EB;stroke-width:1.7;opacity:.85;transition:opacity .18s ease,stroke-width .18s ease,filter .18s ease;outline:none}
+.chart-spot:hover,.chart-spot:focus-visible{opacity:1;stroke-width:4;filter:drop-shadow(0 0 5px rgba(37,99,235,.45))}
+.chart-spot:focus-visible{stroke:#0ea5e9}
+@media(prefers-reduced-motion:reduce){.chart-spot{transition:none}.chart-spot:hover,.chart-spot:focus-visible{filter:none}}
