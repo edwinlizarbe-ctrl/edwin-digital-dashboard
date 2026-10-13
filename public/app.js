@@ -293,12 +293,23 @@
   function statusStrip() {return `<div class="status-strip"><div class="status-left">${state.gaLoading?'<span class="ga-status-spinner" aria-hidden="true"></span>':''}${tag(gaReady()?'Google Analytics conectado':state.gaLoading?'Cargando Analytics…':'GA4 pendiente',gaReady()?'success':'neutral')}<span class="strip-divider"></span><span>${icon('clock',15)} Última consulta: ${clean(readableTime())}</span></div><span class="strip-right">${clean(site()?.name||business()?.name||'Elige un negocio')}</span></div>${state.period==='today'?`<div class="period-disclaimer">${icon('info',15)} Estás viendo el día de hoy (según la zona horaria de GA4). Estas cifras pueden estar incompletas porque Analytics no es un informe en tiempo real.</div>`:''}`;}
   function insights() {
     if(!gaReady())return dataPlaceholder();
-    const user=m(), ch=rows('channels'), pagesArr=rows('pages'), top=ch[0], page=pagesArr[0];
+    const user=m(), previous=prev(), ch=rows('channels'), pagesArr=rows('pages'), top=ch[0], page=pagesArr[0];
     const lines=[];
-    if(top)lines.push({symbol:'mouse-pointer',title:'Canal principal',desc:`${friendlyChannel(top.sessionDefaultChannelGroup)} genera ${fmt(top.sessions)} sesiones en el período.`});
-    if(page)lines.push({symbol:'file-text',title:'Página más vista',desc:`${page.pagePath||'/'} acumuló ${fmt(page.screenPageViews)} visualizaciones.`});
-    lines.push({symbol:'target',title:'Eventos clave',desc:`Se registraron ${fmt(user.keyEvents)} eventos clave. Verifica que las acciones de negocio estén marcadas correctamente en GA4.`});
-    return `<div class="insight-list">${lines.map(x=>`<div class="insight-item"><div class="insight-icon">${icon(x.symbol,18)}</div><div><strong>${clean(x.title)}</strong><p>${clean(x.desc)}</p></div></div>`).join('')}</div><p class="fine-print">Observaciones descriptivas, no recomendaciones ni ventas atribuidas automáticamente.</p>`;
+    const trend=(key,label,advice)=>{
+      const now=Number(user[key]),before=Number(previous?.[key]);
+      if(!previous||previous[key]==null||user[key]==null||!Number.isFinite(now)||!Number.isFinite(before)||before<=0)return;
+      const diff=(now-before)/before*100;
+      if(Math.abs(diff)<10)return;
+      lines.push({symbol:diff<0?'activity':'chart-bar',title:label+' '+(diff<0?'bajó':'subió')+' '+Math.abs(diff).toFixed(1)+'%',desc:advice});
+    };
+    trend('sessions','Las sesiones','Revisa Adquisición para comparar los canales de este período con el anterior.');
+    trend('totalUsers','Los usuarios','Consulta qué canales y páginas concentraron las visitas.');
+    trend('keyEvents','Los eventos clave','Comprueba en Eventos y metas qué acciones fueron registradas; no necesariamente representan ventas.');
+    if(Number(user.keyEvents)===0)lines.push({symbol:'target',title:'Sin eventos clave registrados',desc:'GA4 indica cero eventos clave en el período. Revisa su configuración antes de interpretar el dato como ausencia de contactos o ventas.'});
+    if(top)lines.push({symbol:'mouse-pointer',title:'Canal principal',desc:friendlyChannel(top.sessionDefaultChannelGroup)+' registró '+fmt(top.sessions)+' sesiones. Consulta Adquisición para analizar su evolución.'});
+    if(page)lines.push({symbol:'file-text',title:'Página más vista',desc:(page.pagePath||'/')+' acumuló '+fmt(page.screenPageViews)+' visualizaciones. Revisa su contenido y resultados asociados.'});
+    if(!lines.length)lines.push({symbol:'activity',title:'Sin señales destacadas',desc:'No hay datos comparables suficientes para señalar cambios relevantes. Revisa otras fechas o comprueba tu conexión GA4.'});
+    return '<div class="insight-list">'+lines.slice(0,4).map(x=>'<div class="insight-item"><div class="insight-icon">'+icon(x.symbol==='chart-bar'?'activity':x.symbol,18)+'</div><div><strong>'+clean(x.title)+'</strong><p>'+clean(x.desc)+'</p></div></div>').join('')+'</div><p class="fine-print">Observaciones basadas en GA4 para '+clean(periodLabel())+'. Los cambios requieren una base anterior válida; no se infieren causas ni ventas.</p>';
   }
 
   function connectionOverview(){
