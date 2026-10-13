@@ -389,3 +389,30 @@ input,select,textarea{max-width:100%}
 .admin-callback-row>code{flex:1;min-width:180px;overflow-wrap:anywhere;background:var(--surface);border:1px solid var(--border);padding:12px 14px;border-radius:9px;color:var(--text)}
 .admin-callback-row>.button{flex-shrink:0}
 @media(max-width:630px){.admin-callback-row{align-items:stretch;flex-direction:column}.admin-callback-row>.button{width:100%;justify-content:center}}
+
+
+/* eDigital V10 – clear reporting, branded social badges and animated GA4 progress. */
+.provider-logo-duo{width:67px;flex-basis:67px;display:flex;align-items:center;justify-content:center;gap:5px;padding:5px}
+.provider-logo-duo img{width:25px!important;height:25px!important;flex-shrink:0;object-fit:contain}
+.country-select{appearance:auto;-webkit-appearance:menulist;cursor:pointer;font:inherit;font-size:16px;background:var(--surface2);padding-right:12px}
+.traffic-glossary{margin-top:18px;padding:12px 14px;border:1px solid var(--border);background:var(--surface2);border-radius:10px;font-size:11px;line-height:1.65;color:var(--muted2)}
+.ga-loading-state{display:flex;flex-direction:column;justify-content:center;gap:23px;width:100%;min-height:210px;padding:14px 8px}
+.ga-loading-heading{display:flex;gap:13px;align-items:center;color:var(--text)}
+.ga-loading-heading>span:last-child{display:flex;flex-direction:column;gap:6px}
+.ga-loading-heading strong{font-size:13px;font-weight:800}
+.ga-loading-heading small{font-size:11px;color:var(--muted2);line-height:1.55}
+.ga-loading-pulse{display:grid;place-items:center;width:43px;height:43px;border-radius:13px;background:var(--accent-soft);color:var(--accent);animation:ga-pulse 1.25s ease-in-out infinite}
+.ga-loading-bars{display:flex;align-items:flex-end;gap:12px;height:69px;width:100%}
+.ga-loading-bars i{height:25px;display:block;flex:1;border-radius:8px;background:linear-gradient(100deg,var(--surface2),var(--accent-soft),var(--surface2));background-size:250% 100%;animation:ga-shimmer 1.4s ease-in-out infinite}
+.ga-loading-bars i:nth-child(2){height:65px;animation-delay:.12s}
+.ga-loading-bars i:nth-child(3){height:42px;animation-delay:.24s}
+.ga-skeleton-kpi{position:relative;min-width:0;min-height:118px;padding:21px 22px;border-radius:var(--radius,16px);background:var(--surface);border:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column;gap:16px}
+.ga-skeleton-kpi span{height:13px;border-radius:7px;background:linear-gradient(100deg,var(--surface2),var(--accent-soft),var(--surface2));background-size:250% 100%;animation:ga-shimmer 1.5s linear infinite}
+.ga-skeleton-kpi .ga-skeleton-shine{width:64%}
+.ga-skeleton-kpi .ga-skeleton-value{width:46%;height:27px}
+.ga-skeleton-kpi .ga-skeleton-note{width:34%;height:10px}
+.ga-status-spinner{width:17px;height:17px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;display:inline-block;animation:rotate .7s linear infinite}
+.page-render-error{max-width:700px}
+@keyframes ga-pulse{0%,100%{opacity:.6;transform:scale(.97)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes ga-shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media(prefers-reduced-motion:reduce){.ga-loading-pulse,.ga-loading-bars i,.ga-skeleton-kpi span,.ga-status-spinner{animation:none}}
