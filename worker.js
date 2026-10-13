@@ -1,4 +1,5 @@
 import { handleMetaApi } from './meta.js';
+import { handleAssistantApi } from './assistant-api.js';
 /**
  * Edwin Digital Dashboard · Cloudflare Workers
  * Credentials stay in Cloudflare runtime secrets; browser never gets these values.
@@ -150,6 +151,7 @@ async function handleApi(req, env) {
   const s = await session(req, env);
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
+  if (path.startsWith('/api/assistant/')) return handleAssistantApi(req, env, s);
   if (path === '/api/me' && method === 'GET') return json({ user: s.user }, 200, s.cookies);
   if (path === '/api/auth/change-password' && method === 'POST') {
     if (corsPostDenied(req)) return json({ error: 'Origen no autorizado.' }, 403, s.cookies);
