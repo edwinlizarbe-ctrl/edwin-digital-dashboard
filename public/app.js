@@ -711,13 +711,13 @@ function sidebar(){
     if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
     if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
     const contents={overview,analytics,acquisition,campaigns,utm,audience,content,events,hotmart,reports,clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
-    let content;
-    try {content=(contents[state.page]||overview)();}
+    let pageMarkup;
+    try {pageMarkup=(contents[state.page]||overview)();}
     catch(error){
       console.error('Unable to render eDigital view:',error);
-      content=`<section class="card page-render-error"><h2>No pudimos cargar esta sección</h2><p>La información de tu cuenta sigue protegida. Intenta actualizar el panel; si continúa ocurriendo, avisa al administrador.</p><button type="button" class="button button-primary" data-act="refresh">Reintentar</button></section>`;
+      pageMarkup=`<section class="card page-render-error"><h2>No pudimos cargar esta sección</h2><p>La información de tu cuenta sigue protegida. Intenta actualizar el panel; si continúa ocurriendo, avisa al administrador.</p><button type="button" class="button button-primary" data-act="refresh">Reintentar</button></section>`;
     }
-    root.innerHTML=`<div class="layout ${state.sidebarCollapsed?'sidebar-collapsed':''}">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${content}</main><footer class="footer"><span>© ${new Date().getFullYear()} eDigital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
+    root.innerHTML=`<div class="layout ${state.sidebarCollapsed?'sidebar-collapsed':''}">${state.mobileOpen?'<div class="mobile-shade" data-act="menu"></div>':''}${sidebar()}<div class="main-column">${topbar()}<main class="main-content">${pageMarkup}</main><footer class="footer"><span>© ${new Date().getFullYear()} eDigital · Analytics Platform</span><span>${icon('lock',13)} Datos autorizados · No se presentan métricas inventadas</span></footer></div></div>`;
   }
   async function loadAds(){
  if(isAdmin()||!state.businessId||state.adsPlatform!=='meta'){state.metaCampaigns=null;state.adsLoading=false;render();return;}
