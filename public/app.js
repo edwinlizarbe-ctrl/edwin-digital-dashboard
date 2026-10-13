@@ -54,7 +54,10 @@
       company:company?.name || '', businessId:state.businessId,
       site:currentSite?.name || '', siteId:state.siteId,
       period:state.period, periodLabel:periodLabel(), ga, gaPrevious:prev,
-      metaConnected:!!state.meta?.connected, meta
+      metaConnected:!!state.meta?.connected, meta,
+      topChannels: (state.ga?.reports?.channels||[]).slice(0,5).map(x=>({name:String(x.sessionDefaultChannelGroup||'No identificado'),sessions:Number(x.sessions)||0})),
+      topPages: (state.ga?.reports?.pages||[]).slice(0,5).map(x=>({name:String(x.pagePath||'/'),views:Number(x.screenPageViews)||0})),
+      topEvents: (state.ga?.reports?.events||[]).slice(0,5).map(x=>({name:String(x.eventName||'Sin nombre'),count:Number(x.eventCount)||0}))
     };
   };
 
