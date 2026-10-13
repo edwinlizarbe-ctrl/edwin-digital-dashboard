@@ -540,7 +540,7 @@ async function loadAccounts(){
   const v=x.metrics;
   return `<div class="meta-account-result"><strong>${clean(x.name)} · ${clean(x.currency)}</strong>${v?`<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${metaMetric(v.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(v.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(v.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(v.ctr,2)}%</strong></div><div><small>CPC</small><strong>${metaMetric(v.cpc,2)}</strong></div></div>`:'<p class="fine-print">Sin datos en el período.</p>'}</div>`;
  }).join('');
- const body=!m.configured?`<p>La conexión de Meta Ads aún no está habilitada en esta plataforma. El administrador debe completar la autorización antes de que puedas conectar tu cuenta.</p><p class="fine-print">Tu cuenta y tus campañas no se verán afectadas mientras se completa esta configuración.</p>`:
+ const body=!m.configured?`<p>La conexión de Meta Ads aún no está habilitada en esta plataforma. El administrador debe completar la autorización antes de que puedas conectar tu cuenta.</p><button class="button button-outline" type="button" disabled title="La conexión estará disponible cuando el administrador termine la autorización">Conectar Meta Ads · pendiente de habilitación</button><p class="fine-print">Tu cuenta y tus campañas no se verán afectadas mientras se completa esta configuración.</p>`:
  !m.connected?`<button class="button button-primary" data-act="meta-connect">${icon('link',16)} Conectar con Facebook</button>`:
  `<label class="form-label">Elige hasta cinco cuentas publicitarias</label>
  <input class="meta-search" id="meta-account-search" placeholder="Buscar cuenta publicitaria…" autocomplete="off"/>
