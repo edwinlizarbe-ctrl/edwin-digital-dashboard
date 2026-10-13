@@ -4,7 +4,7 @@
   const root = document.getElementById('app');
   const state = {
     user: null, businesses: [], sites: [], businessId: '', siteId: '',
-    page: 'overview', analyticMetric: 'activeUsers', period: '30', theme: localStorage.getItem('ed-theme-v3') || 'light',
+    page: 'overview', analyticMetric: 'totalUsers', period: '30', theme: localStorage.getItem('ed-theme-v3') || 'light',
     loading: true, gaLoading: false, hmLoading: false, ga: null, hm: null,
     gaError: '', hmError: '', startupError: '', loginError: '', loginBusy: false,
     mobileOpen: false, campaignsMenuOpen: true, sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
@@ -112,6 +112,8 @@
     refresh:'<path d="M20 11a8 8 0 0 0-14-5L4 8m0-4v4h4M4 13a8 8 0 0 0 14 5l2-2m0 4v-4h-4"/>',
     download:'<path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/>',
     logout:'<path d="M9 4H5v16h4m4-12 4 4-4 4m-9-4h9"/>',
+    power:'<path d="M12 2v10"/><path d="M6.2 5.8a9 9 0 1 0 11.6 0"/>',
+    'panel-left-close':'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18m8-12-3 3 3 3"/>',
     check:'<path d="m5 12 4 4L19 6"/>',
     alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4v.1"/>',
     close:'<path d="M5 5 19 19M19 5 5 19"/>',
