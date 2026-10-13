@@ -360,3 +360,21 @@ input,select,textarea{max-width:100%}
 /* Fill integration rows when only two providers exist. */
 .integration-section .integration-grid:has(> .provider-card:nth-child(2):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:630px){.integration-section .integration-grid:has(> .provider-card:nth-child(2):last-child){grid-template-columns:1fr}}
+
+
+/* eDigital V9: independent card sizing and compact integration/diagnostic layouts. */
+.main-content > .card {height:auto;min-height:0;margin-bottom:18px}
+.main-content > .card .card-heading {min-height:0}
+.integration-grid {align-items:start;align-content:start}
+.integration-grid > .integration-card {align-self:start;height:auto!important;min-height:0}
+.integration-section .integration-grid > .provider-card {min-height:0;display:flex;flex-direction:column;gap:0}
+.integration-section .integration-card p {min-height:0}
+.integration-section .integration-card .integration-status {padding-top:12px;margin-top:12px}
+.integration-section .integration-card .fine-print {margin-top:9px}
+.integration-section .integration-card .integration-head {margin-bottom:12px}
+.integration-section {margin-bottom:26px}
+.integration-section .section-caption {margin-bottom:12px}
+.main-content > .card .integration-compact-footer {margin-top:0}
+.initial-load {min-height:100dvh}
+.loading-state {min-height:130px}
+@media(max-width:630px){.integration-grid{align-items:stretch}.integration-grid>.integration-card{width:100%}}
