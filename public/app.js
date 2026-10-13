@@ -75,7 +75,7 @@
     campaigns: ['Campañas Ads', 'megaphone'],
     utm: ['Fuentes UTM de GA4', 'mouse-pointer'],
     adminHome: ['Panel administrador', 'layout-dashboard'],
-    adminIntegrations: ['Integraciones SaaS', 'plug'],
+    adminIntegrations: ['Integraciones', 'plug'],
     adminOperations: ['Supervisión', 'activity'],
     audience: ['Audiencia', 'users'],
     content: ['Contenido web', 'file-text'],
@@ -347,7 +347,7 @@
       details='<h3>Conecta tus campañas de Meta desde aquí</h3><p>La conexión está en preparación. Cuando esté activada podrás iniciar sesión con Facebook y elegir tus cuentas publicitarias sin pedir acceso manual ni salir a la sección Integraciones.</p>'+
         '<button class="button button-primary" type="button" disabled>Conectar con Facebook · en preparación</button>';
     }else if(!connected){
-      details='<h3>Conecta tus campañas de Meta desde aquí</h3><p>Inicia sesión con Facebook y autoriza únicamente la lectura de las cuentas publicitarias que elijas. eDigital no modificará tus anuncios.</p>'+
+      details='<h3>Conecta tus campañas de Meta desde aquí</h3><p>Inicia sesión con Facebook y autoriza únicamente la lectura de las cuentas publicitarias que elijas. E Digital.IA no modificará tus anuncios.</p>'+
         '<button class="button button-primary" type="button" data-act="meta-connect" data-return="campaigns">Conectar con Facebook</button>'+
         '<p class="fine-print">Facebook pedirá tu consentimiento oficial y volverás automáticamente a Campañas Ads.</p>';
     }else{
