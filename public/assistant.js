@@ -1,7 +1,7 @@
 /* eDigital · Floating contextual assistant, scoped to the customer's currently selected business. */
 (function(){
  'use strict';
- const initial={role:'assistant',content:'¡Hola! Soy tu asistente eDigital. Pregúntame por el rendimiento de tu web, campañas o conexiones. Solo usaré los datos disponibles de tu negocio.'};
+ const initial={role:'assistant',content:'¡Hola! Soy tu asistente E Digital.IA. Pregúntame por el rendimiento de tu web, campañas o conexiones. Solo usaré los datos disponibles de tu negocio.'};
  const state={open:false,busy:false,aiReady:false,aiChecked:false,companyId:'',messages:[initial],periodCache:new Map()};
  const escapeHTML=value=>String(value==null?'':value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
  const number=value=>Number.isFinite(Number(value))?new Intl.NumberFormat('es-PE',{maximumFractionDigits:0}).format(Number(value)):'—';
@@ -27,8 +27,8 @@
    const chat=state.messages.slice(-14).map(x=>'<div class="eda-message '+(x.role==='user'?'eda-message-user':'eda-message-bot')+'"><div class="eda-message-text">'+escapeHTML(x.content)+'</div></div>').join('');
    const suggestions=state.messages.length<=1?'<div class="eda-suggestions"><button type="button" data-assistant-prompt="¿Cómo van mis visitas hoy?">Visitas de hoy</button><button type="button" data-assistant-prompt="¿Cómo van mis visitas los últimos 3 días?">Últimos 3 días</button><button type="button" data-assistant-prompt="¿Cómo conecto las integraciones?">Integraciones</button></div>':'';
    host.innerHTML='<button type="button" class="eda-launcher" data-assistant-action="toggle" aria-label="'+(state.open?'Cerrar asistente':'Abrir asistente')+'" aria-expanded="'+state.open+'" aria-controls="eda-dialog">'+(state.open?'<span aria-hidden="true">×</span>':'<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="4"/><path d="M12 3v4m-2-4h4M8 13h.01M16 13h.01M9 17h6M2 12v4m20-4v4"/></svg>')+'</button>'+
-   (state.open?'<section class="eda-dialog" id="eda-dialog" role="dialog" aria-label="Asistente eDigital">'+
-    '<div class="eda-head"><div class="eda-bot-icon" aria-hidden="true">✦</div><div class="eda-heading"><strong>Asistente eDigital</strong><small>'+mode+' · '+escapeHTML(c.company||'Mi empresa')+'</small></div><button type="button" class="eda-close" data-assistant-action="close" aria-label="Cerrar asistente">×</button></div>'+
+   (state.open?'<section class="eda-dialog" id="eda-dialog" role="dialog" aria-label="Asistente E Digital.IA">'+
+    '<div class="eda-head"><div class="eda-bot-icon" aria-hidden="true">✦</div><div class="eda-heading"><strong>Asistente E Digital.IA</strong><small>'+mode+' · '+escapeHTML(c.company||'Mi empresa')+'</small></div><button type="button" class="eda-close" data-assistant-action="close" aria-label="Cerrar asistente">×</button></div>'+
     '<nav class="eda-shortcuts" aria-label="Accesos rápidos"><button type="button" data-assistant-nav="analytics">Analítica</button><button type="button" data-assistant-nav="campaigns">Campañas</button><button type="button" data-assistant-nav="integrations">Integraciones</button></nav>'+
     '<div class="eda-messages" id="eda-messages" aria-live="polite">'+chat+(state.busy?'<p class="eda-wait">Preparando respuesta…</p>':'')+suggestions+'</div>'+
     '<form id="eda-form" class="eda-form"><label class="eda-screenreader" for="eda-question">Pregunta al asistente</label><input id="eda-question" name="question" type="text" maxlength="450" autocomplete="off" placeholder="Pregúntame sobre tu negocio…" '+(state.busy?'disabled':'required')+'/><button type="submit" '+(state.busy?'disabled':'')+' aria-label="Enviar pregunta">➤</button></form>'+
