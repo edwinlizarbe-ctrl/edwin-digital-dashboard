@@ -924,3 +924,7 @@ input,select,textarea{max-width:100%}
 [data-sidebar-tone=navy] .sidebar .nav-link:hover>svg,[data-sidebar-tone=blue] .sidebar .nav-link:hover>svg{color:currentColor;opacity:1}
 .sidebar-collapse-btn{border-radius:9px}
 .content-grid>.col-4,.content-grid>.col-5,.content-grid>.col-6,.content-grid>.col-7,.content-grid>.col-8{align-self:stretch}
+
+.business-pulse{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px;margin:18px 0;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text)}
+.business-pulse h2{margin:5px 0 9px;font-size:20px}.business-pulse p{margin:0 0 7px;line-height:1.5}.business-pulse small{color:var(--muted)}.pulse-kicker{font-size:11px;letter-spacing:.08em;font-weight:700;color:var(--accent)}
+@media(max-width:680px){.business-pulse{flex-direction:column;align-items:stretch;padding:18px}.business-pulse>.button{width:100%}}
