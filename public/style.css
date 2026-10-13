@@ -356,3 +356,7 @@ input,select,textarea{max-width:100%}
 .form-input input,.simple-input,.admin-search input,.meta-search,.meta-select,.search-wrap input{font-size:16px}
 @media(max-width:900px){.integration-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.company-header-panel{gap:16px}}
 @media(max-width:630px){.integration-grid{grid-template-columns:1fr}.company-header-panel{padding:17px}.company-logo-preview{width:75px;height:75px;flex-basis:75px}.company-header-panel h2{font-size:18px}.company-photo-camera{width:30px;height:30px}.provider-card{min-height:unset}.empty-data{min-height:132px}}
+
+/* Fill integration rows when only two providers exist. */
+.integration-section .integration-grid:has(> .provider-card:nth-child(2):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:630px){.integration-section .integration-grid:has(> .provider-card:nth-child(2):last-child){grid-template-columns:1fr}}
