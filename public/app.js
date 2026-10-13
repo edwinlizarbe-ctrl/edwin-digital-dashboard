@@ -270,7 +270,7 @@
     if(!pages.length)return empty('Sin información de páginas para este período.');
     const total=Number(m().screenPageViews),sum=pages.reduce((n,p)=>n+Math.max(0,number(p.screenPageViews)),0),base=total>0?total:sum;
     return '<div class="bar-list">'+pages.slice(0,6).map((p,i)=>{
-      const raw=String(p.pagePath||'/'),path=raw.split('?')[0],name=path==='/'?'Página de inicio':decodeURIComponent(path.split('/').filter(Boolean).pop()||'Página de inicio').replace(/[-_]+/g,' ').replace(/\.[a-z0-9]+$/i,'');
+      const raw=String(p.pagePath||'/'),path=raw.split('?')[0],name=path==='/'?'Página de inicio':(path.split('/').filter(Boolean).pop()||'Página de inicio').replace(/[-_]+/g,' ').replace(/\.[a-z0-9]+$/i,'');
       const views=Math.max(0,number(p.screenPageViews)),share=base?views/base*100:0;
       return '<div class="bar-item"><div class="bar-row"><span title="'+clean(raw)+'"><b class="bar-index">'+String(i+1).padStart(2,'0')+'</b>'+clean(name)+'</span><strong>'+fmt(views)+' · '+share.toFixed(1)+'%</strong></div><div class="bar-track"><div class="bar-fill" style="width:'+Math.min(100,share).toFixed(2)+'%"></div></div></div>';
     }).join('')+'</div><button type="button" class="text-action" data-act="nav" data-page="content">Consultar estadísticas de las páginas →</button>';
