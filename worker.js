@@ -187,24 +187,7 @@ async function handleApi(req, env) {
   }
 
 
-  if(path==='/api/auth/change-email' && method==='POST') {
-    if(!companyJsonRequest(req,3000))return json({error:'Solicitud no permitida.'},403,s.cookies);
-    let input;try{input=await companyParse(req,3000);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
-    const email=String(input.email||'').trim().toLowerCase(),password=input.currentPassword;
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||typeof password!=='string'||password.length<1||password.length>512)
-      return json({error:'Ingresa un correo válido y tu contraseña actual.'},400,s.cookies);
-    if(email===s.user.email.toLowerCase())return json({error:'El correo nuevo debe ser diferente del actual.'},400,s.cookies);
-    const checked=await supaAuth(env,'token?grant_type=password',{
-      method:'POST',body:JSON.stringify({email:s.user.email,password})
-    });
-    if(!checked.ok)return json({error:'La contraseña actual no es correcta.'},403,s.cookies);
-    const verified=await checked.json();
-    if(verified.user?.id!==s.user.id)return json({error:'No se pudo verificar tu identidad.'},403,s.cookies);
-    const changed=await supaAuth(env,'user',{method:'PUT',
-      headers:{Authorization:'Bearer '+s.access},body:JSON.stringify({email})});
-    if(!changed.ok)return json({error:'Supabase no pudo tramitar el cambio de correo. Comprueba la configuración de confirmación.'},400,s.cookies);
-    return json({ok:true,message:'Revisa tu nuevo correo y confirma el cambio si Supabase lo solicita.'},200,s.cookies);
-  }
+  if(path==='/api/auth/change-email')return json({error:'El correo electrónico de acceso no se puede modificar desde Edwin CRM.'},403,s.cookies);
 
   if(path==='/api/company/preferences' && method==='POST') {
     if(!companyJsonRequest(req))return json({error:'Solicitud no autorizada o demasiado grande.'},403,s.cookies);
