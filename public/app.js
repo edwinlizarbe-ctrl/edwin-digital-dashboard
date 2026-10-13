@@ -288,10 +288,54 @@
     const kinds=[['Resumen del sitio','overview','trend'],['Adquisición','acquisition','sources'],['Campañas UTM','campaigns','campaigns'],['Audiencia','audience','countries'],['Contenido','content','pages'],['Eventos y conversiones','events','events']];
     return `${heading('Centro de reportes','Tus informes, listos para analizar','Descarga archivos CSV con las métricas que realmente devuelve tu propiedad.')}${statusStrip()}<div class="report-grid">${kinds.map(([name,page,key])=>`<div class="report-item"><div class="report-icon">${icon('file-bar-chart',22)}</div><div><h3>${name}</h3><p>${gaReady()?`${fmt(rows(key).length)} registros · ${periodLabel()}`:'Esperando conexión GA4'}</p></div><button class="button button-soft" data-act="download" data-report="${key}" ${!gaReady()||!rows(key).length?'disabled':''}>${icon('download',17)} CSV</button></div>`).join('')}${selectedBusinessIsHotmart()?`<div class="report-item"><div class="report-icon rose">${icon('shopping-bag',22)}</div><div><h3>Productos vendidos · Hotmart</h3><p>${state.hm?`${fmt(state.hm.products?.length)} productos`:state.hmLoading?'Consultando…':'Sin conexión'}</p></div><button class="button button-soft" data-act="download" data-report="hotmart-products" ${!state.hm?'disabled':''}>${icon('download',17)} CSV</button></div>`:''}</div>${alertBlock('Los CSV contienen las filas que entrega la API en el período seleccionado. El panel no genera cifras sintéticas, ni incluye el costo de las campañas publicitarias.','info')}`;
   }
-function company(){
- const b=business(),items=state.sites.map(x=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(x.name)}</strong><small>${clean(x.url||'Sin URL')}</small></div><span class="client-site-badge">${x.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
- return `${heading('Mi negocio','Mi empresa','Consulta tus datos de empresa y las fuentes autorizadas.')}
- <div class="content-grid"><div class="col-7">${card('Datos de mi empresa','Información actualmente registrada',`<div class="settings-line"><span>Empresa</span><b>${clean(b?.name||'Pendiente')}</b></div><div class="settings-line"><span>Identificador</span><b>${clean(b?.slug||'—')}</b></div><div class="settings-line"><span>Usuario</span><b>${clean(state.user?.email||'')}</b></div><p class="fine-print">La edición del logotipo, nombre comercial y datos de la empresa necesita almacenamiento y permisos de actualización separados por cliente.</p>`)}</div><div class="col-5">${card('Fuentes de mi empresa','El estado se refleja al autorizar una conexión',connectionOverview())}</div><div class="col-12">${card('Mis sitios',fmt(state.sites.length)+' registrados',items||empty('No hay sitios asignados.'))}</div></div>`;
+  function company(){
+ const b=business(),prefs=companyPrefs();
+ const sites=state.sites.map(x=>`<div class="client-site-row">
+   <div class="client-avatar compact">${icon('globe',19)}</div>
+   <div><strong>${clean(x.name)}</strong><small>${clean(x.url||'Dirección sin asignar')}</small><small>${x.ga4_property_id?'Propiedad GA4 asignada':'Sin propiedad GA4 asignada'}</small></div>
+   <button class="button button-outline" data-act="edit-site" data-id="${clean(x.id)}">${icon('settings',15)} Editar sitio</button>
+ </div>${state.editSiteId===x.id?`<form id="site-edit-form" class="company-edit-panel">
+    <input type="hidden" name="siteId" value="${clean(x.id)}">
+    <label class="form-label">Nombre del sitio<input class="simple-input" name="siteName" maxlength="100" required value="${clean(x.name)}"></label>
+    <label class="form-label">Dirección web<input class="simple-input" type="url" name="siteUrl" maxlength="300" required value="${clean(x.url)}"></label>
+    ${state.siteError?alertBlock(state.siteError):''}
+    <div class="company-form-actions"><button class="button button-primary" type="submit" ${state.siteBusy?'disabled':''}>${state.siteBusy?'Guardando…':'Guardar sitio'}</button><button class="button button-outline" type="button" data-act="edit-site-cancel">Cancelar</button></div>
+    <p class="fine-print">El cambio solo se aplica cuando Supabase confirma permisos de edición para este sitio.</p>
+    </form>`:''}`).join('');
+ return `${heading('Perfil del negocio','Mi empresa','Personaliza la información que ves al entrar y administra tus sitios autorizados.')}
+ ${state.companyNotice?`<div class="company-message">${icon('check',17)} ${clean(state.companyNotice)}</div>`:''}
+ <div class="company-header-panel">
+  <div class="company-logo-preview">${companyImage(72)}</div>
+  <div><h2>${clean(displayBusiness())}</h2><p>${clean(prefs.category||'Selecciona un sector')} · ${clean(prefs.country||'Indica tu país')}</p><span class="company-subline">Nombre registrado: ${clean(b?.name||'Sin registrar')}</span></div>
+ </div>
+ <div class="content-grid">
+ <div class="col-7">${card('Identidad de tu empresa','Nombre, sector, país y logotipo',`
+ <form id="company-profile-form" class="company-profile-form">
+ <label class="form-label">Nombre comercial
+  <input class="simple-input" name="displayName" type="text" maxlength="80" required minlength="2" value="${clean(prefs.display_name||b?.name||'')}" placeholder="Ej. Mi Agencia Creativa" />
+ </label>
+ <div class="company-form-grid">
+  <label class="form-label">Sector o categoría
+   <input class="simple-input" name="category" list="business-categories" maxlength="80" value="${clean(prefs.category||'')}" placeholder="Selecciona o escribe tu sector"/>
+  </label>
+  <label class="form-label">País
+   <input class="simple-input" name="country" maxlength="80" value="${clean(prefs.country||'Perú')}" placeholder="Perú"/>
+  </label>
+ </div>
+ <datalist id="business-categories"><option value="Marketing y publicidad"><option value="Comercio electrónico"><option value="Finanzas"><option value="Educación"><option value="Tecnología"><option value="Retail"><option value="Servicios profesionales"><option value="Restaurantes y gastronomía"><option value="Otros"></datalist>
+ <label class="form-label" for="company-logo-file">Logotipo de tu empresa</label>
+ <input id="company-logo-file" class="company-file-input" type="file" name="logo" accept="image/png,image/jpeg,image/webp" aria-describedby="logo-note"/>
+ <p id="logo-note" class="fine-print">PNG, JPG o WebP. Se optimiza antes de guardar. No necesitas crear un logotipo para Edwin Digital.</p>
+ ${prefs.logo_data?`<button class="button button-outline" type="button" data-act="company-logo-clear">${icon('close',14)} Quitar mi logotipo</button>`:''}
+ ${state.companyLogoClear?'<p class="fine-print">El logotipo se quitará al guardar.</p>':''}
+ <label class="company-checkbox"><input type="checkbox" name="sharedName" checked/> Intentar actualizar también el nombre oficial de la empresa para todos (según permisos)</label>
+ ${state.companyError?alertBlock(state.companyError):''}
+ <button type="submit" class="button button-primary" ${state.companyBusy?'disabled':''}>${icon('check',17)} ${state.companyBusy?'Guardando…':'Guardar cambios'}</button>
+ <p class="fine-print">El logotipo, sector y nombre visual quedan guardados en tu usuario de acceso. Para compartirlos con todo el equipo hará falta activar un perfil de empresa compartido. El nombre oficial solo cambia si Supabase te concede permiso.</p>
+ </form>`)}</div>
+ <div class="col-5">${card('Conexiones de mi empresa','Al conectar una fuente, aparecerá en sus reportes',connectionOverview())}</div>
+ <div class="col-12">${card('Mis sitios web',`${fmt(state.sites.length)} sitios visibles para tu usuario`,`${state.siteNotice?`<div class="company-message">${icon('check',15)} ${clean(state.siteNotice)}</div>`:''}${sites||empty('No hay sitios web registrados para este negocio.')}<p class="fine-print">Aquí puedes modificar el nombre y la URL de un sitio autorizado. La creación de nuevos sitios requiere permisos y configuración de propiedad GA4.</p>`)}</div>
+ </div>`;
 }
   function adminStatusFor(b){
  const x=state.adminSiteStats[b.id];
