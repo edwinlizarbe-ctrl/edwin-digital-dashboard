@@ -156,7 +156,7 @@
   const alertBlock = (text, type='warning') => `<div class="alert-block ${type}">${icon(type==='warning'?'alert':'info',18)}<div>${clean(text)}</div></div>`;
   const empty = (text, title='Aún no hay datos') => `<div class="empty-data"><span class="empty-icon">${icon('activity',25)}</span><strong>${clean(title)}</strong><span>${clean(text)}</span></div>`;
   function dataPlaceholder() {
-    if (state.gaLoading) return `<div class="loading-state"><span class="spinner"></span>Consultando la propiedad de Google Analytics 4…</div>`;
+    if (state.gaLoading) return `<div class="ga-loading-state" role="status" aria-live="polite"><div class="ga-loading-heading"><span class="ga-loading-pulse">${icon('activity',23)}</span><span><strong>Preparando tu análisis…</strong><small>Consultando las visitas y eventos reales de Google Analytics.</small></span></div><div class="ga-loading-bars"><i></i><i></i><i></i></div></div>`;
     if (!state.businesses.length) return empty('Tu cuenta no tiene negocios autorizados. El administrador debe asignarte uno.', 'Falta vincular un negocio');
     if (!state.sites.length) return empty('No hay sitios asignados al negocio seleccionado.', 'Falta registrar el sitio');
     if (!state.siteId) return empty('Selecciona un sitio que tenga un ID de propiedad GA4.', 'Falta vincular Analytics');
@@ -184,6 +184,7 @@
     return `<article class="kpi"><div class="kpi-header"><div class="kpi-icon ${color}">${icon(iconName,20)}</div><span class="kpi-dots">···</span></div><div class="kpi-name">${clean(label)}${note?tip(note):''}</div><div class="kpi-value">${value}</div><div class="kpi-bottom"><div class="kpi-change">${trendFor(trendKey)}</div>${miniSpark(sparkKey,color==='purple'?'#8453f5':color==='cyan'?'#00b8e6':color==='coral'?'#f56b7f':'#40bb9d')}</div></article>`;
   }
   function mainKpis() {
+    if(state.gaLoading)return '<div class="kpi-grid" role="status" aria-label="Cargando estadísticas">'+[1,2,3,4].map(()=>'<div class="ga-skeleton-kpi"><span class="ga-skeleton-shine"></span><span class="ga-skeleton-value"></span><span class="ga-skeleton-note"></span></div>').join('')+'</div>';
     const ok=gaReady(), v=m();
     return `<div class="kpi-grid">${kpi('Usuarios totales',ok?fmt(v.totalUsers):'—','users','purple','totalUsers','totalUsers')}${kpi('Sesiones',ok?fmt(v.sessions):'—','activity','cyan','sessions','sessions')}${kpi('Vistas de páginas',ok?fmt(v.screenPageViews):'—','eye','coral','screenPageViews','screenPageViews')}${kpi('Eventos clave',ok?fmt(v.keyEvents):'—','target','mint','keyEvents','keyEvents','Eventos que tu propiedad GA4 haya marcado como clave.')}</div>`;
   }
@@ -206,11 +207,40 @@
     return `<div class="chart-legend"><span><i class="legend-chip purple"></i>${clean(label1)}</span>${k2?`<span><i class="legend-chip cyan"></i>${clean(label2)}</span>`:''}</div><div class="chart-holder"><svg viewBox="0 0 ${W} ${H}" class="plot" role="img" aria-label="Evolución real de ${clean(label1)}"><defs><linearGradient id="${gradId}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8354f4" stop-opacity=".23"/><stop offset="1" stop-color="#8354f4" stop-opacity="0"/></linearGradient></defs>${stripes}<polygon points="${area}" fill="url(#${gradId})"/>${list.length>1?`<polyline points="${coords(k1)}" class="plot-line-a"/>`:''}${k2&&list.length>1?`<polyline points="${coords(k2)}" class="plot-line-b"/>`: ''}${spots}${xticks}</svg></div>`;
   }
   function filterList(data) { const q=state.search.trim().toLowerCase(); return q?data.filter(x=>Object.values(x).some(v=>String(v).toLowerCase().includes(q))):data; }
+
+  const friendlyTrafficSource = rawValue => {
+    const raw=String(rawValue||'').trim(),parts=raw.split(/\s*\/\s*/);
+    const src=(parts[0]||'').toLowerCase(),med=(parts[1]||'').toLowerCase();
+    if(['(data not available)','(not set)','(not provided)',''].includes(src))return 'Origen sin identificar';
+    if(src==='(direct)'&&(med==='(none)'||!med))return 'Acceso directo al sitio';
+    const names={ig:'Instagram',instagram:'Instagram',fb:'Facebook',facebook:'Facebook',
+      'm.facebook.com':'Facebook (celular)','l.facebook.com':'Facebook','facebook.com':'Facebook',
+      'eventsmanager.facebook.com':'Administrador de eventos de Meta',google:'Google',
+      bing:'Bing',tiktok:'TikTok',youtube:'YouTube',email:'Correo electrónico'};
+    const media={paid:'publicidad pagada',cpc:'publicidad pagada',ppc:'publicidad pagada',
+      'paid-social':'publicidad pagada',paidsocial:'publicidad pagada',
+      organic:'visitas orgánicas',referral:'enlace desde otra web',
+      email:'correo electrónico',social:'redes sociales',none:'origen sin definir',
+      '(none)':'origen sin definir',display:'publicidad gráfica'};
+    const label=names[src]||(src==='an'?'Origen «an» (sin identificar)':parts[0]||'Origen desconocido');
+    return label+(media[med]||med?' · '+(media[med]||med):'');
+  };
+  const countries = ['Alemania','Argentina','Australia','Austria','Bélgica','Bolivia','Brasil','Canadá','Chile','China',
+    'Colombia','Corea del Sur','Costa Rica','Cuba','Dinamarca','Ecuador','Egipto','El Salvador','Emiratos Árabes Unidos',
+    'España','Estados Unidos','Filipinas','Finlandia','Francia','Guatemala','Honduras','India','Indonesia','Irlanda',
+    'Israel','Italia','Japón','México','Nicaragua','Noruega','Nueva Zelanda','Países Bajos','Panamá','Paraguay','Perú',
+    'Polonia','Portugal','Puerto Rico','Reino Unido','República Dominicana','Singapur','Sudáfrica','Suecia','Suiza',
+    'Tailandia','Turquía','Ucrania','Uruguay','Venezuela','Vietnam'];
+  function countrySelect(value){
+    const current=String(value||'Perú').trim()||'Perú',arr=countries.includes(current)?countries:[...countries,current];
+    return '<select class="simple-input country-select" name="country" required aria-label="País de mi empresa">'+arr.map(v=>'<option value="'+clean(v)+'"'+(v===current?' selected':'')+'>'+clean(v)+'</option>').join('')+'</select>';
+  }
+
   function barList(data,labelKey,valueKey,maxRows=7,formatter=fmt) {
     const list=filterList(data||[]).slice(0,maxRows);
     if (!list.length) return empty(state.search?'No hay resultados para tu búsqueda.':'Sin información para este período.');
     const top=Math.max(1,...list.map(r=>number(r[valueKey])));
-    return `<div class="bar-list">${list.map((r,i)=>`<div class="bar-item"><div class="bar-row"><span title="${clean(r[labelKey])}"><b class="bar-index">${String(i+1).padStart(2,'0')}</b>${clean(r[labelKey]||'(sin identificar)')}</span><strong>${clean(formatter(r[valueKey]))}</strong></div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(0,Math.min(100,number(r[valueKey])/top*100)).toFixed(2)}%"></div></div></div>`).join('')}</div>`;
+    return `<div class="bar-list">${list.map((r,i)=>`<div class="bar-item"><div class="bar-row"><span title="${clean(r.rawSource||r[labelKey])}"><b class="bar-index">${String(i+1).padStart(2,'0')}</b>${clean(r[labelKey]||'(sin identificar)')}</span><strong>${clean(formatter(r[valueKey]))}</strong></div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(0,Math.min(100,number(r[valueKey])/top*100)).toFixed(2)}%"></div></div></div>`).join('')}</div>`;
   }
   function cleanRows(data){return filterList(data||[]);}
   function dataTable(list,cols,max=25) {
@@ -242,7 +272,7 @@
     return items.map(x=>alertBlock(x)).join('');
   }
   function readableTime() { return state.ga?.updated_at?new Date(state.ga.updated_at).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'}):'Pendiente de conexión'; }
-  function statusStrip() {return `<div class="status-strip"><div class="status-left">${tag(gaReady()?'Google Analytics conectado':state.gaLoading?'Consultando GA4':'GA4 pendiente',gaReady()?'success':'neutral')}<span class="strip-divider"></span><span>${icon('clock',15)} Última consulta: ${clean(readableTime())}</span></div><span class="strip-right">${clean(site()?.name||business()?.name||'Elige un negocio')}</span></div>${state.period==='today'?`<div class="period-disclaimer">${icon('info',15)} Estás viendo el día de hoy (según la zona horaria de GA4). Estas cifras pueden estar incompletas porque Analytics no es un informe en tiempo real.</div>`:''}`;}
+  function statusStrip() {return `<div class="status-strip"><div class="status-left">${state.gaLoading?'<span class="ga-status-spinner" aria-hidden="true"></span>':''}${tag(gaReady()?'Google Analytics conectado':state.gaLoading?'Cargando Analytics…':'GA4 pendiente',gaReady()?'success':'neutral')}<span class="strip-divider"></span><span>${icon('clock',15)} Última consulta: ${clean(readableTime())}</span></div><span class="strip-right">${clean(site()?.name||business()?.name||'Elige un negocio')}</span></div>${state.period==='today'?`<div class="period-disclaimer">${icon('info',15)} Estás viendo el día de hoy (según la zona horaria de GA4). Estas cifras pueden estar incompletas porque Analytics no es un informe en tiempo real.</div>`:''}`;}
   function insights() {
     if(!gaReady())return dataPlaceholder();
     const user=m(), ch=rows('channels'), pagesArr=rows('pages'), top=ch[0], page=pagesArr[0];
@@ -289,7 +319,7 @@
     return `<div class="small-kpis">${[['Usuarios activos','activeUsers',fmt],['Usuarios nuevos','newUsers',fmt],['Sesiones con interacción','engagedSessions',fmt],['Tasa de interacción','engagementRate',pc],['Rebote','bounceRate',pc],['Eventos totales','eventCount',fmt],['Tiempo medio de sesión','averageSessionDuration',duration],['Tasa de sesión con evento clave','sessionKeyEventRate',pc]].map(x=>`<div class="small-kpi"><span>${x[0]}</span><strong>${ok?x[2](v[x[1]]):'—'}</strong>${trendFor(x[1],x[2]===pc)}</div>`).join('')}</div>`;
   }
   function analytics(){return `${heading('Analítica web','Así está rindiendo tu web','Visitas, interacción, permanencia y evolución histórica de GA4.')}${statusStrip()}${mainKpis()}${detailKpis()}<div class="content-grid"><div class="col-12">${card('Tráfico y visualizaciones','Compara el comportamiento del sitio a lo largo del período',gaReady()?chart(rows('trend'),'screenPageViews','Vistas de página','sessions','Sesiones',310):dataPlaceholder())}</div><div class="col-6">${card('Sesiones por dispositivo','Tráfico desde computadora, celular y tablet',gaReady()?donut(rows('devices'),'deviceCategory','sessions'):dataPlaceholder())}</div><div class="col-6">${card('Navegadores de tus usuarios','Distribución por tecnología',gaReady()?barList(rows('browsers'),'browser','totalUsers'):dataPlaceholder())}</div></div>${flags()}`;}
-  function acquisition(){return `${heading('Adquisición','Descubre cómo te encuentran','Analiza canales, fuentes y medios de tráfico, sin confundir visitas con conversiones de anuncios.')}${statusStrip()}<div class="content-grid"><div class="col-5">${card('Mezcla de canales','Sesiones por categoría de adquisición',gaReady()?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Principales fuentes y medios','Sesiones atribuidas en GA4',gaReady()?barList(rows('sources'),'sessionSourceMedium','sessions',10):dataPlaceholder())}</div><div class="col-12">${card('Detalle de canales','Usuarios, sesiones y eventos clave por canal',gaReady()?dataTable(rows('channels'),[{key:'sessionDefaultChannelGroup',label:'Canal'},{key:'sessions',label:'Sesiones',display:fmt},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
+  function acquisition(){return `${heading('Adquisición','Descubre cómo te encuentran','Analiza canales, fuentes y medios de tráfico, sin confundir visitas con conversiones de anuncios.')}${statusStrip()}<div class="content-grid"><div class="col-5">${card('Mezcla de canales','Sesiones por categoría de adquisición',gaReady()?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Principales fuentes y medios','Origen de las visitas · datos reales de Google Analytics',gaReady()?barList(rows('sources').map(r=>({...r,sourceLabel:friendlyTrafficSource(r.sessionSourceMedium),rawSource:r.sessionSourceMedium})),'sourceLabel','sessions',10):dataPlaceholder())}</div><div class="col-12">${card('Detalle de canales','Usuarios, sesiones y eventos clave por canal',gaReady()?dataTable(rows('channels'),[{key:'sessionDefaultChannelGroup',label:'Canal'},{key:'sessions',label:'Sesiones',display:fmt},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
   function campaigns(){
  const connected=state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account);
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
@@ -373,7 +403,7 @@
    <input class="simple-input" name="category" list="business-categories" maxlength="80" value="${clean(prefs.category||'')}" placeholder="Selecciona o escribe tu sector"/>
   </label>
   <label class="form-label">País
-   <input class="simple-input" name="country" maxlength="80" value="${clean(prefs.country||'Perú')}" placeholder="Perú"/>
+   ${countrySelect(prefs.country)}
   </label>
  </div>
  <datalist id="business-categories"><option value="Marketing y publicidad"><option value="Comercio electrónico"><option value="Finanzas"><option value="Educación"><option value="Tecnología"><option value="Retail"><option value="Servicios profesionales"><option value="Restaurantes y gastronomía"><option value="Otros"></datalist>
@@ -540,11 +570,11 @@ async function loadAccounts(){
  'Google Analytics 4':['googleanalytics','E37400'],'Google Search Console':['googlesearchconsole','4285F4'],
  'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
  };
- const [slug,color]=dict[name]||['google','4285F4'];
+ if(name==='Facebook / Instagram orgánico')
+   return '<div class="provider-logo provider-logo-duo" aria-hidden="true"><img src="/logos/facebook.svg" width="26" height="26" alt=""/><img src="/logos/instagram.svg" width="26" height="26" alt=""/></div>';
+ const [slug]=dict[name]||['googleanalytics'];
  const local='/logos/'+(name==='Hotmart'?'hotmart':name==='LinkedIn Ads'?'linkedin':slug)+'.svg';
- const src=local;
- const fallback='/logos/platform.svg';
- return `<div class="provider-logo" aria-hidden="true"><img src="${src}" alt="" loading="lazy" width="32" height="32" onerror="this.onerror=null;this.src='${fallback}'"/></div>`;
+ return `<div class="provider-logo" aria-hidden="true"><img src="${local}" alt="" loading="lazy" width="32" height="32" onerror="this.onerror=null;this.src='/logos/platform.svg'"/></div>`;
 }
     function metaCard(){
  if(!metaPilotEligible())return '';
@@ -555,7 +585,7 @@ async function loadAccounts(){
   const v=x.metrics;
   return `<div class="meta-account-result"><strong>${clean(x.name)} · ${clean(x.currency)}</strong>${v?`<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${metaMetric(v.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(v.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(v.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(v.ctr,2)}%</strong></div><div><small>CPC</small><strong>${metaMetric(v.cpc,2)}</strong></div></div>`:'<p class="fine-print">Sin datos en el período.</p>'}</div>`;
  }).join('');
- const body=!m.configured?`<p>La conexión de Meta Ads aún no está habilitada en esta plataforma. El administrador debe completar la autorización antes de que puedas conectar tu cuenta.</p><button class="button button-outline" type="button" disabled title="La conexión estará disponible cuando el administrador termine la autorización">Conectar Meta Ads · pendiente de habilitación</button><p class="fine-print">Tu cuenta y tus campañas no se verán afectadas mientras se completa esta configuración.</p>`:
+ const body=!m.configured?`<p>La conexión de Meta Ads aún no está habilitada en esta plataforma. Cuando termine la activación general, podrás conectar tu propia cuenta de Facebook sin asistencia.</p><button class="button button-outline" type="button" disabled title="La conexión estará disponible cuando el administrador termine la autorización">Conectar Meta Ads · pendiente de habilitación</button><p class="fine-print">Tu cuenta y tus campañas no se verán afectadas mientras se completa esta configuración.</p>`:
  !m.connected?`<button class="button button-primary" data-act="meta-connect">${icon('link',16)} Conectar con Facebook</button>`:
  `<label class="form-label">Elige hasta cinco cuentas publicitarias</label>
  <input class="meta-search" id="meta-account-search" placeholder="Buscar cuenta publicitaria…" autocomplete="off"/>
@@ -584,7 +614,7 @@ async function loadAccounts(){
     function integrations(){
  const ga=gaReady(),lookup=[
   ['Analítica y contenidos',[
-   {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Consulta al administrador del sitio para habilitar la propiedad GA4.'},
+   {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Este sitio aún no tiene estadísticas disponibles de Analytics.'},
    {name:'Google Search Console',info:'Consultas y posicionamiento SEO.',status:'Próximamente',details:'Necesita autorización de Google.'},
    {name:'Facebook / Instagram orgánico',info:'Alcance y estadísticas de perfiles sociales.',status:'Próximamente',details:'Pendiente de permisos de páginas y perfiles.'}] ],
   ['Ventas y e-commerce',[
