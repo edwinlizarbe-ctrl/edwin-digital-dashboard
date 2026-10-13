@@ -260,6 +260,7 @@ export async function handleMetaApi(req,env,s) {
       level==='adset'?'campaign_name,adset_id,adset_name,spend,clicks,impressions,ctr,cpc':
       'campaign_name,adset_name,ad_id,ad_name,spend,clicks,impressions,ctr,cpc';
     const accounts=await metaAccounts(env,connection.token);
+    if(ids.some(id=>!accounts.some(account=>account.id===id)))return error('Ya no tienes acceso a una cuenta seleccionada. Vuelve a autorizar Meta.',403);
     const rows=[];let partial=false;
     for(const id of ids){
       const account=accounts.find(a=>a.id===id);
