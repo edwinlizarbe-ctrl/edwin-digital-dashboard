@@ -1,0 +1,14 @@
+{
+  "name": "edwin-digital-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dashboard multicliente Edwin Digital en Cloudflare Workers y Supabase",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "4.149.0"
+  }
+}
