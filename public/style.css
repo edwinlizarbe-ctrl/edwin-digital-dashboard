@@ -896,3 +896,21 @@ input,select,textarea{max-width:100%}
 .ads-detail-toolbar .ads-best-button.active{background:#2563EB;color:white}
 .ads-ranking-explainer{padding:12px 15px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--muted2);font-size:12px;line-height:1.55;margin-bottom:14px}
 @media(max-width:650px){.ads-detail-toolbar .form-label{flex:1 1 100%}.ads-detail-toolbar .button{flex:1 1 auto}}
+
+/* Octubre 2026 — contraste sobrio para navegación oscura y tema negro */
+[data-sidebar-tone=black] .sidebar{--side:#080b12;--surface2:#141820;--border:#303743;--text:#f2f5fa;--muted:#a8b2c1;--muted2:#cbd3e0;--accent-soft:#202938;--accent:#dce5f3;background:#080b12}
+[data-sidebar-tone=black] .sidebar .nav-link{color:#dce5f0}
+[data-sidebar-tone=black] .sidebar .nav-link>svg{color:#c3cddd}
+[data-sidebar-tone=black] .sidebar .sidebar-workspace{background:#141820;color:#e6edf7}
+[data-sidebar-tone=black] .sidebar .sidebar-bottom{border-color:#343b48}
+[data-sidebar-tone=black] .sidebar .nav-link.active{background:#202938;color:#fff}
+[data-sidebar-tone=blue] .sidebar .nav-link>svg,
+[data-sidebar-tone=navy] .sidebar .nav-link>svg,
+[data-sidebar-tone=graphite] .sidebar .nav-link>svg{color:currentColor;opacity:.86}
+[data-sidebar-tone=blue] .sidebar .nav-link:hover>svg,
+[data-sidebar-tone=navy] .sidebar .nav-link:hover>svg,
+[data-sidebar-tone=graphite] .sidebar .nav-link:hover>svg{color:currentColor;opacity:1}
+.integration-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.integration-card{min-width:0}
+@media(max-width:960px){.integration-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.integration-grid{grid-template-columns:1fr}}
