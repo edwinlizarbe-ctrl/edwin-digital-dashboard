@@ -582,6 +582,66 @@ function sidebar(){
     const file=new Blob(['\ufeff'+content],{type:'text/csv;charset=utf-8'});const uri=URL.createObjectURL(file);
     const a=document.createElement('a');a.href=uri;a.download=`edwin-digital-${dataset||state.page}-${state.period}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(uri),800);
   }
+  async function readCompanyLogo(file){
+ if(!file||!file.size)return null;
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>3000000)
+   throw Error('Selecciona una imagen PNG, JPG o WebP de hasta 3 MB.');
+ const bitmap=await createImageBitmap(file);
+ try{
+  const width=bitmap.width,height=bitmap.height;
+  if(!width||!height||width>10000||height>10000)throw Error('Imagen no válida.');
+  const canvas=document.createElement('canvas'),scale=Math.min(240/width,240/height,1);
+  canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
+  const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  let result=canvas.toDataURL('image/webp',.77);
+  if(!result.startsWith('data:image/webp;'))result=canvas.toDataURL('image/jpeg',.7);
+  if(result.length>90000)throw Error('El logotipo es demasiado grande incluso después de optimizarlo.');
+  return result;
+ }finally{bitmap.close?.();}
+}
+  async function saveCompany(form){
+ if(!state.businessId||state.companyBusy)return;
+ const input=new FormData(form),id=state.businessId;
+ const display_name=String(input.get('displayName')||'').trim(),
+ category=String(input.get('category')||'').trim(),country=String(input.get('country')||'').trim();
+ if(display_name.length<2||display_name.length>80){state.companyError='Ingresa un nombre comercial de 2 a 80 caracteres.';render();return;}
+ const selected=input.get('logo');
+ state.companyBusy=true;state.companyError='';state.companyNotice='';
+ try{
+  let logo_data=state.companyLogoClear?'':companyPrefs().logo_data||'';
+  if(selected&&selected.size)logo_data=await readCompanyLogo(selected);
+  const result=await api('/api/company/preferences',{method:'POST',
+    body:JSON.stringify({business_id:id,display_name,category,country,logo_data})});
+  if(state.businessId!==id)return;
+  state.user.business_preferences={...(state.user.business_preferences||{}),[id]:result.profile};
+  let shared=false,message='';
+  if(input.get('sharedName')){
+   try{
+    const changed=await api('/api/company/name',{method:'PATCH',body:JSON.stringify({business_id:id,name:display_name})});
+    const target=state.businesses.find(b=>b.id===id);if(target)target.name=changed.name;
+    shared=true;
+   }catch(e){message=' El nombre oficial no se pudo modificar para todo el equipo porque faltan permisos de edición.';}
+  }
+  state.companyLogoClear=false;
+  state.companyNotice=(shared?'Perfil actualizado y nombre oficial guardado.':'Perfil visual guardado en tu cuenta de acceso.')+message;
+ }catch(e){state.companyError=e.message||'No se pudieron guardar los cambios.';}
+ finally{state.companyBusy=false;render();}
+}
+  async function saveSite(form){
+ if(!state.businessId||state.siteBusy)return;
+ const data=new FormData(form),businessId=state.businessId,siteId=String(data.get('siteId')||'');
+ state.siteBusy=true;state.siteError='';state.siteNotice='';
+ try{
+  const changed=await api('/api/sites/edit',{method:'PATCH',
+    body:JSON.stringify({business_id:businessId,site_id:siteId,
+      name:String(data.get('siteName')||'').trim(),url:String(data.get('siteUrl')||'').trim()})});
+  if(state.businessId!==businessId)return;
+  const item=state.sites.find(x=>x.id===siteId);
+  if(item)Object.assign(item,changed.site);
+  state.editSiteId='';state.siteNotice='Sitio actualizado en tu empresa.';
+ }catch(e){state.siteError=e.message||'No se pudo guardar el sitio.';}
+ finally{state.siteBusy=false;render();}
+}
   document.addEventListener('click', async e=>{
     const b=e.target.closest('[data-act]');if(!b)return;
     const action=b.dataset.act;
@@ -599,6 +659,9 @@ function sidebar(){
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
+    else if(action==='edit-site'){state.editSiteId=b.dataset.id;state.siteError='';state.siteNotice='';render();}
+    else if(action==='edit-site-cancel'){state.editSiteId='';state.siteError='';render();}
+    else if(action==='company-logo-clear'){state.companyLogoClear=true;state.companyNotice='';render();}
     else if(action==='meta-panel-toggle'){state.metaPanelOpen=!state.metaPanelOpen;render();}
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-refresh'){await loadMeta();await loadAds();}
@@ -654,6 +717,8 @@ function sidebar(){
     state.search=q;render();const input=document.getElementById('global-search');if(input){input.focus();input.setSelectionRange(selStart,selEnd);}
   });
   document.addEventListener('submit',async e=>{
+    if(e.target.id==='company-profile-form'){e.preventDefault();await saveCompany(e.target);return;}
+    if(e.target.id==='site-edit-form'){e.preventDefault();await saveSite(e.target);return;}
     if(e.target.id==='change-password-form'){
       e.preventDefault(); if(!state.user || state.passwordBusy)return;
       const form=new FormData(e.target),currentPassword=String(form.get('currentPassword')||''),newPassword=String(form.get('newPassword')||''),confirmPassword=String(form.get('confirmPassword')||'');
