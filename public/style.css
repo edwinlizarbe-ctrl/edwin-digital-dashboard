@@ -832,3 +832,6 @@ input,select,textarea{max-width:100%}
 [data-theme=dark] .button-primary{background:#3B82F6;color:#FFFFFF}
 [data-theme=dark] .button-primary:hover:not(:disabled){background:#2563EB}
 .crm-brand-mark{background:var(--accent-soft);color:var(--accent)}
+
+/* Accessible campaign provider submenu */
+.crm-ads-nav{display:block}.crm-ads-nav>.nav-link>svg:last-child{margin-left:auto}.crm-ads-subnav{margin:2px 0 7px 27px;border-left:1px solid var(--border);padding-left:7px}.crm-ads-subitem{width:100%;display:flex;align-items:center;gap:10px;min-height:38px;padding:7px 12px;border:0;border-radius:9px;background:transparent;color:var(--muted2);text-align:left;font-weight:600;font-size:12px}.crm-ads-subitem:hover,.crm-ads-subitem.active{background:var(--accent-soft);color:var(--accent)}.crm-ads-subitem img,.crm-ads-subitem svg{width:17px;height:17px;object-fit:contain}.layout.sidebar-collapsed .crm-ads-subnav{display:none}@media(max-width:700px){.crm-ads-subitem{min-height:42px}}
