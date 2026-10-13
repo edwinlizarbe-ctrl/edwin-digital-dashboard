@@ -15,6 +15,7 @@
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
+    adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null,
     adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', temporaryAccess: null,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null,
   };
@@ -156,6 +157,7 @@
   const alertBlock = (text, type='warning') => `<div class="alert-block ${type}">${icon(type==='warning'?'alert':'info',18)}<div>${clean(text)}</div></div>`;
   const empty = (text, title='Aún no hay datos') => `<div class="empty-data"><span class="empty-icon">${icon('activity',25)}</span><strong>${clean(title)}</strong><span>${clean(text)}</span></div>`;
   function dataPlaceholder() {
+    if(!featureEnabled('ga4'))return empty('Esta empresa no tiene habilitado Google Analytics en su panel.','Integración no incluida');
     if (state.gaLoading) return `<div class="ga-loading-state" role="status" aria-live="polite"><div class="ga-loading-heading"><span class="ga-loading-pulse">${icon('activity',23)}</span><span><strong>Preparando tu análisis…</strong><small>Consultando las visitas y eventos reales de Google Analytics.</small></span></div><div class="ga-loading-bars"><i></i><i></i><i></i></div></div>`;
     if (!state.businesses.length) return empty('Tu cuenta no tiene negocios autorizados. El administrador debe asignarte uno.', 'Falta vincular un negocio');
     if (!state.sites.length) return empty('No hay sitios asignados al negocio seleccionado.', 'Falta registrar el sitio');
@@ -530,6 +532,74 @@ function campaigns(){
  </div>`)}</div></div>`;
 }
 
+
+const businessFeatureLabels=[
+ ['ga4','Google Analytics 4'],['search_console','Google Search Console'],
+ ['social_organic','Facebook / Instagram orgánico'],['hotmart','Hotmart'],['shopify','Shopify'],
+ ['meta_ads','Meta Ads'],['google_ads','Google Ads'],['tiktok_ads','TikTok Ads'],['linkedin_ads','LinkedIn Ads']
+];
+const businessFeatureKey=name=>({
+ 'Google Analytics 4':'ga4','Google Search Console':'search_console',
+ 'Facebook / Instagram orgánico':'social_organic','Hotmart':'hotmart','Shopify':'shopify',
+ 'Meta Ads':'meta_ads','Google Ads':'google_ads','TikTok Ads':'tiktok_ads','LinkedIn Ads':'linkedin_ads'
+})[name]||'';
+const featureEnabled=key=>!state.clientEntitlements||state.clientEntitlements.features?.[key]!==false;
+
+async function saveAdminFeature(feature,enabled,plan){
+ if(!isAdmin()||state.adminFeatureBusy||!state.adminFeatureBusiness||state.adminEntitlements?.configured!==true)return;
+ const id=state.adminFeatureBusiness;
+ state.adminFeatureBusy=true;state.adminFeatureError='';state.adminFeatureNotice='';render();
+ try{
+  const data=await api('/api/admin/business-features',{method:'POST',body:JSON.stringify({
+    business_id:id,...(plan?{plan}:{feature,enabled})
+  })});
+  if(state.adminFeatureBusiness===id){
+    state.adminEntitlements=data;
+    state.adminFeatureNotice=plan?'Plan Premium asignado para esta empresa.':'Permiso de integración guardado para esta empresa.';
+  }
+ }catch(e){if(state.adminFeatureBusiness===id)state.adminFeatureError=e.message;}
+ finally{state.adminFeatureBusy=false;render();}
+}
+
+async function loadClientEntitlements(id){
+ try{
+  const data=await api('/api/client/features?business_id='+encodeURIComponent(id));
+  if(state.businessId===id){state.clientEntitlements=data;render();}
+ }catch{if(state.businessId===id){state.clientEntitlements=null;render();}}
+}
+async function loadAdminEntitlements(id){
+ if(!isAdmin()||!state.businesses.some(b=>b.id===id))return;
+ state.adminFeatureBusiness=id;state.adminEntitlements=null;state.adminFeatureLoading=true;state.adminFeatureError='';state.adminFeatureNotice='';render();
+ try{
+  const data=await api('/api/admin/business-features?business_id='+encodeURIComponent(id));
+  if(state.adminFeatureBusiness===id){state.adminEntitlements=data;if(!data.configured)state.adminFeatureError='Para activar controles reales necesitas SUPABASE_SERVICE_ROLE_KEY y ejecutar la migración ed_business_features.sql en Supabase.';}
+ }catch(err){if(state.adminFeatureBusiness===id)state.adminFeatureError=err.message;}
+ finally{if(state.adminFeatureBusiness===id){state.adminFeatureLoading=false;render();}}
+}
+function adminPermissionsPanel(){
+ const businesses=state.businesses||[],id=state.adminFeatureBusiness||businesses[0]?.id||'';
+ const data=state.adminEntitlements,ready=data?.configured===true,flags=data?.features||{};
+ const options=businesses.map(b=>'<option value="'+clean(b.id)+'" '+(id===b.id?'selected':'')+'>'+clean(b.name)+'</option>').join('');
+ const controls=businessFeatureLabels.map(([key,name])=>{
+   const on=!!flags[key],unavailable=['search_console','social_organic','hotmart','shopify','google_ads','tiktok_ads','linkedin_ads'].includes(key);
+   return '<div class="admin-feature-row">'+providerLogo(name)+
+    '<div class="admin-feature-name"><strong>'+clean(name)+'</strong><small>'+(unavailable?'API aún no integrada: este interruptor solo controla la habilitación futura.':'Acceso controlado desde el servidor para esta empresa.')+'</small></div>'+
+    '<label class="admin-feature-switch" title="'+(on?'Desactivar':'Activar')+' '+clean(name)+'"><input type="checkbox" class="admin-feature-toggle" data-feature="'+key+'" '+(on?'checked':'')+' '+(!ready||state.adminFeatureBusy?'disabled':'')+'/><span></span></label>'+
+    '<small class="admin-feature-state">'+(on?'ON':'OFF')+'</small></div>';
+ }).join('');
+ return card('Permisos por empresa','Elige a qué integraciones puede acceder cada cliente; los cambios se guardan en Supabase.',
+   '<div class="admin-feature-header"><label class="form-label">Empresa seleccionada<select id="admin-feature-business" class="simple-input" '+(!businesses.length?'disabled':'')+'>'+options+'</select></label>'+
+   '<div><span class="admin-plan-label">Plan asignado</span><div class="admin-plan-value">'+(data?.plan==='premium'?'Premium':data?.plan==='free'?'Free':'Sin asignar')+'</div>'+
+   '<p class="fine-print">Free está reservado para una fase posterior. Premium es de asignación manual, sin cobro automático.</p>'+
+   '<button class="button button-outline" data-act="admin-set-premium" '+(!ready||state.adminFeatureBusy?'disabled':'')+'>Asignar Premium</button></div></div>'+
+   (state.adminFeatureLoading?'<div class="ga-wizard-pulse" role="status">Cargando permisos de esta empresa…</div>':'')+
+   (state.adminFeatureError?alertBlock(state.adminFeatureError,'info'):'')+
+   (state.adminFeatureNotice?'<p class="company-message" role="status">'+clean(state.adminFeatureNotice)+'</p>':'')+
+   (ready?'<div class="admin-feature-grid">'+controls+'</div>':'<p class="fine-print">Los interruptores aparecerán cuando Supabase y el secreto administrativo estén configurados. No son controles decorativos.</p>')+
+   '<p class="fine-print">Desactivar GA4 o Meta Ads impide consultar sus datos mediante la API del dashboard. Activar una integración que aún está en desarrollo no conecta su API.</p>'
+ );
+}
+
     function adminIntegrations(){
  const health=state.adminHealth||{},m=health.meta||{},checks=m.checks||{};
  const failed=[['app_id','META_APP_ID'],['app_secret','META_APP_SECRET'],['redirect','META_REDIRECT_URI'],['session_key','META_SESSION_KEY']].filter(([key])=>!checks[key]).map(([,name])=>name);
@@ -540,7 +610,8 @@ function campaigns(){
   ['Ventas y e-commerce', [['Hotmart','Autorización individual pendiente.'],['Shopify','Conexión de tienda pendiente.']]],
   ['Publicidad', [['Meta Ads','Conexión piloto directa con Meta for Developers; los clientes requieren acceso autorizado en la app.'],
   ['Google Ads','OAuth y permisos oficiales pendientes.'],['TikTok Ads','API pendiente.'],['LinkedIn Ads','Permisos oficiales pendientes.']]]];
- return `${heading('Plataforma','Integraciones SaaS','Revisa el estado técnico sin exponer credenciales ni consultar datos privados de clientes.')}
+ return `${heading('Administración','Integraciones','Controla las conexiones por empresa y verifica el estado técnico de cada plataforma.')}
+ ${adminPermissionsPanel()}
  ${card('Diagnóstico de Meta Ads','Comprobación del Worker activo: nunca se muestran los valores de secretos',`
  <div class="integration-compact-footer">${tag(metaLabel,m.configured?'success':'neutral')}
  <button type="button" class="button button-outline" data-act="admin-health-refresh">${icon('refresh',16)} Comprobar conexión</button></div>
@@ -607,7 +678,7 @@ async function loadAccounts(){
  <div class="content-grid"><div class="col-7">${card('Sitios visibles',fmt(state.sites.length)+' registros accesibles',sites||empty('No hay sitios visibles con tu rol actual; esto no confirma que el cliente no tenga sitios.'))}</div>
  <div class="col-5">${card('Privacidad','Gestión de la plataforma',`<p>Las campañas y conexiones se consultan desde la sesión del cliente. No se muestran contraseñas ni secretos.</p><p class="fine-print">Invitaciones, planes y facturación requieren flujos administrativos propios antes de habilitar acciones de escritura.</p>`)}</div></div>`;
 }
-    function metaPilotEligible() { return !isAdmin() && !!business()?.id; }
+    function metaPilotEligible() { return !isAdmin() && !!business()?.id && featureEnabled('meta_ads'); }
   function metaMetric(value, digits=0) {
     const n=Number(value);
     return value===null || value===undefined || !Number.isFinite(n) ? '—' :
@@ -771,9 +842,9 @@ function sidebar(){
   async function refresh() {
     const generation=++state.requestId, b=state.businessId, s=state.siteId, p=state.period;
     state.ga=null;state.hm=null;state.gaError='';state.hmError='';
-    state.gaLoading=!!s;state.hmLoading=selectedBusinessIsHotmart();render();
+    state.gaLoading=!!s&&featureEnabled('ga4');state.hmLoading=selectedBusinessIsHotmart();render();
     const jobs=[];
-    if(s)jobs.push(api(`/api/ga4/report?business_id=${encodeURIComponent(b)}&site_id=${encodeURIComponent(s)}&period=${encodeURIComponent(p)}`).then(x=>({type:'ga',value:x})).catch(e=>({type:'ga',error:e.message})));
+    if(s&&featureEnabled('ga4'))jobs.push(api(`/api/ga4/report?business_id=${encodeURIComponent(b)}&site_id=${encodeURIComponent(s)}&period=${encodeURIComponent(p)}`).then(x=>({type:'ga',value:x})).catch(e=>({type:'ga',error:e.message})));
     if(selectedBusinessIsHotmart())jobs.push(api(`/api/hotmart/summary?business_id=${encodeURIComponent(b)}&period=${encodeURIComponent(p)}`).then(x=>({type:'hm',value:x})).catch(e=>({type:'hm',error:e.message})));
     const results=await Promise.all(jobs);if(state.requestId!==generation)return;
     for(const result of results){ if(result.type==='ga'){state.ga=result.value||null;state.gaError=result.error||'';}else{state.hm=result.value||null;state.hmError=result.error||'';} }
@@ -781,10 +852,10 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.campaignConnectionOpen=false;state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.campaignConnectionOpen=false;state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
-    if(!isAdmin()){await refresh();if(metaPilotEligible())await loadMeta();}
+    if(!isAdmin()){await loadClientEntitlements(id);await refresh();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
   }
   async function init(){
     state.loading=true;render();
@@ -799,7 +870,7 @@ function sidebar(){
         if(parameters.get('meta')==='cancelled')state.metaError='Se canceló la autorización con Facebook.';
         history.replaceState({},'',location.pathname+location.hash);
       }state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
-      if(isAdmin())await loadAdminStats();
+      if(isAdmin()){await loadAdminStats();}
       else if(state.businesses.length){
         const targetBusiness=state.businesses.find(x=>x.id===returnBusiness)?.id||state.businesses[0].id;
         await chooseBusiness(targetBusiness);if(state.page==='campaigns')await loadAds();
@@ -894,7 +965,7 @@ function sidebar(){
     }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
-    else if(action==='nav'){state.page=b.dataset.page;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin())await loadAdminHealth();if(state.page==='accounts'&&isAdmin())await loadAccounts();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin())await loadAccounts();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
@@ -903,6 +974,9 @@ function sidebar(){
       try{await navigator.clipboard.writeText(callback);state.adminSetupNotice='URL copiada. Agrégala en Cloudflare y en Meta for Developers.';}
       catch{state.adminSetupNotice='Copia manualmente la URL que aparece arriba.';}
       render();
+    }
+    else if(action==='admin-set-premium'&&isAdmin()){
+      await saveAdminFeature('',null,'premium');
     }
     else if(action==='accounts-refresh'&&isAdmin()){state.temporaryAccess=null;await loadAccounts();}
     else if(action==='account-copy-temp'&&isAdmin()&&state.temporaryAccess){
@@ -983,6 +1057,12 @@ function sidebar(){
         const note=document.querySelector('.company-logo-instruction small');
         if(note)note.textContent='Vista previa lista. Pulsa Guardar cambios para conservarla en este navegador.';
       }catch(error){state.companyLogoDraft=null;state.companyError=error.message;render();}
+      return;
+    }
+    if(e.target.id==='admin-feature-business'&&isAdmin()){await loadAdminEntitlements(e.target.value);return;}
+    if(e.target.classList?.contains('admin-feature-toggle')&&isAdmin()){
+      const requested=e.target.checked;
+      await saveAdminFeature(e.target.dataset.feature,requested,null);
       return;
     }
     if(e.target.id==='integration-only-connected'){filterIntegrations();return;}
