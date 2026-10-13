@@ -209,7 +209,7 @@
   function analytics(){return `${heading('Analítica web','Así está rindiendo tu web','Visitas, interacción, permanencia y evolución histórica de GA4.')}${statusStrip()}${mainKpis()}${detailKpis()}<div class="content-grid"><div class="col-12">${card('Tráfico y visualizaciones','Compara el comportamiento del sitio a lo largo del período',gaReady()?chart(rows('trend'),'screenPageViews','Vistas de página','sessions','Sesiones',310):dataPlaceholder())}</div><div class="col-6">${card('Sesiones por dispositivo','Tráfico desde computadora, celular y tablet',gaReady()?donut(rows('devices'),'deviceCategory','sessions'):dataPlaceholder())}</div><div class="col-6">${card('Navegadores de tus usuarios','Distribución por tecnología',gaReady()?barList(rows('browsers'),'browser','totalUsers'):dataPlaceholder())}</div></div>${flags()}`;}
   function acquisition(){return `${heading('Adquisición','Descubre cómo te encuentran','Analiza canales, fuentes y medios de tráfico, sin confundir visitas con conversiones de anuncios.')}${statusStrip()}<div class="content-grid"><div class="col-5">${card('Mezcla de canales','Sesiones por categoría de adquisición',gaReady()?donut(rows('channels'),'sessionDefaultChannelGroup','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Principales fuentes y medios','Sesiones atribuidas en GA4',gaReady()?barList(rows('sources'),'sessionSourceMedium','sessions',10):dataPlaceholder())}</div><div class="col-12">${card('Detalle de canales','Usuarios, sesiones y eventos clave por canal',gaReady()?dataTable(rows('channels'),[{key:'sessionDefaultChannelGroup',label:'Canal'},{key:'sessions',label:'Sesiones',display:fmt},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
   function campaigns(){
- const connected=state.meta?.connected&&state.meta?.selected_account;
+ const connected=state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account);
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
  const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads'],['microsoft','Microsoft Ads'],['pinterest','Pinterest Ads']];
  const controls=`<div class="ads-toolbar"><label class="form-label">Plataforma<select id="ads-platform" class="meta-select">${choices.map(([value,label])=>`<option value="${value}" ${platform===value?'selected':''}>${label}</option>`).join('')}</select></label><label class="form-label">Detalle<select id="ads-level" class="meta-select">${[['campaign','Campañas'],['adset','Conjuntos'],['ad','Anuncios']].map(([value,label])=>`<option value="${value}" ${level===value?'selected':''}>${label}</option>`).join('')}</select></label><button class="button button-outline" data-act="ads-refresh">${icon('refresh',16)} Actualizar</button></div>`;
@@ -287,29 +287,26 @@ function company(){
     return value===null || value===undefined || !Number.isFinite(n) ? '—' :
       new Intl.NumberFormat('es-PE',{maximumFractionDigits:digits}).format(n);
   }
-  function metaCard() {
-    if (!metaPilotEligible()) return `<article class="integration-card"><div class="integration-head"><div class="integration-logo meta">M</div>${tag('Próximamente')}</div><h3>Meta Ads</h3><p>Estadísticas de Facebook e Instagram Ads.</p><div class="integration-status"><strong>No habilitado para este negocio</strong><span>Solicita acceso autorizado al negocio antes de conectar cuentas.</span></div></article>`;
-    const a=state.meta || {}, accounts=a.accounts||[];
-    const options=accounts.map(x=>`<option value="${clean(x.id)}" ${x.id===a.selected_account?'selected':''}>${clean(x.name)} (${clean(x.id)})</option>`).join('');
-    const metrics=state.metaReport?.metrics, currency=state.metaReport?.currency||'';
-    const stats=metrics ? `<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${clean(currency)} ${metaMetric(metrics.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(metrics.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(metrics.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(metrics.ctr,2)}%</strong></div><div><small>CPC</small><strong>${clean(currency)} ${metaMetric(metrics.cpc,2)}</strong></div></div>` :
-      (a.selected_account && !state.metaLoading ? '<p class="fine-print">No hay estadísticas disponibles para el período seleccionado.</p>' : '');
-    const controls=!a.configured ? '<p class="fine-print">El administrador de la plataforma debe habilitar esta conexión.</p>' :
-      !a.connected ? `<button class="button button-primary" data-act="meta-connect" type="button">${icon('link',16)} Conectar con Facebook</button>` :
-      `<label class="form-label" for="meta-ad-account">Cuenta publicitaria</label>
-         <select class="meta-select" id="meta-ad-account"><option value="">Selecciona una cuenta</option>${options}</select>
-         <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh" type="button">${icon('refresh',15)} Actualizar datos</button>
-         <button class="button button-soft" data-act="meta-disconnect" type="button">Desconectar</button></div>
-         ${stats}
-         <p class="fine-print">Consulta de solo lectura. Piloto personal en este navegador; las conexiones caducan y pueden requerir una nueva autorización.</p>`;
-    return `<article class="integration-card meta-full"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(a.connected?'Conectado':state.metaLoading?'Comprobando':a.configured?'Listo para conectar':'Sin configurar',a.connected?'success':'neutral')}</div>
-      <h3>Meta Ads · conexión directa</h3><p>Conecta Facebook y elige la cuenta publicitaria que deseas analizar.</p>
-      ${state.metaError?alertBlock(state.metaError):''}
-      <div class="integration-status">${controls}</div>
-      ${state.metaLoading?'<span class="fine-print">Consultando Meta Ads…</span>':''}
-    </article>`;
-  }
-  async function loadMeta() {
+  function metaCard(){
+ if(!metaPilotEligible())return '';
+ const m=state.meta||{},list=m.accounts||[],selected=m.selected_accounts||[m.selected_account].filter(Boolean);
+ const accounts=list.map(x=>`<label class="meta-account-row"><input class="meta-account-check" type="checkbox" value="${clean(x.id)}" ${selected.includes(x.id)?'checked':''}/><span><strong>${clean(x.name)}</strong><small>${clean(x.id)} · ${clean(x.currency)}</small></span></label>`).join('');
+ const reports=state.metaReport?.account_reports||[];
+ const results=reports.map(x=>{
+  const v=x.metrics;
+  return `<div class="meta-account-result"><strong>${clean(x.name)} · ${clean(x.currency)}</strong>${v?`<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${metaMetric(v.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(v.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(v.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(v.ctr,2)}%</strong></div><div><small>CPC</small><strong>${metaMetric(v.cpc,2)}</strong></div></div>`:'<p class="fine-print">Sin datos en el período.</p>'}</div>`;
+ }).join('');
+ const body=!m.configured?'<p>Meta Ads aún requiere habilitación del proveedor por el administrador de la plataforma.</p>':
+ !m.connected?`<button class="button button-primary" data-act="meta-connect">${icon('link',16)} Conectar con Facebook</button>`:
+ `<label class="form-label">Elige hasta cinco cuentas publicitarias</label>
+ <input class="meta-search" id="meta-account-search" placeholder="Buscar cuenta publicitaria…" autocomplete="off"/>
+ <div class="meta-account-list">${accounts||'<p>No se encontraron cuentas autorizadas.</p>'}</div>
+ <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh">${icon('refresh',16)} Actualizar datos</button><button class="button button-soft" data-act="meta-disconnect">Desconectar</button><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas ${icon('chevron',15)}</button></div>
+ ${results}
+ <p class="fine-print">Lectura autorizada por Meta, con resultados separados por cuenta y moneda. El token de esta prueba está cifrado y asociado a esta sesión; puede caducar.</p>`;
+ return `<article class="integration-card meta-full"><div class="integration-head"><div class="integration-logo meta">M</div>${tag(m.connected?'Conectado':m.configured?'Listo para conectar':'Pendiente',m.connected?'success':'neutral')}</div><h3>Meta Ads</h3><p>Autoriza Facebook y selecciona tus propias cuentas, sin intermediarios.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${body}</div>${state.metaLoading?'<span class="fine-print">Consultando Meta Ads…</span>':''}</article>`;
+}
+    async function loadMeta() {
     if(!metaPilotEligible()) {state.meta=null;state.metaReport=null;state.metaError='';render();return;}
     const current=state.businessId;
     state.metaLoading=true;state.metaError='';state.metaReport=null;render();
@@ -318,7 +315,7 @@ function company(){
       if(state.businessId!==current)return;
       state.meta=info;
       if(info.error)state.metaError=info.error;
-      if(info.connected && info.selected_account) {
+      if(info.connected && (info.selected_accounts?.length||info.selected_account)) {
         try {
           state.metaReport=await api('/api/meta/report?business_id='+encodeURIComponent(current)+'&period='+encodeURIComponent(state.period));
         } catch(e) {state.metaError=e.message;}
@@ -384,7 +381,7 @@ function sidebar(){
   async function loadAds(){
  if(isAdmin()||!state.businessId||state.adsPlatform!=='meta'){state.metaCampaigns=null;state.adsLoading=false;render();return;}
  const businessId=state.businessId,period=state.period,level=state.adsLevel;
- if(!state.meta?.connected||!state.meta?.selected_account){state.metaCampaigns=null;state.adsLoading=false;render();return;}
+ if(!state.meta?.connected||!(state.meta?.selected_accounts?.length||state.meta?.selected_account)){state.metaCampaigns=null;state.adsLoading=false;render();return;}
  state.adsLoading=true;state.adsError='';state.metaCampaigns=null;render();
  try{
   const rows=await api('/api/meta/campaigns?business_id='+encodeURIComponent(businessId)+'&period='+encodeURIComponent(period)+'&level='+encodeURIComponent(level));
