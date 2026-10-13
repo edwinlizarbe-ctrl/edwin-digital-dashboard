@@ -35,9 +35,12 @@ async function featureRow(env,id){
 export async function readBusinessEntitlements(env,s,id){
  if(!validId(id)||!await ownsBusiness(env,s,id))return null;
  const data=await featureRow(env,id);
+ const plan=data.row?.plan||null;
+ const features=plan==='premium'
+  ?Object.fromEntries(ED_FEATURES.map(feature=>[feature,true]))
+  :{...DEFAULT_FEATURES,...(data.row?.features||{})};
  return {configured:data.configured,
-  business_id:id,plan:data.row?.plan||null,
-  features:{...DEFAULT_FEATURES,...(data.row?.features||{})},
+  business_id:id,plan,features,
   updated_at:data.row?.updated_at||null,
   provisioned:!!data.row};
 }
