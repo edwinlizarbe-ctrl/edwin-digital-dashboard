@@ -29,6 +29,7 @@
    host.innerHTML='<button type="button" class="eda-launcher" data-assistant-action="toggle" aria-label="'+(state.open?'Cerrar asistente':'Abrir asistente')+'" aria-expanded="'+state.open+'" aria-controls="eda-dialog">'+(state.open?'<span aria-hidden="true">×</span>':'<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="4"/><path d="M12 3v4m-2-4h4M8 13h.01M16 13h.01M9 17h6M2 12v4m20-4v4"/></svg>')+'</button>'+
    (state.open?'<section class="eda-dialog" id="eda-dialog" role="dialog" aria-label="Asistente eDigital">'+
     '<div class="eda-head"><div class="eda-bot-icon" aria-hidden="true">✦</div><div class="eda-heading"><strong>Asistente eDigital</strong><small>'+mode+' · '+escapeHTML(c.company||'Mi empresa')+'</small></div><button type="button" class="eda-close" data-assistant-action="close" aria-label="Cerrar asistente">×</button></div>'+
+    '<nav class="eda-shortcuts" aria-label="Accesos rápidos"><button type="button" data-assistant-nav="analytics">Analítica</button><button type="button" data-assistant-nav="campaigns">Campañas</button><button type="button" data-assistant-nav="integrations">Integraciones</button></nav>'+
     '<div class="eda-messages" id="eda-messages" aria-live="polite">'+chat+(state.busy?'<p class="eda-wait">Preparando respuesta…</p>':'')+suggestions+'</div>'+
     '<form id="eda-form" class="eda-form"><label class="eda-screenreader" for="eda-question">Pregunta al asistente</label><input id="eda-question" name="question" type="text" maxlength="450" autocomplete="off" placeholder="Pregúntame sobre tu negocio…" '+(state.busy?'disabled':'required')+'/><button type="submit" '+(state.busy?'disabled':'')+' aria-label="Enviar pregunta">➤</button></form>'+
     '<p class="eda-disclaimer">'+(state.aiReady?'Análisis de IA basado en tu información disponible. Confirma decisiones importantes.':'Respuestas con datos reales de tu panel. IA generativa aún no activada.')+'</p></section>':'');
@@ -48,7 +49,7 @@
  async function contextualFrame(question,c){
    const frame=requestedFrame(question,c);
    if(frame.period===c.period)return {...c};
-   const result={...c,period:frame.period,periodLabel:frame.label,ga:null,gaPrevious:null,meta:[],missingPeriodData:false};
+   const result={...c,period:frame.period,periodLabel:frame.label,ga:null,gaPrevious:null,meta:[],topChannels:[],topPages:[],topEvents:[],missingPeriodData:false};
    // This endpoint checks site ownership with the user's Supabase JWT.
    if(!c.siteId||!c.businessId){result.missingPeriodData=true;return result;}
    const key=c.businessId+':'+c.siteId+':'+frame.period;
@@ -59,8 +60,8 @@
      const r=await fetch(url,{credentials:'same-origin'});
      if(!r.ok)throw new Error('El informe no está disponible.');
      const info=await r.json();
-     if(!info.configured||!info.metrics||info.warnings?.includes('summary'))throw new Error('No se pudieron consultar las cifras.');
-     const value={ga:info.metrics,gaPrevious:info.previous_metrics||null,missingPeriodData:false};
+     if(!info.configured||!info.metrics||info.metrics.sessions===undefined)throw new Error('No se pudieron consultar las cifras.');
+     const value={ga:info.metrics,gaPrevious:info.previous_metrics||null,topChannels:(info.reports?.channels||[]).slice(0,5).map(x=>({name:x.sessionDefaultChannelGroup,sessions:x.sessions})),topPages:(info.reports?.pages||[]).slice(0,5).map(x=>({name:x.pagePath,views:x.screenPageViews})),topEvents:(info.reports?.events||[]).slice(0,5).map(x=>({name:x.eventName,count:x.eventCount})),missingPeriodData:false};
      state.periodCache.set(key,{expires:Date.now()+120000,value});
      return {...result,...value};
    }catch{
@@ -85,6 +86,18 @@
      if(!c.metaConnected)return 'Meta Ads aún no está conectado. En Integraciones → Publicidad → Meta Ads encontrarás el estado de activación y podrás autorizar tu cuenta cuando esté habilitado.';
      if(!meta.length)return 'Tu cuenta de Meta está autorizada, pero todavía no hay datos de cuentas publicitarias cargados. En Integraciones selecciona una cuenta y ve a Campañas Ads.';
      return 'En '+label+', Meta Ads muestra: '+meta.slice(0,3).map(a=>a.name+': '+(a.spend==null?'sin inversión informada':decimal(a.spend)+' '+(a.currency||''))+' de inversión, '+number(a.clicks)+' clics y CTR '+(a.ctr==null?'—':decimal(a.ctr)+'%')).join('; ')+'. Estas cifras no equivalen necesariamente a ventas.';
+   }
+   if(/pagina\s+mas\s+vist|mas\s+vistas|contenido\s+mas\s+vist/.test(q)){
+     if(!ga)return 'Necesito que Analytics esté conectado y consulte el período solicitado antes de identificar páginas más vistas.';
+     const pages=(c.topPages||[]).slice(0,3);
+     if(!pages.length)return 'No hay páginas con visualizaciones disponibles en '+label+'.';
+     return 'Las páginas más vistas en '+label+' son: '+pages.map(p=>(p.name||'/')+' ('+number(p.views)+' vistas)').join('; ')+'. Puedes ver el detalle en Contenido web.';
+   }
+   if(/de\s+donde|origen|canal|fuente|procedencia/.test(q)){
+     if(!ga)return 'No tengo información de canales para '+label+'. Comprueba la propiedad de GA4.';
+     const channels=(c.topChannels||[]).slice(0,3);
+     if(!channels.length)return 'GA4 no devolvió canales para '+label+'.';
+     return 'Tus principales canales en '+label+' son: '+channels.map(x=>(x.name||'No identificado')+' ('+number(x.sessions)+' sesiones)').join('; ')+'. Ve a Adquisición para más detalles.';
    }
    if(/visita|usuario|sesion|trafico|web|pagina|analytics|baj|subi|resultado|negocio|rendimiento|hoy|dias|semana/.test(q)){
      if(!ga)return c.missingPeriodData
@@ -137,8 +150,14 @@
    state.busy=false;render();
  }
  host.addEventListener('click',e=>{
-   const btn=e.target.closest('[data-assistant-action],[data-assistant-prompt]');if(!btn)return;
+   const btn=e.target.closest('[data-assistant-action],[data-assistant-prompt],[data-assistant-nav]');if(!btn)return;
    if(btn.dataset.assistantPrompt){send(btn.dataset.assistantPrompt);return;}
+   if(btn.dataset.assistantNav){
+     const page=btn.dataset.assistantNav;
+     const link=document.querySelector('[data-act="nav"][data-page="'+page+'"]');
+     if(link){link.click();state.open=false;render();}
+     return;
+   }
    if(btn.dataset.assistantAction==='toggle'||btn.dataset.assistantAction==='close'){
      state.open=btn.dataset.assistantAction==='toggle'?!state.open:false;render();
      if(state.open){checkAI();host.querySelector('#eda-question')?.focus();}
