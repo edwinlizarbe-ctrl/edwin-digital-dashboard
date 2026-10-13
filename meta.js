@@ -155,6 +155,23 @@ function metaFinish(config,flag,pending,inherited=[],cookies=[]){
  return new Response(content,{status:200,headers});
 }
 
+
+function metaReportDateParams(url){
+ const period=url.searchParams.get('period')||'30';
+ if(period!=='custom'){
+   if(!META_PERIODS.has(period))return null;
+   const presets={today:'today',yesterday:'yesterday','7':'last_7d','30':'last_30d','90':'last_90d','365':'last_year'};
+   return {period,params:{date_preset:presets[period]},start_date:null,end_date:null};
+ }
+ const since=url.searchParams.get('start_date')||'',until=url.searchParams.get('end_date')||'';
+ const valid=x=>/^\d{4}-\d{2}-\d{2}$/.test(x)&&!Number.isNaN(Date.parse(x))&&new Date(x+'T00:00:00Z').toISOString().slice(0,10)===x;
+ if(!valid(since)||!valid(until))return null;
+ const from=Date.parse(since+'T00:00:00Z'),to=Date.parse(until+'T00:00:00Z');
+ // Inclusive maximum: one year of daily ad account reporting.
+ if(from>to||to>Date.now()+86400000||(to-from)>365*86400000)return null;
+ return {period,params:{time_range:JSON.stringify({since,until})},start_date:since,end_date:until};
+}
+
 export async function handleMetaApi(req,env,s) {
   const url=new URL(req.url),path=url.pathname,method=req.method.toUpperCase();
   const config=metaConfig(env,url.origin),cookies=s.cookies||[],jar=metaJar(req);
@@ -261,22 +278,22 @@ export async function handleMetaApi(req,env,s) {
     if(!validMetaSession(connection,s,businessId))return error('Vuelve a conectar Meta Ads.',401);
     const ids=(connection.accounts||[connection.account]).filter(id=>/^act_\d+$/.test(id||'')).slice(0,5);
     if(!ids.length)return error('Selecciona al menos una cuenta publicitaria.',400);
-    const period=url.searchParams.get('period')||'30';
-    if(!META_PERIODS.has(period))return error('Período no válido.');
-    const presets={today:'today',yesterday:'yesterday','7':'last_7d','30':'last_30d','90':'last_90d','365':'last_year'};
+    const dates=metaReportDateParams(url);
+    if(!dates)return error('Selecciona un período válido; la fecha final no puede superar la inicial y el rango máximo es un año.');
+    const {period}=dates;
     const accounts=await metaAccounts(env,connection.token);
     const account_reports=await Promise.all(ids.map(async id=>{
       const report=await metaGraph(env,'/'+id+'/insights',connection.token,{
-        fields:'spend,clicks,impressions,ctr,cpc',date_preset:presets[period],level:'account',limit:1
+        fields:'spend,clicks,impressions,ctr,cpc,reach,frequency,cpm',...dates.params,level:'account',limit:1
       });
       const x=(report.data||[])[0]||null;
       const acc=accounts.find(a=>a.id===id);
       return {account_id:id,name:acc?.name||id,currency:acc?.currency||'',
         metrics:x?{spend:x.spend??null,clicks:x.clicks??null,impressions:x.impressions??null,
-          ctr:x.ctr??null,cpc:x.cpc??null}:null};
+          ctr:x.ctr??null,cpc:x.cpc??null,reach:x.reach??null,frequency:x.frequency??null,cpm:x.cpm??null}:null};
     }));
     const first=account_reports.length===1?account_reports[0]:null;
-    return reply({configured:true,period,account_reports,account_id:first?.account_id||null,
+    return reply({configured:true,period,start_date:dates.start_date,end_date:dates.end_date,account_reports,account_id:first?.account_id||null,
       currency:first?.currency||'',metrics:first?.metrics||null,updated_at:new Date().toISOString()});
   }
   if(path==='/api/meta/campaigns' && method==='GET') {
@@ -287,21 +304,37 @@ export async function handleMetaApi(req,env,s) {
     if(!validMetaSession(connection,s,businessId))return error('Conecta Meta Ads nuevamente.',401);
     const ids=(connection.accounts||[connection.account]).filter(id=>/^act_\d+$/.test(id||'')).slice(0,5);
     if(!ids.length)return error('Selecciona una cuenta publicitaria.',400);
-    const period=url.searchParams.get('period')||'30',level=url.searchParams.get('level')||'campaign';
-    if(!META_PERIODS.has(period)||!['campaign','adset','ad'].includes(level))return error('Filtro de anuncios no válido.');
-    const presets={today:'today',yesterday:'yesterday','7':'last_7d','30':'last_30d','90':'last_90d','365':'last_year'};
-    const fields=level==='campaign'?'campaign_id,campaign_name,spend,clicks,impressions,ctr,cpc':
-      level==='adset'?'campaign_name,adset_id,adset_name,spend,clicks,impressions,ctr,cpc':
-      'campaign_name,adset_name,ad_id,ad_name,spend,clicks,impressions,ctr,cpc';
+    const dates=metaReportDateParams(url),level=url.searchParams.get('level')||'campaign';
+    if(!dates||!['campaign','adset','ad'].includes(level))return error('Filtro de anuncios o fechas no válido.');
+    const {period}=dates;
+    const fields=level==='campaign'?'campaign_id,campaign_name,spend,clicks,impressions,ctr,cpc,reach,frequency,cpm':
+      level==='adset'?'campaign_id,campaign_name,adset_id,adset_name,spend,clicks,impressions,ctr,cpc,reach,frequency,cpm':
+      'campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,spend,clicks,impressions,ctr,cpc,reach,frequency,cpm';
     const accounts=await metaAccounts(env,connection.token);
     if(ids.some(id=>!accounts.some(account=>account.id===id)))return error('Ya no tienes acceso a una cuenta seleccionada. Vuelve a autorizar Meta.',403);
-    const rows=[];let partial=false;
+    const rows=[];let partial=false,metadataPartial=false;
     for(const id of ids){
       const account=accounts.find(a=>a.id===id);
       if(!account)continue;
       let after='';
+      const campaignInfo=new Map();
+      // Optional read-only campaign metadata for accurate statuses and objectives.
+      // The insights endpoint does not provide campaign status reliably.
+      try{
+        let cursor='';
+        for(let p=0;p<2;p++){
+          const query={fields:'id,effective_status,objective',limit:100};
+          if(cursor)query.after=cursor;
+          const response=await metaGraph(env,'/'+id+'/campaigns',connection.token,query);
+          for(const campaign of response.data||[])campaignInfo.set(campaign.id,{status:campaign.effective_status||null,objective:campaign.objective||null});
+          const next=response.paging?.cursors?.after;
+          if(!response.paging?.next||!next||next===cursor)break;
+          if(p===1){metadataPartial=true;break;}
+          cursor=next;
+        }
+      }catch{metadataPartial=true;}
       for(let page=0;page<2;page++){
-        const params={fields,date_preset:presets[period],level,limit:100};
+        const params={fields,...dates.params,level,limit:100};
         if(after)params.after=after;
         const data=await metaGraph(env,'/'+id+'/insights',connection.token,params);
         for(const x of data.data||[])rows.push({
@@ -309,8 +342,14 @@ export async function handleMetaApi(req,env,s) {
           name:String(x.ad_name||x.adset_name||x.campaign_name||'Sin nombre').slice(0,150),
           account_id:id,account_name:account.name,currency:account.currency,
           campaign_name:String(x.campaign_name||'').slice(0,150),
+          adset_name:String(x.adset_name||'').slice(0,150),
+          campaign_id:String(x.campaign_id||''),
+          effective_status:campaignInfo.get(x.campaign_id)?.status||null,
+          objective:campaignInfo.get(x.campaign_id)?.objective||null,
+          date_start:x.date_start||dates.start_date||null,date_stop:x.date_stop||dates.end_date||null,
           spend:x.spend??null,clicks:x.clicks??null,impressions:x.impressions??null,
-          ctr:x.ctr??null,cpc:x.cpc??null
+          ctr:x.ctr??null,cpc:x.cpc??null,reach:x.reach??null,
+          frequency:x.frequency??null,cpm:x.cpm??null
         });
         const next=data.paging?.next,cursor=data.paging?.cursors?.after;
         if(!next||!cursor)break;
@@ -320,7 +359,7 @@ export async function handleMetaApi(req,env,s) {
       }
     }
     const currencies=new Set(rows.map(x=>x.currency));
-    return reply({configured:true,connected:true,period,level,rows,partial,
+    return reply({configured:true,connected:true,period,level,start_date:dates.start_date,end_date:dates.end_date,rows,partial,metadataPartial,
       currency:currencies.size===1?[...currencies][0]:'',account_ids:ids,
       updated_at:new Date().toISOString()});
   }
