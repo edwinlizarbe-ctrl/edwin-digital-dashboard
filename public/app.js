@@ -10,7 +10,7 @@
     mobileOpen: false, sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
-    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
+    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
@@ -406,26 +406,128 @@
      '<div class="connector-layout">'+catalogue+body+'</div></div>';
   }
 
+
+  const adsPeriodLabel = () => state.adsPeriod==='custom'
+    ? (state.adsCustomStart&&state.adsCustomEnd?state.adsCustomStart+' al '+state.adsCustomEnd:'Fechas personalizadas')
+    : ({today:'Hoy',yesterday:'Ayer','7':'Últimos 7 días','30':'Últimos 30 días','90':'Últimos 90 días','365':'Últimos 12 meses'})[state.adsPeriod]||'Últimos 30 días';
+  const adsDateQuery = () => '&period='+encodeURIComponent(state.adsPeriod)+
+    (state.adsPeriod==='custom'?'&start_date='+encodeURIComponent(state.adsCustomStart)+'&end_date='+encodeURIComponent(state.adsCustomEnd):'');
+  const metaStatusLabel = value => ({ACTIVE:'Activa',PAUSED:'Pausada',ARCHIVED:'Archivada',
+    DELETED:'Eliminada',IN_PROCESS:'En revisión',WITH_ISSUES:'Con problemas',
+    CAMPAIGN_PAUSED:'Campaña pausada',ADSET_PAUSED:'Conjunto pausado',
+    PENDING_REVIEW:'Pendiente de revisión',DISAPPROVED:'Rechazado'})[value]||'Sin informar';
+  const metaObjectiveLabel = value => ({
+    OUTCOME_TRAFFIC:'Tráfico',OUTCOME_AWARENESS:'Reconocimiento',
+    OUTCOME_ENGAGEMENT:'Interacción',OUTCOME_LEADS:'Clientes potenciales',
+    OUTCOME_SALES:'Ventas',OUTCOME_APP_PROMOTION:'Promoción de aplicación',
+    LINK_CLICKS:'Clics en enlaces',CONVERSIONS:'Conversiones',
+    LEAD_GENERATION:'Generación de contactos',REACH:'Alcance',
+    BRAND_AWARENESS:'Reconocimiento de marca',POST_ENGAGEMENT:'Interacción'
+  })[value]||value||'Sin informar';
+  function adsFilteredRows(){
+    const list=state.metaCampaigns?.rows||[],q=state.adsSearch.trim().toLocaleLowerCase('es');
+    return list.filter(x=>(!state.adsAccount||x.account_id===state.adsAccount)&&
+      (!state.adsStatus||x.effective_status===state.adsStatus)&&
+      (!state.adsObjective||x.objective===state.adsObjective)&&
+      (!q||[x.account_name,x.name,x.campaign_name,x.adset_name,x.id].some(v=>String(v||'').toLocaleLowerCase('es').includes(q))));
+  }
+  function metaAccountSummary(){
+    const reports=(state.metaReport?.account_reports||[]).filter(x=>!state.adsAccount||x.account_id===state.adsAccount);
+    const available=reports.filter(x=>x.metrics),currencies=new Set(available.map(x=>x.currency||'').filter(Boolean));
+    if(!available.length)return null;
+    const sum=field=>available.every(x=>x.metrics[field]!==null&&x.metrics[field]!==undefined&&Number.isFinite(Number(x.metrics[field])))
+      ?available.reduce((t,x)=>t+Number(x.metrics[field]),0):null;
+    const spend=currencies.size===1?sum('spend'):null,clicks=sum('clicks'),impressions=sum('impressions');
+    return {currency:currencies.size===1?[...currencies][0]:'',spend,clicks,impressions,
+      ctr:clicks!==null&&impressions>0?100*clicks/impressions:null,
+      cpc:spend!==null&&clicks>0?spend/clicks:null,
+      currencyMixed:currencies.size>1,accounts:available.length};
+  }
+  function adsMetricsStrip(){
+    const values=metaAccountSummary();if(!values)return '';
+    const metrics=[
+      ['Inversión'+(values.currency?' ('+values.currency+')':''),values.spend===null?'—':metaMetric(values.spend,2)],
+      ['Clics',metaMetric(values.clicks)],['Impresiones',metaMetric(values.impressions)],
+      ['CTR',values.ctr===null?'—':metaMetric(values.ctr,2)+'%'],
+      ['CPC'+(values.currency?' ('+values.currency+')':''),values.cpc===null?'—':metaMetric(values.cpc,2)]
+    ];
+    return '<section class="ads-kpi-section" aria-label="Resumen de Meta Ads"><div class="ads-kpi-context"><b>Rendimiento publicitario</b><span>'+clean(adsPeriodLabel())+' · '+values.accounts+' cuenta(s) con datos'+(values.currencyMixed?' · Monedas distintas: inversión y CPC sin sumar':'')+'</span></div><div class="small-kpis ads-five-kpis">'+metrics.map(([label,val])=>
+      '<div class="small-kpi"><span>'+clean(label)+'</span><strong>'+clean(val)+'</strong></div>').join('')+'</div></section>';
+  }
+
 function campaigns(){
- const connected=state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account);
+ const connected=!!(state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account));
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
  const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']];
- const controls=`<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">${choices.map(([value,label])=>`<button type="button" class="ads-platform-tab ${platform===value?'active':''}" data-act="ads-platform" data-platform="${value}" aria-pressed="${platform===value}" >${providerLogo(label)}<span>${label}</span></button>`).join('')}</div><div class="ads-toolbar"><label class="form-label">Detalle<select id="ads-level" class="meta-select">${[['campaign','Campañas'],['adset','Conjuntos'],['ad','Anuncios']].map(([value,label])=>`<option value="${value}" ${level===value?'selected':''}>${label}</option>`).join('')}</select></label><button class="button button-outline" data-act="ads-refresh">${icon('refresh',16)} Actualizar</button></div>`;
+ const tabs='<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">'+choices.map(([value,label])=>
+   '<button type="button" class="ads-platform-tab '+(platform===value?'active':'')+'" data-act="ads-platform" data-platform="'+value+'" aria-pressed="'+(platform===value?'true':'false')+'">'+providerLogo(label)+'<span>'+label+'</span></button>').join('')+'</div>';
+ const periods=[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses'],['custom','Personalizado']];
+ const periodOptions=periods.map(([value,label])=>'<option value="'+value+'" '+(state.adsPeriod===value?'selected':'')+'>'+label+'</option>').join('');
+ const levelOptions=[['campaign','Campañas'],['adset','Conjuntos de anuncios'],['ad','Anuncios']].map(([value,label])=>'<option value="'+value+'" '+(level===value?'selected':'')+'>'+label+'</option>').join('');
+ const toolbar='<div class="ads-toolbar ads-detail-toolbar">'+
+   '<label class="form-label">Vista de resultados<select id="ads-level" class="meta-select">'+levelOptions+'</select></label>'+
+   '<label class="form-label">Fechas del informe<select id="ads-period" class="meta-select">'+periodOptions+'</select></label>'+
+   '<button class="button button-outline" data-act="ads-refresh" '+(state.adsLoading?'disabled':'')+'>'+icon('refresh',16)+' Actualizar datos</button>'+
+   '</div>'+
+   (state.adsPeriod==='custom'?'<div class="ads-custom-dates">'+
+    '<label>Desde<input type="date" id="ads-start-date" value="'+clean(state.adsCustomStart)+'" required/></label>'+
+    '<label>Hasta<input type="date" id="ads-end-date" value="'+clean(state.adsCustomEnd)+'" required/></label>'+
+    '<button class="button button-primary" data-act="ads-apply-dates">Aplicar fechas</button></div>':'')+
+   (state.adsFilterError?alertBlock(state.adsFilterError,'info'):'');
  let result='';
- if(platform!=='meta')result=empty('Esta plataforma aún necesita autorización de la API oficial.','Integración pendiente');
+ if(platform!=='meta')result=empty('Esta plataforma todavía requiere la autorización de su API oficial.','Integración próximamente');
  else if(!connected)result=campaignMetaSetup();
- else if(state.adsLoading)result='<div class="loading-state"><span class="spinner"></span>Consultando campañas…</div>';
+ else if(state.adsLoading)result='<div class="ads-loading-detail" role="status"><div class="ga-loading-bars"><i></i><i></i><i></i></div><p>Consultando cuentas, fechas y campañas de Meta…</p></div>';
  else if(state.adsError)result=alertBlock(state.adsError);
- else if(!report)result=empty('Pulsa Actualizar para cargar las campañas autorizadas.','Sin datos');
+ else if(!report)result=empty('Selecciona un período y pulsa «Actualizar datos».','Esperando estadísticas');
  else{
-  const c=report.currency||'',fmtCost=(n,row)=>n==null?'—':money(n,row?.currency||c);
-  const columns=[{key:'account_name',label:'Cuenta'},{key:'name',label:'Nombre'},{key:'spend',label:'Inversión',display:fmtCost},{key:'impressions',label:'Impresiones',display:v=>v==null?'—':fmt(v)},{key:'clicks',label:'Clics',display:v=>v==null?'—':fmt(v)},{key:'ctr',label:'CTR',display:v=>v==null?'—':fmt1(v)+'%'},{key:'cpc',label:'CPC',display:fmtCost}];
-  result=`${report.partial?alertBlock('La consulta contiene resultados parciales; hay más filas por recuperar.','info'):''}${report.rows?.length?dataTable(report.rows,columns,100):empty('No hay resultados registrados para este período.','Sin resultados')}`;
+   const accounts=(state.meta?.accounts||[]).filter(x=>(state.meta?.selected_accounts||[state.meta?.selected_account]).includes(x.id));
+   const accountOptions='<option value="">Todas las cuentas</option>'+accounts.map(x=>
+     '<option value="'+clean(x.id)+'" '+(state.adsAccount===x.id?'selected':'')+'>'+clean(x.name)+' ('+clean(x.currency)+')</option>').join('');
+   const statusValues=[...new Set((report.rows||[]).map(x=>x.effective_status).filter(Boolean))].sort();
+   const objectiveValues=[...new Set((report.rows||[]).map(x=>x.objective).filter(Boolean))].sort();
+   const opts=(values,selected,label,formatter)=>'<option value="">'+label+'</option>'+values.map(value=>
+     '<option value="'+clean(value)+'" '+(selected===value?'selected':'')+'>'+clean(formatter(value))+'</option>').join('');
+   const filters='<div class="ads-results-filters">'+
+     '<label>Buscar campaña o anuncio<input id="ads-search" type="search" class="simple-input" placeholder="Nombre o identificador…" value="'+clean(state.adsSearch)+'" autocomplete="off"/></label>'+
+     '<label>Cuenta publicitaria<select id="ads-account" class="simple-input">'+accountOptions+'</select></label>'+
+     '<label>Estado de campaña<select id="ads-status" class="simple-input">'+opts(statusValues,state.adsStatus,'Todos los estados',metaStatusLabel)+'</select></label>'+
+     '<label>Objetivo<select id="ads-objective" class="simple-input">'+opts(objectiveValues,state.adsObjective,'Todos los objetivos',metaObjectiveLabel)+'</select></label></div>';
+   const all=report.rows||[],filtered=adsFilteredRows(),fmtCost=(n,row)=>n==null?'—':money(n,row?.currency||report.currency||'');
+   const numberOrDash=value=>value==null?'—':fmt(value);
+   const decimalOrDash=value=>value==null?'—':fmt1(value);
+   const cols=[
+      {key:'account_name',label:'Cuenta'},{key:'name',label:level==='campaign'?'Campaña':level==='adset'?'Conjunto':'Anuncio'},
+      ...(level!=='campaign'?[{key:'campaign_name',label:'Campaña principal'}]:[]),
+      {key:'effective_status',label:'Estado campaña',display:metaStatusLabel},
+      {key:'objective',label:'Objetivo',display:metaObjectiveLabel},
+      {key:'date_start',label:'Desde',display:v=>v||'—'},
+      {key:'date_stop',label:'Hasta',display:v=>v||'—'},
+      {key:'spend',label:'Inversión',display:fmtCost},
+      {key:'reach',label:'Alcance',display:numberOrDash},
+      {key:'impressions',label:'Impresiones',display:numberOrDash},
+      {key:'frequency',label:'Frecuencia',display:decimalOrDash},
+      {key:'clicks',label:'Clics',display:numberOrDash},
+      {key:'ctr',label:'CTR',display:v=>v==null?'—':fmt1(v)+'%'},
+      {key:'cpc',label:'CPC',display:fmtCost},
+      {key:'cpm',label:'CPM',display:fmtCost}
+   ];
+   result=filters+
+     '<div class="ads-detail-summary"><div><strong>'+fmt(filtered.length)+' de '+fmt(all.length)+' registros</strong><span>Fechas: '+clean(adsPeriodLabel())+' · '+(level==='campaign'?'Campañas':level==='adset'?'Conjuntos':'Anuncios')+'</span></div>'+
+     '<button type="button" class="button button-outline" data-act="download" data-report="ads" '+(!filtered.length?'disabled':'')+'>'+icon('download',16)+' Exportar CSV</button></div>'+
+     (report.partial?alertBlock('Meta devolvió un informe parcial: podría haber más registros fuera del límite de consulta.','info'):'')+
+     (report.metadataPartial?'<p class="fine-print">Algunos estados u objetivos no se pudieron verificar con Meta y se muestran como «Sin informar».</p>':'')+
+     (filtered.length?dataTable(filtered,cols,200):empty('Prueba quitar filtros o cambiar el período.','No hay campañas coincidentes'))+
+     '<p class="ads-metrics-note">Alcance: personas únicas. Frecuencia: impresiones promedio por persona. CPM: costo por mil impresiones. Estado y objetivo corresponden a la campaña principal, no al anuncio individual. Sin resultados inventados.</p>';
  }
- const m=state.metaReport?.metrics,curr=state.metaReport?.currency||'';
- const kpis=platform==='meta'&&connected&&m?`<div class="small-kpis"><div class="small-kpi"><span>Inversión ${clean(curr)}</span><strong>${metaMetric(m.spend,2)}</strong></div><div class="small-kpi"><span>Clics</span><strong>${metaMetric(m.clicks)}</strong></div><div class="small-kpi"><span>Impresiones</span><strong>${metaMetric(m.impressions)}</strong></div><div class="small-kpi"><span>CTR</span><strong>${metaMetric(m.ctr,2)}%</strong></div><div class="small-kpi"><span>CPC</span><strong>${metaMetric(m.cpc,2)}</strong></div></div>`:'';
- return `${heading('Publicidad','Campañas Ads','Conecta y consulta tus anuncios desde aquí, sin pasar por Integraciones.')}${controls}${platform==='meta'&&connected?campaignMetaSetup():''}${kpis}${card('Rendimiento de la cuenta',periodLabel(),result)}
- <div class="spacer-sm"></div>${card('Atribución UTM de Analytics','Es información diferente del costo publicitario',`<p class="fine-print">Los clics, sesiones y eventos de GA4 no equivalen necesariamente a ventas pagadas.</p><button class="button button-outline" data-act="nav" data-page="utm">Ver tráfico UTM</button>`)}`;
+ const summary=platform==='meta'&&connected?adsMetricsStrip():'';
+ const settings=platform==='meta'&&connected?campaignMetaSetup():'';
+ return heading('Publicidad','Campañas Ads','Analiza tus campañas publicitarias con fechas, cuentas, estados, objetivos y resultados reales.')+
+   tabs+toolbar+settings+summary+
+   card(platform==='meta'?'Detalle de campañas en Meta Ads':'Rendimiento publicitario',platform==='meta'?adsPeriodLabel():'La API oficial de esta plataforma está pendiente',result)+
+   '<div class="spacer-sm"></div>'+card('Tráfico UTM en Google Analytics','Información complementaria, independiente del gasto publicitario',
+   '<p class="fine-print">Las visitas y eventos de GA4 no equivalen necesariamente a ventas confirmadas por Meta. Puedes consultarlos por separado.</p>'+
+   '<button class="button button-outline" data-act="nav" data-page="utm">Ver tráfico UTM</button>');
 }
     function utm(){return `${heading('Fuentes UTM · GA4','Campañas que llevan tráfico','Resultados de las campañas identificadas mediante etiquetado en Google Analytics 4.')}${statusStrip()}${alertBlock('Estas métricas corresponden al tráfico medido por GA4. No incluyen gasto publicitario, CPC, ROAS ni conversiones reportadas directamente por Meta Ads o Google Ads.', 'info')}<div class="content-grid"><div class="col-12">${card('Rendimiento por campaña','Sesiones y eventos clave atribuidos',gaReady()?dataTable(rows('campaigns'),[{key:'sessionCampaignName',label:'Campaña'},{key:'sessions',label:'Sesiones',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div><div class="col-6">${card('Campañas con más sesiones','Ranking de campañas etiquetadas',gaReady()?barList(rows('campaigns'),'sessionCampaignName','sessions',9):dataPlaceholder())}</div><div class="col-6">${card('Eventos clave por campaña','No equivale necesariamente a ventas confirmadas',gaReady()?barList([...rows('campaigns')].sort((a,b)=>number(b.keyEvents)-number(a.keyEvents)),'sessionCampaignName','keyEvents',9):dataPlaceholder())}</div></div>${flags()}`;}
   function audience(){return `${heading('Audiencia','Conoce a tus visitantes','Ubicación, dispositivos y procedencia de los usuarios.')}${statusStrip()}<div class="content-grid"><div class="col-6">${card('Países principales','Usuarios por país',gaReady()?barList(rows('countries'),'country','totalUsers',11):dataPlaceholder())}</div><div class="col-6">${card('Ciudades principales','Usuarios por ciudad',gaReady()?barList(rows('cities'),'city','totalUsers',11):dataPlaceholder())}</div><div class="col-5">${card('Dispositivos','Sesiones registradas por tipo',gaReady()?donut(rows('devices'),'deviceCategory','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Detalle geográfico','Usuarios y sesiones por país',gaReady()?dataTable(rows('countries'),[{key:'country',label:'País'},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'sessions',label:'Sesiones',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
