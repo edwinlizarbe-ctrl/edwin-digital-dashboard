@@ -12,7 +12,7 @@ const assistantHeaders={
 const assistantReply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:assistantHeaders});
 const assistantUuid=id=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id||'');
 function cleanAssistantContext(input){
-  const ctx={period:['today','yesterday','7','30','90','365'].includes(input?.period)?input.period:'30'};
+  const ctx={period:['today','yesterday','3','7','30','90','365'].includes(input?.period)?input.period:'30'};
   const num=v=>v===null||v===undefined||v===''?null:Number.isFinite(Number(v))?Number(v):null;
   const metricKeys=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagementRate'];
   if(input?.ga && typeof input.ga==='object'){
