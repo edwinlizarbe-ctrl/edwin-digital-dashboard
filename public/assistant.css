@@ -51,3 +51,5 @@
 .eda-form{margin:0 13px 0}
 .eda-disclaimer{font-size:10px;line-height:1.35;padding:8px 12px 12px}
 @media(max-width:600px){.eda-dialog{width:auto;right:10px;left:10px;bottom:calc(78px + env(safe-area-inset-bottom))}.eda-message-text{font-size:13px}.eda-shortcuts button{font-size:11px}.eda-shortcuts{padding:10px 12px 8px}}
+
+.eda-mic{min-width:38px;border-radius:10px;color:var(--accent,#2563eb);background:var(--accent-soft,#dbeafe);border:1px solid var(--border,#dce5f2)}
