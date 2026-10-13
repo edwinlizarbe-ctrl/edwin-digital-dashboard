@@ -399,16 +399,33 @@
  </div>`)}</div></div>`;
 }
 
-  function adminIntegrations(){
- const sections=[
- ['Publicidad',[['Meta Ads','Piloto de conexión directa por empresa; el acceso externo depende de Meta.'],['Google Ads','OAuth por empresa pendiente.'],['TikTok Ads','API publicitaria pendiente.'],['LinkedIn Ads','Autorización publicitaria pendiente.']]],
- ['Analítica y contenidos',[['Google Analytics 4','Consultas GA4 disponibles con propiedades autorizadas.'],['Google Search Console','Conector pendiente.'],['Facebook / Instagram orgánico','Permisos de páginas y perfiles pendientes.']]],
- ['Ventas y comercio',[['Hotmart','Cada cliente requerirá su propia autorización.'],['Shopify','Conector de tienda pendiente.']]]
- ];
- return `${heading('Plataforma','Proveedores e integraciones','Consulta qué conexiones están operativas y cuáles necesitan autorización, sin mezclar cuentas de distintas empresas.')}
- ${sections.map(([title,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${fmt(providers.length)} proveedores</span></div><div class="integration-grid">${providers.map(([name,desc])=>`<article class="integration-card"><div class="integration-head"><strong>${clean(name)}</strong>${tag(name==='Meta Ads'?'Piloto':name==='Google Analytics 4'?'Consulta GA4':'Pendiente',name==='Google Analytics 4'?'success':'neutral')}</div><p>${clean(desc)}</p></article>`).join('')}</div></section>`).join('')}`;
+    function adminIntegrations(){
+ const health=state.adminHealth||{},m=health.meta||{},checks=m.checks||{};
+ const failed=[['app_id','META_APP_ID'],['app_secret','META_APP_SECRET'],['redirect','META_REDIRECT_URI'],['session_key','META_SESSION_KEY']].filter(([key])=>!checks[key]).map(([,name])=>name);
+ const metaLabel=!state.adminHealth?'Sin verificar':m.configured?'Configuración detectada':'Configuración incompleta';
+ const services=[['Analítica y contenidos',[
+  ['Google Analytics 4','Consultas disponibles si existe propiedad y cuenta de servicio autorizada.'],
+  ['Google Search Console','Autorización oficial pendiente.'],['Facebook / Instagram orgánico','Autorización de páginas y perfiles pendiente.']]],
+  ['Ventas y e-commerce', [['Hotmart','Autorización individual pendiente.'],['Shopify','Conexión de tienda pendiente.']]],
+  ['Publicidad', [['Meta Ads','Conexión piloto directa con Meta for Developers; los clientes requieren acceso autorizado en la app.'],
+  ['Google Ads','OAuth y permisos oficiales pendientes.'],['TikTok Ads','API pendiente.'],['LinkedIn Ads','Permisos oficiales pendientes.']]]];
+ return `${heading('Plataforma','Integraciones SaaS','Revisa el estado técnico sin exponer credenciales ni consultar datos privados de clientes.')}
+ ${card('Diagnóstico de Meta Ads','Comprobación del Worker activo: nunca se muestran los valores de secretos',`
+ <div class="integration-compact-footer">${tag(metaLabel,m.configured?'success':'neutral')}
+ <button type="button" class="button button-outline" data-act="admin-health-refresh">${icon('refresh',16)} Comprobar conexión</button></div>
+ ${state.adminHealthError?alertBlock(state.adminHealthError):''}
+ ${state.adminHealth&&!m.configured?`<p class="fine-print">Configuración pendiente o no válida: ${clean(failed.join(', '))}. Comprueba estas variables en Cloudflare → Worker → Production → Variables and Secrets. No compartas sus valores.</p>`:''}
+ ${m.configured?'<p class="fine-print">La configuración local está completa. Eso no confirma que la app de Meta tenga permisos para todos los clientes externos.</p>':''}
+ `)}
+ ${services.map(([title,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${providers.length} plataformas</span></div>
+ <div class="integration-grid">${providers.map(([name,description])=>`<article class="integration-card provider-card"><div class="integration-head">${providerLogo(name)}${tag(name==='Meta Ads'?metaLabel:name==='Google Analytics 4'?'Disponible por propiedad':'Próximamente',name==='Meta Ads'&&m.configured?'success':'neutral')}</div><h3>${clean(name)}</h3><p>${clean(description)}</p></article>`).join('')}</div></section>`).join('')}`;
 }
-
+  async function loadAdminHealth(){
+ if(!isAdmin())return;
+ try{state.adminHealth=await api('/api/admin/integrations/health');state.adminHealthError='';}
+ catch(e){state.adminHealthError=e.message;state.adminHealth=null;}
+ if(isAdmin())render();
+}
   function clients(){
  if(!isAdmin())return overview();
  const query=state.adminQuery.trim().toLowerCase(), filtered=state.businesses.filter(b=>(b.name+' '+(b.slug||'')).toLowerCase().includes(query));
@@ -681,9 +698,10 @@ function sidebar(){
     }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
-    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin())await loadAdminHealth();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh());
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
+    else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
     else if(action==='meta-connect'){if(state.meta?.configured && metaPilotEligible())window.location.assign('/api/meta/connect?business_id='+encodeURIComponent(state.businessId));}
     else if(action==='edit-site'){state.editSiteId=b.dataset.id;state.siteError='';state.siteNotice='';render();}
     else if(action==='edit-site-cancel'){state.editSiteId='';state.siteError='';render();}
