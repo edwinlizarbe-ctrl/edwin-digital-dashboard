@@ -523,9 +523,9 @@ async function loadAccounts(){
  'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
  };
  const [slug,color]=dict[name]||['google','4285F4'];
- const local=name==='Hotmart'?'/logos/hotmart.svg':name==='LinkedIn Ads'?'/logos/linkedin.svg':'';
- const src=local||`https://cdn.simpleicons.org/${slug}/${color}`;
- const fallback=local||'/logos/platform.svg';
+ const local='/logos/'+(name==='Hotmart'?'hotmart':name==='LinkedIn Ads'?'linkedin':slug)+'.svg';
+ const src=local;
+ const fallback='/logos/platform.svg';
  return `<div class="provider-logo" aria-hidden="true"><img src="${src}" alt="" loading="lazy" width="32" height="32" onerror="this.onerror=null;this.src='${fallback}'"/></div>`;
 }
     function metaCard(){
