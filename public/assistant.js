@@ -1,6 +1,7 @@
 /* eDigital · Floating contextual assistant, scoped to the customer's currently selected business. */
 (function(){
  'use strict';
+ let activeRecognition=null;
  const initial={role:'assistant',content:'¡Hola! Soy tu asistente E Digital.IA. Pregúntame por el rendimiento de tu web, campañas o conexiones. Solo usaré los datos disponibles de tu negocio.'};
  const state={open:false,busy:false,aiReady:false,aiChecked:false,companyId:'',messages:[initial],periodCache:new Map()};
  const escapeHTML=value=>String(value==null?'':value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -31,7 +32,7 @@
     '<div class="eda-head"><div class="eda-bot-icon" aria-hidden="true">✦</div><div class="eda-heading"><strong>Asistente Edwin CRM</strong><small>'+mode+' · '+escapeHTML(c.company||'Mi empresa')+'</small></div><button type="button" class="eda-close" data-assistant-action="close" aria-label="Cerrar asistente">×</button></div>'+
     '<nav class="eda-shortcuts" aria-label="Accesos rápidos"><button type="button" data-assistant-nav="analytics">Analítica</button><button type="button" data-assistant-nav="campaigns">Campañas</button><button type="button" data-assistant-nav="integrations">Integraciones</button></nav>'+
     '<div class="eda-messages" id="eda-messages" aria-live="polite">'+chat+(state.busy?'<p class="eda-wait">Preparando respuesta…</p>':'')+suggestions+'</div>'+
-    '<form id="eda-form" class="eda-form"><label class="eda-screenreader" for="eda-question">Pregunta al asistente</label><input id="eda-question" name="question" type="text" maxlength="450" autocomplete="off" placeholder="Pregúntame sobre tu negocio…" '+(state.busy?'disabled':'required')+'/><button type="submit" '+(state.busy?'disabled':'')+' aria-label="Enviar pregunta">➤</button><button type="button" data-assistant-action="voice" class="eda-mic" aria-label="Dictar pregunta con el micrófono" title="Dictar por voz">🎙</button></form>'+
+    '<form id="eda-form" class="eda-form"><label class="eda-screenreader" for="eda-question">Pregunta al asistente</label><input id="eda-question" name="question" type="text" maxlength="450" autocomplete="off" placeholder="Pregúntame sobre tu negocio…" '+(state.busy?'disabled':'required')+'/><button type="submit" '+(state.busy?'disabled':'')+' aria-label="Enviar pregunta">➤</button><button type="button" data-assistant-action="voice" class="eda-mic" aria-label="Dictar pregunta con el micrófono" title="Dictar por voz"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21m-4 0h8"/></svg></button></form>'+
     '<p class="eda-disclaimer">'+(state.aiReady?'Análisis de IA basado en tu información disponible. Confirma decisiones importantes.':'Respuestas con datos reales de tu panel. IA generativa aún no activada.')+'</p></section>':'');
    if(state.open){const box=host.querySelector('#eda-messages');if(box)box.scrollTop=box.scrollHeight;}
  }
@@ -159,13 +160,23 @@
      return;
    }
    if(btn.dataset.assistantAction==='voice'){
+     if(activeRecognition){activeRecognition.stop();return;}
      const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-     if(!Recognition){const field=host.querySelector('#eda-question');if(field)field.placeholder='El dictado de voz no está disponible en este navegador';return;}
-     try{const recognition=new Recognition();recognition.lang='es-PE';recognition.interimResults=false;recognition.onresult=event=>{const field=host.querySelector('#eda-question');if(field){field.value=event.results[0][0].transcript;field.focus();}};recognition.start();}catch(err){const field=host.querySelector('#eda-question');if(field)field.placeholder='No se pudo iniciar el micrófono';}
+     const field=host.querySelector('#eda-question');
+     if(!Recognition){if(field)field.placeholder='Este navegador no permite dictado de voz';return;}
+     try{
+       const recognition=new Recognition();activeRecognition=recognition;recognition.lang='es-PE';recognition.interimResults=false;
+       const micButton=host.querySelector('.eda-mic');
+       recognition.onstart=()=>{micButton?.classList.add('is-listening');micButton?.setAttribute('aria-label','Detener dictado');micButton?.setAttribute('aria-pressed','true');};
+       recognition.onresult=event=>{const input=host.querySelector('#eda-question');if(input){input.value=event.results[0][0].transcript;input.focus();}};
+       recognition.onerror=()=>{const input=host.querySelector('#eda-question');if(input)input.placeholder='No se pudo reconocer la voz';};
+       recognition.onend=()=>{activeRecognition=null;micButton?.classList.remove('is-listening');micButton?.setAttribute('aria-label','Dictar pregunta con el micrófono');micButton?.setAttribute('aria-pressed','false');};
+       recognition.start();
+     }catch(err){activeRecognition=null;if(field)field.placeholder='No se pudo iniciar el micrófono';}
      return;
    }
    if(btn.dataset.assistantAction==='toggle'||btn.dataset.assistantAction==='close'){
-     state.open=btn.dataset.assistantAction==='toggle'?!state.open:false;render();
+     state.open=btn.dataset.assistantAction==='toggle'?!state.open:false;if(!state.open&&activeRecognition){activeRecognition.stop();}render();
      if(state.open){checkAI();host.querySelector('#eda-question')?.focus();}
    }
  });

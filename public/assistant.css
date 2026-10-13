@@ -60,3 +60,15 @@
 .eda-bot-icon{background:transparent;padding:0}
 .eda-bot-icon .eda-robot-art{height:43px;width:43px}
 @media(prefers-reduced-motion:no-preference){.eda-launcher:hover .eda-robot-art{animation:eda-friendly-wave .9s ease-in-out}@keyframes eda-friendly-wave{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}}
+
+/* Minimal audio input and centered, unframed, slightly enlarged assistant robot. */
+.eda-launcher{width:70px;height:70px;border:0!important;background:transparent!important;border-radius:50%;box-shadow:none!important;padding:0;display:flex;align-items:center;justify-content:center;bottom:21px;right:21px;overflow:visible}
+.eda-launcher .eda-robot-art{display:block;width:70px;height:70px;flex:none;transform:translateY(1px)}
+.eda-launcher:hover{box-shadow:none!important;transform:translateY(-2px)}
+.eda-mic{width:40px;min-width:40px;height:40px;padding:0;border:1px solid var(--border,#dce5f2);border-radius:11px;display:grid;place-items:center;background:var(--accent-soft,#DBEAFE);color:var(--accent,#2563EB);position:relative;cursor:pointer}
+.eda-mic svg{display:block;position:relative;z-index:2}
+.eda-mic.is-listening{background:#2563EB;color:#fff;border-color:#2563EB}
+.eda-mic.is-listening::before,.eda-mic.is-listening::after{content:"";position:absolute;inset:-5px;border:2px solid #3B82F6;border-radius:14px;pointer-events:none;animation:eda-audio-pulse 1.5s ease-out infinite}
+.eda-mic.is-listening::after{animation-delay:.55s}
+@keyframes eda-audio-pulse{0%{transform:scale(.9);opacity:.85}100%{transform:scale(1.35);opacity:0}}
+@media(prefers-reduced-motion:reduce){.eda-mic.is-listening::before,.eda-mic.is-listening::after{animation:none;display:none}}
