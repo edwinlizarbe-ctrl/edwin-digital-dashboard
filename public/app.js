@@ -10,7 +10,7 @@
     mobileOpen: false, sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
-    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign',
+    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '',
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
     emailBusy: false, emailError: '', emailNotice: '',
     accent: localStorage.getItem('ed-accent-v7')||'purple', sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
@@ -330,14 +330,52 @@
   }
   function analytics(){return `${heading('Analítica web','Así está rindiendo tu web','Visitas, interacción, permanencia y evolución histórica de GA4.')}${statusStrip()}${mainKpis()}${detailKpis()}<div class="content-grid"><div class="col-12">${card('Tráfico y visualizaciones','Compara el comportamiento del sitio a lo largo del período',gaReady()?chart(rows('trend'),'screenPageViews','Vistas de página','sessions','Sesiones',310):dataPlaceholder())}</div><div class="col-6">${card('Sesiones por dispositivo','Tráfico desde computadora, celular y tablet',gaReady()?donut(rows('devices'),'deviceCategory','sessions'):dataPlaceholder())}</div><div class="col-6">${card('Navegadores de tus usuarios','Distribución por tecnología',gaReady()?barList(rows('browsers'),'browser','totalUsers'):dataPlaceholder())}</div></div>${flags()}`;}
   function acquisition(){return `${heading('Adquisición','Descubre cómo te encuentran','Analiza canales, fuentes y medios de tráfico, sin confundir visitas con conversiones de anuncios.')}${statusStrip()}<div class="content-grid"><div class="col-5">${card('Mezcla de canales','Sesiones por categoría de adquisición',gaReady()?donut(rows('channels').map(r=>({...r,channelLabel:friendlyChannel(r.sessionDefaultChannelGroup)})),'channelLabel','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Principales fuentes y medios','Origen de las visitas · datos reales de Google Analytics',gaReady()?barList(rows('sources').map(r=>({...r,sourceLabel:friendlyTrafficSource(r.sessionSourceMedium),rawSource:r.sessionSourceMedium})),'sourceLabel','sessions',10)+'<p class="traffic-glossary">Publicidad pagada = anuncios. Acceso directo = no se identificó otro origen. Enlace desde otra web = visitas procedentes de otra página. Pasa el cursor sobre una fuente para ver su código original de GA4.</p>':dataPlaceholder())}</div><div class="col-12">${card('Detalle de canales','Usuarios, sesiones y eventos clave por canal',gaReady()?dataTable(rows('channels'),[{key:'sessionDefaultChannelGroup',label:'Canal',display:friendlyChannel},{key:'sessions',label:'Sesiones',display:fmt},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
-  function campaigns(){
+  
+  function campaignMetaSetup(){
+    const m=state.meta||{},isReady=!!m.configured,connected=!!m.connected;
+    const selected=m.selected_accounts||[m.selected_account].filter(Boolean);
+    const accounts=m.accounts||[],expanded=state.campaignConnectionOpen||!connected||!selected.length;
+    if(connected&&!expanded)
+      return '<div class="ads-connected-compact"><span class="ads-connected-dot" aria-hidden="true"></span><div><strong>Meta Ads conectado</strong><small>'+selected.length+' cuenta(s) seleccionadas para '+clean(displayBusiness())+'</small></div><button type="button" class="button button-outline" data-act="campaign-connect-toggle">Administrar cuentas</button></div>';
+    const step=(n,title,done)=>'<span class="ads-wizard-step '+(done?'completed':'')+'"><b>'+n+'</b>'+title+'</span>';
+    let details='';
+    if(state.metaLoading)details='<div class="ads-wizard-loading"><span class="spinner"></span><span>Verificando el acceso a Meta Ads…</span></div>';
+    else if(!isReady){
+      details='<h3>Conecta tus campañas de Meta desde aquí</h3><p>La conexión está en preparación. Cuando esté activada podrás iniciar sesión con Facebook y elegir tus cuentas publicitarias sin pedir acceso manual ni salir a la sección Integraciones.</p>'+
+        '<button class="button button-primary" type="button" disabled>Conectar con Facebook · en preparación</button>';
+    }else if(!connected){
+      details='<h3>Conecta tus campañas de Meta desde aquí</h3><p>Inicia sesión con Facebook y autoriza únicamente la lectura de las cuentas publicitarias que elijas. eDigital no modificará tus anuncios.</p>'+
+        '<button class="button button-primary" type="button" data-act="meta-connect" data-return="campaigns">Conectar con Facebook</button>'+
+        '<p class="fine-print">Facebook pedirá tu consentimiento oficial y volverás automáticamente a Campañas Ads.</p>';
+    }else{
+      const accountRows=accounts.map(a=>
+        '<label class="meta-account-row ads-account-choice"><input class="campaign-meta-account-check" type="checkbox" value="'+clean(a.id)+'" '+(selected.includes(a.id)?'checked':'')+' />'+
+        '<span><strong>'+clean(a.name)+'</strong><small>'+clean(a.id)+' · '+clean(a.currency)+'</small></span></label>').join('');
+      details='<h3>Elige tus cuentas publicitarias</h3><p>Puedes seleccionar hasta cinco cuentas que Facebook te haya autorizado.</p>'+
+        '<input type="search" id="campaign-meta-search" class="meta-search" placeholder="Buscar una cuenta publicitaria…" autocomplete="off" aria-label="Buscar cuenta publicitaria">'+
+        '<div class="ads-account-list">'+(accountRows||'<p class="fine-print">Facebook no devolvió cuentas. Comprueba que tu usuario tenga acceso a una cuenta publicitaria.</p>')+'</div>'+
+        '<div class="ads-wizard-actions"><button type="button" class="button button-primary" data-act="campaign-meta-save" '+(state.campaignAccountSaving?'disabled':'')+'>'+
+        (state.campaignAccountSaving?'Guardando selección…':'Guardar y ver campañas')+'</button>'+
+        '<button type="button" class="button button-outline" data-act="meta-connect" data-return="campaigns">Cambiar acceso de Facebook</button></div>';
+    }
+    const close=connected&&selected.length?'<button type="button" class="ads-wizard-close" data-act="campaign-connect-toggle" aria-label="Ocultar selección de cuentas">'+icon('close',18)+'</button>':'';
+    return '<section class="ads-connection-panel" aria-label="Configuración de Meta Ads">'+
+      '<div class="ads-connection-top"><div class="ads-connection-brand">'+providerLogo('Meta Ads')+
+      '<div><strong>Meta Ads · '+clean(displayBusiness())+'</strong><small>Conexión directa en Campañas Ads</small></div></div>'+close+'</div>'+
+      '<div class="ads-wizard-steps">'+step(1,'Conectar Facebook',connected)+step(2,'Seleccionar cuentas',selected.length>0)+step(3,'Consultar campañas',selected.length>0)+'</div>'+
+      (state.metaError?alertBlock(state.metaError):'')+
+      (state.campaignAccountNotice?'<div class="company-message" role="status">'+clean(state.campaignAccountNotice)+'</div>':'')+
+      '<div class="ads-wizard-body">'+details+'</div></section>';
+  }
+
+function campaigns(){
  const connected=state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account);
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
  const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']];
  const controls=`<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">${choices.map(([value,label])=>`<button type="button" class="ads-platform-tab ${platform===value?'active':''}" data-act="ads-platform" data-platform="${value}" aria-pressed="${platform===value}" >${label}</button>`).join('')}</div><div class="ads-toolbar"><label class="form-label">Detalle<select id="ads-level" class="meta-select">${[['campaign','Campañas'],['adset','Conjuntos'],['ad','Anuncios']].map(([value,label])=>`<option value="${value}" ${level===value?'selected':''}>${label}</option>`).join('')}</select></label><button class="button button-outline" data-act="ads-refresh">${icon('refresh',16)} Actualizar</button></div>`;
  let result='';
  if(platform!=='meta')result=empty('Esta plataforma aún necesita autorización de la API oficial.','Integración pendiente');
- else if(!connected)result=`<div class="empty-compact">${empty('Conecta tu cuenta de Facebook desde Integraciones y selecciona una cuenta publicitaria.','Cuenta pendiente')}<button class="button button-primary" data-act="nav" data-page="integrations">Gestionar integración de Meta Ads</button></div>`;
+ else if(!connected)result=campaignMetaSetup();
  else if(state.adsLoading)result='<div class="loading-state"><span class="spinner"></span>Consultando campañas…</div>';
  else if(state.adsError)result=alertBlock(state.adsError);
  else if(!report)result=empty('Pulsa Actualizar para cargar las campañas autorizadas.','Sin datos');
@@ -348,7 +386,7 @@
  }
  const m=state.metaReport?.metrics,curr=state.metaReport?.currency||'';
  const kpis=platform==='meta'&&connected&&m?`<div class="small-kpis"><div class="small-kpi"><span>Inversión ${clean(curr)}</span><strong>${metaMetric(m.spend,2)}</strong></div><div class="small-kpi"><span>Clics</span><strong>${metaMetric(m.clicks)}</strong></div><div class="small-kpi"><span>Impresiones</span><strong>${metaMetric(m.impressions)}</strong></div><div class="small-kpi"><span>CTR</span><strong>${metaMetric(m.ctr,2)}%</strong></div><div class="small-kpi"><span>CPC</span><strong>${metaMetric(m.cpc,2)}</strong></div></div>`:'';
- return `${heading('Publicidad','Campañas Ads','Campañas, conjuntos y anuncios de tus plataformas autorizadas; sin mezclar las cifras de GA4.')}${controls}${kpis}${card('Rendimiento de la cuenta',periodLabel(),result)}
+ return `${heading('Publicidad','Campañas Ads','Conecta y consulta tus anuncios desde aquí, sin pasar por Integraciones.')}${controls}${platform==='meta'&&connected?campaignMetaSetup():''}${kpis}${card('Rendimiento de la cuenta',periodLabel(),result)}
  <div class="spacer-sm"></div>${card('Atribución UTM de Analytics','Es información diferente del costo publicitario',`<p class="fine-print">Los clics, sesiones y eventos de GA4 no equivalen necesariamente a ventas pagadas.</p><button class="button button-outline" data-act="nav" data-page="utm">Ver tráfico UTM</button>`)}`;
 }
     function utm(){return `${heading('Fuentes UTM · GA4','Campañas que llevan tráfico','Resultados de las campañas identificadas mediante etiquetado en Google Analytics 4.')}${statusStrip()}${alertBlock('Estas métricas corresponden al tráfico medido por GA4. No incluyen gasto publicitario, CPC, ROAS ni conversiones reportadas directamente por Meta Ads o Google Ads.', 'info')}<div class="content-grid"><div class="col-12">${card('Rendimiento por campaña','Sesiones y eventos clave atribuidos',gaReady()?dataTable(rows('campaigns'),[{key:'sessionCampaignName',label:'Campaña'},{key:'sessions',label:'Sesiones',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div><div class="col-6">${card('Campañas con más sesiones','Ranking de campañas etiquetadas',gaReady()?barList(rows('campaigns'),'sessionCampaignName','sessions',9):dataPlaceholder())}</div><div class="col-6">${card('Eventos clave por campaña','No equivale necesariamente a ventas confirmadas',gaReady()?barList([...rows('campaigns')].sort((a,b)=>number(b.keyEvents)-number(a.keyEvents)),'sessionCampaignName','keyEvents',9):dataPlaceholder())}</div></div>${flags()}`;}
