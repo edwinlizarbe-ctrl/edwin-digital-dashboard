@@ -355,7 +355,7 @@
       averageSessionDuration:['Tiempo medio de sesión','averageSessionDuration'],
       sessionKeyEventRate:['Sesiones con eventos clave (%)','sessionKeyEventRate']
     };
-    const chosen=metrics[state.analyticMetric]||metrics.activeUsers;
+    const chosen=metrics[state.analyticMetric]||metrics.totalUsers;
     const records=rows(chosen[2]||'trend_detail').filter(r=>r[chosen[1]]!==null&&r[chosen[1]]!==undefined&&r[chosen[1]]!==''&&Number.isFinite(Number(r[chosen[1]])));
     const graph=gaReady()&&records.length>1?chart(records,chosen[1],chosen[0],'','',310):empty('GA4 aún no entrega suficientes datos diarios para esta métrica.','Sin evolución diaria');
     return `${heading('Analítica web','Así está rindiendo tu web','Selecciona una tarjeta para ver su evolución en el gráfico grande.')}${statusStrip()}${mainKpis(true)}${detailKpis()}<div class="content-grid"><div class="col-12">${card('Evolución de '+chosen[0],'Gráfico diario de la métrica seleccionada · datos de Google Analytics 4',graph)}</div><div class="col-12">${card('Tráfico y visualizaciones','Vistas y sesiones registradas',gaReady()?chart(rows('trend'),'screenPageViews','Vistas de página','sessions','Sesiones',290):dataPlaceholder())}</div><div class="col-6">${card('Sesiones por dispositivo','Celular, computadora y tablet',gaReady()?donut(rows('devices'),'deviceCategory','sessions'):dataPlaceholder())}</div><div class="col-6">${card('Navegadores de tus usuarios','Navegadores desde los que visitan tu sitio',gaReady()?barList(rows('browsers'),'browser','totalUsers'):dataPlaceholder())}</div></div>${flags()}`;
@@ -1013,14 +1013,14 @@ async function loadAccounts(){
    {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Este sitio aún no tiene estadísticas disponibles de Analytics.'},
    {name:'Google Search Console',info:'Consultas y posicionamiento SEO.',status:'Próximamente',details:'Necesita autorización de Google.'},
    {name:'Facebook / Instagram orgánico',info:'Alcance y estadísticas de perfiles sociales.',status:'Próximamente',details:'Pendiente de permisos de páginas y perfiles.'}] ],
-  ['Ventas y e-commerce',[
-   {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'},
-   {name:'Shopify',info:'Pedidos, catálogo y ventas de tienda.',status:'Próximamente',details:'Pendiente de conexión individual por tienda.'}] ],
   ['Publicidad',[
    {name:'Meta Ads',info:'Facebook e Instagram Ads.'},
    {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'Próximamente',details:'API oficial y OAuth pendientes.'},
-   {name:'TikTok Ads',info:'Anuncios y campañas en TikTok.',status:'Próximamente',details:'Permisos de TikTok Ads pendientes.'},
-   {name:'LinkedIn Ads',info:'Publicidad profesional en LinkedIn.',status:'Próximamente',details:'Autorización de LinkedIn pendiente.'}] ]
+   {name:'TikTok Ads',info:'Anuncios y campañas en TikTok.',status:'Próximamente',details:'Permisos de TikTok Ads pendientes.'}] ],
+  ['Ventas y e-commerce',[
+   {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'},
+   {name:'Shopify',info:'Pedidos, catálogo y ventas de tienda.',status:'Próximamente',details:'Pendiente de conexión individual por tienda.'},
+   {name:'WooCommerce',info:'Pedidos y ventas de tu tienda WordPress.',status:'Próximamente',details:'Requiere conexión independiente a la API de WooCommerce.'}] ]
  ];
  const cardFor=(p)=>{
   const feature=businessFeatureKey(p.name);
@@ -1043,7 +1043,7 @@ async function loadAccounts(){
   function settings(){
  const theme=[['light','Claro'],['dark','Oscuro']];
  const palettes=[['purple','Violeta'],['blue','Azul'],['teal','Turquesa'],['coral','Coral'],['amber','Ámbar'],['rose','Rosa'],['graphite','Grafito']];
- const sidebar=[['auto','Según tema'],['white','Blanco'],['blue','Azul oscuro'],['navy','Azul marino'],['graphite','Grafito oscuro']];
+ const sidebar=[['auto','Según tema'],['white','Blanco'],['blue','Azul oscuro'],['navy','Azul marino'],['graphite','Grafito oscuro'],['black','Negro']];
  const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${key==='accent'?`<i class="accent-swatch swatch-${v}" aria-hidden="true"></i>`:''}${t}</button>`).join('')}</div>`;
  return `${heading('Preferencias','Mi cuenta y seguridad','Acceso, contraseña y colores del panel en un mismo lugar.')}
  <div class="content-grid account-grid">
@@ -1060,7 +1060,7 @@ async function loadAccounts(){
  <div class="settings-line"><span>Mi empresa</span><b>${isAdmin()?'Plataforma':clean(displayBusiness())}</b></div>
  ${!isAdmin()?`<button class="button button-outline" data-act="nav" data-page="company">${icon('building',15)} Editar mi empresa</button>`:''}
 
- <p class="fine-print">Cambiar el correo requiere confirmar tu identidad y puede necesitar una confirmación enviada por Supabase.</p>`)}</div>
+ <p class="fine-print">El correo de acceso es fijo y no se puede modificar desde esta cuenta.</p>`)}</div>
  <div class="col-12">${card('Personalización de colores','Elige colores y estilo del menú según tu marca',`
  <div class="appearance-grid"><div><h4>Apariencia general</h4>${picker('theme',theme,state.theme)}</div>
  <div><h4>Color de acento</h4>${picker('accent',palettes,state.accent)}</div>
@@ -1074,7 +1074,7 @@ async function loadAccounts(){
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','accounts','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
  `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition'].map(navLink).join('')+adsNavigation()+['audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
- return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('menu',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><button type="button" class="sidebar-workspace" data-act="nav" data-page="${isAdmin()?'adminHome':'company'}" title="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}" aria-label="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Panel administrador':'Editar datos de mi empresa'}</small></span>${icon('chevron',16)}</button>${menu}</div><div class="sidebar-bottom"><div class="avatar" title="${clean(state.user?.email||'Cuenta')}">${icon('user',20)}</div><div class="account"><b>${isAdmin()?'Superadministrador':clean(displayBusiness())}</b><span>${isAdmin()?'Cuenta de administración':'Cuenta de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout',19)}</button></div></aside>`;
+ return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn icon-button" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('panel-left-close',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><button type="button" class="sidebar-workspace" data-act="nav" data-page="${isAdmin()?'adminHome':'company'}" title="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}" aria-label="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Panel administrador':'Editar datos de mi empresa'}</small></span>${icon('chevron',16)}</button>${menu}</div><div class="sidebar-bottom"><div class="avatar" title="${clean(state.user?.email||'Cuenta')}">${icon('user',20)}</div><div class="account"><b>${isAdmin()?'Superadministrador':clean(displayBusiness())}</b><span>${isAdmin()?'Cuenta de administración':'Cuenta de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('power',19)}</button></div></aside>`;
 }
     function topbar(){
  const places=!isAdmin()&&state.businesses.length>1?`<label class="select-wrap company-select">${icon('building',16)}<select id="business-selector">${state.businesses.map(x=>`<option value="${clean(x.id)}" ${state.businessId===x.id?'selected':''}>${clean(x.name)}</option>`).join('')}</select>${icon('chevronDown',14)}</label>`:'';
