@@ -168,7 +168,7 @@ function metaReportDateParams(url){
  if(!valid(since)||!valid(until))return null;
  const from=Date.parse(since+'T00:00:00Z'),to=Date.parse(until+'T00:00:00Z');
  // Inclusive maximum: one year of daily ad account reporting.
- if(from>to||to>Date.now()+86400000||(to-from)>365*86400000)return null;
+ if(from>to||to>Date.now()||(to-from)>365*86400000)return null;
  return {period,params:{time_range:JSON.stringify({since,until})},start_date:since,end_date:until};
 }
 
