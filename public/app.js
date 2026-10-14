@@ -308,23 +308,40 @@
   function statusStrip() {return `<div class="status-strip"><div class="status-left">${state.gaLoading?'<span class="ga-status-spinner" aria-hidden="true"></span>':''}${tag(gaReady()?'Google Analytics conectado':state.gaLoading?'Cargando Analytics…':'GA4 pendiente',gaReady()?'success':'neutral')}<span class="strip-divider"></span><span>${icon('clock',15)} Última consulta: ${clean(readableTime())}</span></div><span class="strip-right">${clean(site()?.name||business()?.name||'Elige un negocio')}</span></div>${state.period==='today'?`<div class="period-disclaimer">${icon('info',15)} Estás viendo el día de hoy (según la zona horaria de GA4). Estas cifras pueden estar incompletas porque Analytics no es un informe en tiempo real.</div>`:''}`;}
   function insights() {
     if(!gaReady())return dataPlaceholder();
-    const user=m(), previous=prev(), ch=rows('channels'), pagesArr=rows('pages'), top=ch[0], page=pagesArr[0];
+    const current=m(),previous=prev(),channels=rows('channels'),pagesArr=rows('pages');
     const lines=[];
-    const trend=(key,label,advice)=>{
-      const now=Number(user[key]),before=Number(previous?.[key]);
-      if(!previous||previous[key]==null||user[key]==null||!Number.isFinite(now)||!Number.isFinite(before)||before<=0)return;
-      const diff=(now-before)/before*100;
-      if(Math.abs(diff)<10)return;
-      lines.push({symbol:diff<0?'activity':'chart-bar',title:label+' '+(diff<0?'bajó':'subió')+' '+Math.abs(diff).toFixed(1)+'%',desc:advice});
+    const metric=(key)=>{
+      const now=Number(current[key]),before=Number(previous?.[key]);
+      if(!previous||current[key]==null||previous[key]==null||!Number.isFinite(now)||!Number.isFinite(before)||before<0)return null;
+      return {now,before,diff:before>0?(now-before)/before*100:null};
     };
-    trend('sessions','Las sesiones','Revisa Adquisición para comparar los canales de este período con el anterior.');
-    trend('totalUsers','Los usuarios','Consulta qué canales y páginas concentraron las visitas.');
-    trend('keyEvents','Los eventos clave','Comprueba en Eventos y metas qué acciones fueron registradas; no necesariamente representan ventas.');
-    if(Number(user.keyEvents)===0)lines.push({symbol:'target',title:'Sin eventos clave registrados',desc:'GA4 indica cero eventos clave en el período. Revisa su configuración antes de interpretar el dato como ausencia de contactos o ventas.'});
-    if(top)lines.push({symbol:'mouse-pointer',title:'Canal principal',desc:friendlyChannel(top.sessionDefaultChannelGroup)+' registró '+fmt(top.sessions)+' sesiones. Consulta Adquisición para analizar su evolución.'});
-    if(page)lines.push({symbol:'file-text',title:'Página más vista',desc:(page.pagePath||'/')+' acumuló '+fmt(page.screenPageViews)+' visualizaciones. Revisa su contenido y resultados asociados.'});
-    if(!lines.length)lines.push({symbol:'activity',title:'Sin señales destacadas',desc:'No hay datos comparables suficientes para señalar cambios relevantes. Revisa otras fechas o comprueba tu conexión GA4.'});
-    return '<div class="insight-list">'+lines.slice(0,4).map(x=>'<div class="insight-item"><div class="insight-icon">'+icon(x.symbol==='chart-bar'?'activity':x.symbol,18)+'</div><div><strong>'+clean(x.title)+'</strong><p>'+clean(x.desc)+'</p></div></div>').join('')+'</div><p class="fine-print">Observaciones basadas en GA4 para '+clean(periodLabel())+'. Los cambios requieren una base anterior válida; no se infieren causas ni ventas.</p>';
+    const sessions=metric('sessions'),users=metric('totalUsers'),events=metric('keyEvents');
+    const add=(priority,symbol,title,desc)=>lines.push({priority,symbol,title,desc});
+    const changeText=d=>(d<0?'disminuyeron':'aumentaron')+' '+Math.abs(d).toFixed(1)+'%';
+    // Avoid labeling GA4 key events as sales or implying causation.
+    if(sessions&&events&&sessions.before>=20&&sessions.now>=20&&events.before>=5&&events.diff!==null&&sessions.diff!==null){
+      if(sessions.diff>=10&&events.diff<=-10)add(1,'target','Más tráfico, menos eventos clave','Las sesiones aumentaron '+Math.abs(sessions.diff).toFixed(1)+'% y los eventos clave disminuyeron '+Math.abs(events.diff).toFixed(1)+'%. Revisa las páginas de destino y verifica que los eventos de GA4 se estén registrando correctamente.');
+      else if(sessions.diff<=-10&&events.diff>=10)add(2,'activity','Menos tráfico, más eventos clave','Las sesiones disminuyeron '+Math.abs(sessions.diff).toFixed(1)+'% mientras los eventos clave aumentaron '+Math.abs(events.diff).toFixed(1)+'%. Compara los canales de adquisición y comprueba qué acciones están generando esos eventos.');
+    }
+    const trend=(metricData,label,advice)=>{
+      if(!metricData||metricData.before<20||metricData.diff===null||Math.abs(metricData.diff)<10)return;
+      add(metricData.diff<0?2:3,'activity',label+' '+changeText(metricData.diff),advice);
+    };
+    trend(sessions,'Las sesiones','Abre Adquisición y compara las fuentes de tráfico del período actual con las del anterior.');
+    trend(users,'Los usuarios','Revisa los canales y las páginas con más visitantes para identificar dónde se concentra el cambio.');
+    if(events&&events.before>=5&&events.diff!==null&&Math.abs(events.diff)>=10)add(events.diff<0?1:3,'target','Los eventos clave '+changeText(events.diff),'Comprueba en Eventos y metas cuáles acciones cambiaron. Los eventos clave no equivalen necesariamente a ventas.');
+    if(current.keyEvents!=null&&Number(current.keyEvents)===0)add(1,'target','Sin eventos clave registrados','GA4 registra cero eventos clave en este período. Verifica su configuración y activación antes de concluir que no hubo resultados comerciales.');
+    const top=channels.filter(x=>Number(x.sessions)>0).sort((x,y)=>Number(y.sessions)-Number(x.sessions))[0];
+    if(top&&Number(current.sessions)>0){
+      const share=Number(top.sessions)/Number(current.sessions)*100;
+      if(share>=65&&share<=100)add(2,'mouse-pointer','Concentración de tráfico: '+share.toFixed(0)+'%','El canal '+friendlyChannel(top.sessionDefaultChannelGroup)+' concentra '+share.toFixed(0)+'% de las sesiones. Revisa en Adquisición si dependes demasiado de una sola fuente.');
+      else add(4,'mouse-pointer','Tu principal canal de visitas',friendlyChannel(top.sessionDefaultChannelGroup)+' registró '+fmt(top.sessions)+' sesiones. Analiza su evolución en Adquisición.');
+    }
+    const topPage=pagesArr.filter(x=>Number(x.screenPageViews)>0).sort((x,y)=>Number(y.screenPageViews)-Number(x.screenPageViews))[0];
+    if(topPage)add(4,'file-text','Página más vista: '+(topPage.pagePath||'/'),fmt(topPage.screenPageViews)+' vistas. Revisa el contenido y las acciones clave asociadas a esta página.');
+    if(!lines.length)add(5,'activity','Sin señales destacadas','No se detectaron variaciones suficientes con los datos comparables disponibles. Prueba otro período y verifica la conexión con GA4.');
+    lines.sort((a,b)=>a.priority-b.priority);
+    return '<div class="insight-list">'+lines.slice(0,4).map(x=>'<div class="insight-item"><div class="insight-icon">'+icon(x.symbol,18)+'</div><div><strong>'+clean(x.title)+'</strong><p>'+clean(x.desc)+'</p></div></div>').join('')+'</div><p class="fine-print">Señales calculadas con GA4 · '+clean(periodLabel())+'. Los cambios se muestran solo con una base anterior válida y suficiente; no se infieren causas ni ventas.</p>';
   }
 
   function connectionOverview(){
