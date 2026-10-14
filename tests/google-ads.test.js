@@ -122,3 +122,25 @@ test('cross-origin POST account selection rejected',async()=>{
   assert.equal(r.status,403);
  });
 });
+
+test('OAuth callback is single use and a replay cannot exchange a second code',async()=>{
+ await scopedTest(async server=>{
+  const state='valid-one-time-state';
+  server.nonces().push({nonce_hash:'test-nonce',user_id:session.user.id,business_id:company,expires_at:new Date(Date.now()+60000).toISOString()});
+  const pending=await encrypted({state,user:session.user.id,business:company,until:Date.now()+60000},server.env.GOOGLE_ADS_ENCRYPTION_KEY);
+  const request=()=>new Request(origin+'/api/google-ads/callback?state='+state+'&code=mock-code',{headers:{Cookie:'ed_google_pending='+encodeURIComponent(pending)}});
+  const first=await handleGoogleAdsApi(request(),server.env,session);
+  assert.equal(first.status,302);
+  const replay=await handleGoogleAdsApi(request(),server.env,session);
+  assert.equal(replay.status,403);
+  assert.equal(server.calls.filter(x=>x.url==='https://oauth2.googleapis.com/token'&&String(x.body).includes('authorization_code')).length,1);
+ });
+});
+test('OAuth callback rejects mismatched user and state before querying the connection',async()=>{
+ await scopedTest(async server=>{
+  const pending=await encrypted({state:'expected',user:session.user.id,business:company,until:Date.now()+60000},server.env.GOOGLE_ADS_ENCRYPTION_KEY);
+  const res=await handleGoogleAdsApi(new Request(origin+'/api/google-ads/callback?state=forged&code=fake',{headers:{Cookie:'ed_google_pending='+encodeURIComponent(pending)}}),server.env,session);
+  assert.equal(res.status,403);
+  assert.equal(server.calls.some(x=>x.url.includes('ed_google_oauth_nonces')),false);
+ });
+});
