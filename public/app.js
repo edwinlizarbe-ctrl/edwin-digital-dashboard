@@ -55,7 +55,7 @@
       company:company?.name || '', businessId:state.businessId,
       site:currentSite?.name || '', siteId:state.siteId,
       period:state.period, periodLabel:periodLabel(), ga, gaPrevious:prev,
-      metaConnected:!!state.meta?.connected, meta,
+      metaConnected:!!state.meta?.connected, meta, googleAdsConnected:!!state.googleAds?.connected,googleAdsCampaigns:state.googleAdsReport?.partial?[]:(state.googleAdsReport?.rows||[]).slice(0,10).map(r=>({name:r.name,spend:r.spend,clicks:r.clicks,impressions:r.impressions,conversions:r.conversions,currency:state.googleAdsReport.currency})),salesPipeline:{recorded:(state.leads||[]).length,closed:(state.leads||[]).filter(r=>r.stage==='won').length,attribution:'manual'},
       topChannels: (state.ga?.reports?.channels||[]).slice(0,5).map(x=>({name:String(x.sessionDefaultChannelGroup||'No identificado'),sessions:Number(x.sessions)||0})),
       topPages: (state.ga?.reports?.pages||[]).slice(0,5).map(x=>({name:String(x.pagePath||'/'),views:Number(x.screenPageViews)||0})),
       topEvents: (state.ga?.reports?.events||[]).slice(0,5).map(x=>({name:String(x.eventName||'Sin nombre'),count:Number(x.eventCount)||0}))
@@ -424,8 +424,13 @@
   }
   function overview() {
     const ok=gaReady();
-    return `${heading('Vista general','Resumen general','Conoce el rendimiento de tu negocio durante '+periodLabel().toLowerCase())}${welcomeBanner()}${statusStrip()}<div class="overview-modern-kpis">${mainKpis(true)}</div>${businessPulse()}${salesOverview()}<div class="content-grid"><div class="col-8">${card('¿Cómo evolucionan las visitas a tu web?',`Selecciona un indicador · ${periodLabel()} · ${{totalUsers:'Personas que visitaron tu web',sessions:'Visitas realizadas a tu web',screenPageViews:'Páginas visualizadas',keyEvents:'Acciones importantes configuradas en GA4'}[state.overviewMetric]||'Personas que visitaron tu web'}`,overviewMetricPicker()+( ok?chart(rows('trend'),(['totalUsers','sessions','screenPageViews','keyEvents'].includes(state.overviewMetric)?state.overviewMetric:'totalUsers'),({totalUsers:'Usuarios totales',sessions:'Sesiones',screenPageViews:'Vistas de páginas',keyEvents:'Eventos clave'})[state.overviewMetric]||'Usuarios totales'):dataPlaceholder() ))}</div><div class="col-4">${card('¿Cómo llegan las personas a tu web?','Visitas desde Google, redes sociales, enlaces y otras fuentes',ok?donut(rows('channels').map(r=>({...r,channelLabel:friendlyChannel(r.sessionDefaultChannelGroup)})),'channelLabel','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Haz clic en una página para consultar sus estadísticas',ok?popularPagesOverview():dataPlaceholder())}</div><div class="col-5">${card('Centro de oportunidades','Señales reales para revisar en tu negocio',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${connectedAdsOverview()}${flags()}`;
+    return `${heading('Vista general','Resumen general','Conoce el rendimiento de tu negocio durante '+periodLabel().toLowerCase())}${welcomeBanner()}${statusStrip()}<div class="overview-modern-kpis">${mainKpis(true)}</div>${businessPulse()}${salesOverview()}<div class="content-grid"><div class="col-8">${card('¿Cómo evolucionan las visitas a tu web?',`Selecciona un indicador · ${periodLabel()} · ${{totalUsers:'Personas que visitaron tu web',sessions:'Visitas realizadas a tu web',screenPageViews:'Páginas visualizadas',keyEvents:'Acciones importantes configuradas en GA4'}[state.overviewMetric]||'Personas que visitaron tu web'}`,overviewMetricPicker()+( ok?chart(rows('trend'),(['totalUsers','sessions','screenPageViews','keyEvents'].includes(state.overviewMetric)?state.overviewMetric:'totalUsers'),({totalUsers:'Usuarios totales',sessions:'Sesiones',screenPageViews:'Vistas de páginas',keyEvents:'Eventos clave'})[state.overviewMetric]||'Usuarios totales'):dataPlaceholder() ))}</div><div class="col-4">${card('¿Cómo llegan las personas a tu web?','Visitas desde Google, redes sociales, enlaces y otras fuentes',ok?donut(rows('channels').map(r=>({...r,channelLabel:friendlyChannel(r.sessionDefaultChannelGroup)})),'channelLabel','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Haz clic en una página para consultar sus estadísticas',ok?popularPagesOverview():dataPlaceholder())}</div><div class="col-5">${card('Centro de oportunidades','Señales reales para revisar en tu negocio',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${connectedAdsOverview()}${leadSummaryOverview()}${flags()}`;
   }
+
+function leadSummaryOverview(){
+ const data=state.leads||[],closed=data.filter(x=>x.stage==='won').length;
+ return '<section class="crm-overview-line"><div><b>Oportunidades comerciales</b><span>Registro manual por empresa; sin atribución automática.</span></div><strong>'+fmt(data.length)+' contactos · '+fmt(closed)+' cerrados</strong><button class="button button-outline" data-act="nav" data-page="leads">Gestionar clientes</button></section>';
+}
   function heading(kicker,title,subtitle){const downloadable=['overview','analytics','acquisition','utm','audience','content','events','reports'].includes(state.page);return `<div class="page-title"><div><div class="eyebrow">${clean(kicker)}</div><h1>${clean(title)}</h1><p>${clean(subtitle)}</p></div>${downloadable?`<button class="button button-outline title-export" data-act="csv">${icon('download',17)} Exportar CSV</button>`:''}</div>`;}
   function detailKpis() {
     const v=m(),ok=gaReady(), series=rows('trend_detail');
@@ -657,6 +662,28 @@ function adsGuidance(platform,connected){
   '<div class="ads-guidance-grid">'+suggestions.map(([title,body],idx)=>'<article class="ads-guidance-item"><span class="ads-guidance-num">'+String(idx+1).padStart(2,'0')+'</span><strong>'+clean(title)+'</strong><p>'+clean(body)+'</p></article>').join('')+'</div></section>';
 }
 
+
+function marketingHub(){
+ const google=state.googleAdsReport,gr=google?.rows||[],meta=metaAccountSummary();
+ const gs=google?.partial?null:gr.reduce((sum,r)=>sum+Number(r.spend||0),0);
+ const conversions=google?.partial?null:gr.reduce((sum,r)=>sum+Number(r.conversions||0),0);
+ const gClicks=google?.partial?null:gr.reduce((sum,r)=>sum+Number(r.clicks||0),0);
+ const alerts=[];
+ if(state.googleAdsError)alerts.push('Google Ads: '+state.googleAdsError);
+ if(state.metaError||state.adsError)alerts.push('Meta Ads: '+(state.metaError||state.adsError));
+ if(google?.partial)alerts.push('Google Ads entregó datos parciales; no se calculan totales incompletos.');
+ if(state.metaCampaigns?.partial)alerts.push('Meta Ads entregó datos parciales. Revisa el detalle.');
+ if(google&&!google.partial&&gs>0&&conversions===0)alerts.push('Google Ads registró gasto sin conversiones reportadas en este período. Revisa el seguimiento.');
+ const googleCard='<div class="crm-channel"><div class="crm-channel-head">'+providerLogo('Google Ads')+'<b>Google Ads</b><span>'+clean(google?google.days+' días':'Sin informe cargado')+'</span></div>'+
+ (google&&!google.partial?'<div class="crm-channel-kpis"><div><small>Inversión</small><b>'+money(gs,google.currency)+'</b></div><div><small>Clics</small><b>'+fmt(gClicks)+'</b></div><div><small>Conversiones Ads</small><b>'+fmt1(conversions)+'</b></div></div>':'<p class="crm-channel-empty">'+(google?'Informe parcial. Revisa detalles.':state.googleAds?.connected?'Consulta las campañas para ver cifras reales.':'Todavía no hay una cuenta conectada.')+'</p>')+
+ '<button class="button button-outline" type="button" data-act="ads-platform" data-platform="google">Ver Google Ads</button></div>';
+ const metaCard='<div class="crm-channel"><div class="crm-channel-head">'+providerLogo('Meta Ads')+'<b>Meta Ads</b><span>Datos autorizados</span></div>'+
+ (meta?'<div class="crm-channel-kpis"><div><small>Inversión</small><b>'+(meta.currencyMixed?'Monedas distintas':meta.spend==null?'—':money(meta.spend,meta.currency))+'</b></div><div><small>Clics</small><b>'+fmt(meta.clicks)+'</b></div><div><small>CTR</small><b>'+(meta.ctr==null?'—':fmt1(meta.ctr)+'%')+'</b></div></div>':'<p class="crm-channel-empty">Consulta tus campañas de Meta Ads para ver sus métricas autorizadas.</p>')+
+ '<button class="button button-outline" type="button" data-act="ads-platform" data-platform="meta">Ver Meta Ads</button></div>';
+ return '<section class="crm-marketing-hub"><div class="crm-marketing-head"><div><span>ANÁLISIS UNIFICADO</span><h2>Centro de rendimiento publicitario</h2><p>Google y Meta en un solo espacio, sin combinar monedas ni períodos distintos.</p></div><button class="button button-outline" type="button" data-act="nav" data-page="leads">Ver oportunidades</button></div><div class="crm-channel-grid">'+googleCard+metaCard+'</div>'+
+ (alerts.length?'<div class="crm-alerts" role="status"><b>Señales que merecen revisión</b>'+alerts.slice(0,4).map(x=>'<p>'+icon('alert',15)+' '+clean(x)+'</p>').join('')+'</div>':'<p class="crm-marketing-footnote">Estas alertas se calculan sobre informes cargados. Todavía no son notificaciones programadas.</p>')+'</section>';
+}
+
 function campaigns(){
  const connected=!!(state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account));
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
@@ -727,7 +754,7 @@ function campaigns(){
  const summary=platform==='meta'&&connected?adsMetricsStrip():'';
  const settings=platform==='meta'&&connected?campaignMetaSetup():'';
  return heading('Publicidad','Campañas Ads','Revisa el estado de tus cuentas y analiza datos publicitarios reales desde un solo lugar.')+
-   tabs+adsOverviewHero(platform)+toolbar+settings+summary+
+   marketingHub()+tabs+adsOverviewHero(platform)+toolbar+settings+summary+
    card(platform==='meta'?'Resultados y campañas de Meta Ads':'Rendimiento publicitario',platform==='meta'?adsPeriodLabel():'Conexión oficial pendiente',result)+
    adsGuidance(platform,connected)+
    '<div class="spacer-sm"></div>'+card('Tráfico UTM en Google Analytics','Las visitas medidas por GA4 son diferentes del gasto de Meta Ads.',
@@ -801,9 +828,15 @@ function campaigns(){
       kpis+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+data.length+' registros en la empresa seleccionada</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
   }
 
+
+function reportExtras(){
+ return '<div class="report-grid crm-report-additions">'+
+ '<div class="report-item"><div class="report-icon">'+icon('megaphone',22)+'</div><div><h3>Campañas Google Ads</h3><p>'+fmt(state.googleAdsReport?.rows?.length||0)+' campañas · '+clean(state.googleAdsReport?.currency||'Sin informe')+'</p></div><button class="button button-soft" data-act="download" data-report="google-ads" '+(!state.googleAdsReport?.rows?.length?'disabled':'')+'>'+icon('download',17)+' CSV</button></div>'+
+ '<div class="report-item"><div class="report-icon">'+icon('users',22)+'</div><div><h3>Oportunidades comerciales</h3><p>'+fmt(state.leads?.length||0)+' contactos de la empresa seleccionada</p></div><button class="button button-soft" data-act="download" data-report="crm-leads" '+(!state.leads?.length?'disabled':'')+'>'+icon('download',17)+' CSV</button></div></div>';
+}
   function reports(){
     const kinds=[['Resumen del sitio','overview','trend'],['Adquisición','acquisition','sources'],['Campañas UTM','campaigns','campaigns'],['Audiencia','audience','countries'],['Contenido','content','pages'],['Eventos y conversiones','events','events']];
-    return `${heading('Centro de reportes','Tus informes, listos para analizar','Descarga archivos CSV con las métricas que realmente devuelve tu propiedad.')}${statusStrip()}<div class="report-grid">${kinds.map(([name,page,key])=>`<div class="report-item"><div class="report-icon">${icon('file-bar-chart',22)}</div><div><h3>${name}</h3><p>${gaReady()?`${fmt(rows(key).length)} registros · ${periodLabel()}`:'Esperando conexión GA4'}</p></div><button class="button button-soft" data-act="download" data-report="${key}" ${!gaReady()||!rows(key).length?'disabled':''}>${icon('download',17)} CSV</button></div>`).join('')}${selectedBusinessIsHotmart()?`<div class="report-item"><div class="report-icon rose">${icon('shopping-bag',22)}</div><div><h3>Productos vendidos · Hotmart</h3><p>${state.hm?`${fmt(state.hm.products?.length)} productos`:state.hmLoading?'Consultando…':'Sin conexión'}</p></div><button class="button button-soft" data-act="download" data-report="hotmart-products" ${!state.hm?'disabled':''}>${icon('download',17)} CSV</button></div>`:''}</div>${alertBlock('Los CSV contienen las filas que entrega la API en el período seleccionado. El panel no genera cifras sintéticas, ni incluye el costo de las campañas publicitarias.','info')}`;
+    return `${heading('Centro de reportes','Tus informes, listos para analizar','Descarga archivos CSV con las métricas que realmente devuelve tu propiedad.')}${statusStrip()}<div class="report-grid">${kinds.map(([name,page,key])=>`<div class="report-item"><div class="report-icon">${icon('file-bar-chart',22)}</div><div><h3>${name}</h3><p>${gaReady()?`${fmt(rows(key).length)} registros · ${periodLabel()}`:'Esperando conexión GA4'}</p></div><button class="button button-soft" data-act="download" data-report="${key}" ${!gaReady()||!rows(key).length?'disabled':''}>${icon('download',17)} CSV</button></div>`).join('')}${selectedBusinessIsHotmart()?`<div class="report-item"><div class="report-icon rose">${icon('shopping-bag',22)}</div><div><h3>Productos vendidos · Hotmart</h3><p>${state.hm?`${fmt(state.hm.products?.length)} productos`:state.hmLoading?'Consultando…':'Sin conexión'}</p></div><button class="button button-soft" data-act="download" data-report="hotmart-products" ${!state.hm?'disabled':''}>${icon('download',17)} CSV</button></div>`:''}</div>${reportExtras()}${alertBlock('Los informes se generan a demanda con datos disponibles. Aún no hay envíos automáticos ni PDF programados. No se mezclan importes de diferentes monedas.','info')}`;
   }
   function company(){
  const b=business(),prefs=companyPrefs();
