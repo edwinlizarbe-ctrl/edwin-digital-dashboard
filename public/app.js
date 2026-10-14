@@ -374,8 +374,11 @@
     const hour=new Date().getHours();
     const greeting=hour<12?'Buenos días':hour<19?'Buenas tardes':'Buenas noches';
     const company=isAdmin()?'Administración':displayBusiness();
-    const subtitle=isAdmin()?'Consulta el estado de tu plataforma.':`Estos son los resultados de tu empresa durante ${periodLabel().toLowerCase()}.`;
-    return `<section class="welcome-banner" aria-label="Bienvenida"><div class="welcome-banner-content"><span class="welcome-eyebrow">TU ESPACIO DE ANÁLISIS</span><h2>${greeting}, ${clean(company)} <span aria-hidden="true">👋</span></h2><p>${clean(subtitle)}</p></div><div class="welcome-decor" aria-hidden="true">${icon('activity',60)}</div></section>`;
+    const user=state.user||{};
+    const possibleNames=[user.full_name,user.name,user.user_metadata?.full_name,user.user_metadata?.name,user.profile?.full_name];
+    const name=possibleNames.find(n=>typeof n==='string'&&n.trim())?.trim().split(/\s+/)[0]||'';
+    const subtitle=isAdmin()?'Consulta el estado de tu plataforma.':`Bienvenido al panel de ${company}. Resultados de ${periodLabel().toLowerCase()}.`;
+    return `<section class="welcome-banner" aria-label="Bienvenida"><div class="welcome-banner-content"><span class="welcome-eyebrow">TU ESPACIO DE ANÁLISIS</span><h2>${greeting}, ${clean(name||company)} <span aria-hidden="true">👋</span></h2><p>${clean(subtitle)}</p></div><div class="welcome-decor" aria-hidden="true">${icon('activity',60)}</div></section>`;
   }
   function overview() {
     const ok=gaReady();
