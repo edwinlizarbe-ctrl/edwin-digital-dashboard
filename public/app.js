@@ -1544,6 +1544,23 @@ function sidebar(){
       }catch(error){if(state.businessId===current){state.metaError=error.message;state.campaignConnectionOpen=true;state.campaignWizardStage='confirm';render();}}
       finally{state.campaignAccountSaving=false;if(state.businessId===current)render();}
     }
+    else if(action==='google-ads-connect'&&!isAdmin()&&featureEnabled('google_ads')&&state.googleAds?.configured){window.location.assign('/api/google-ads/connect?business_id='+encodeURIComponent(state.businessId));}
+    else if(action==='google-ads-select'&&!isAdmin()&&featureEnabled('google_ads')){
+      const id=state.businessId,customerId=document.getElementById('google-ads-account')?.value||'';
+      if(!customerId){state.googleAdsError='Selecciona una cuenta publicitaria.';render();return;}
+      state.googleAdsBusy=true;state.googleAdsError='';render();
+      try{await api('/api/google-ads/select?business_id='+encodeURIComponent(id),{method:'POST',body:JSON.stringify({customer_id:customerId})});if(id===state.businessId){state.googleAdsReport=null;await loadGoogleAds();}}
+      catch(error){if(id===state.businessId)state.googleAdsError=error.message;}
+      finally{if(id===state.businessId){state.googleAdsBusy=false;render();}}
+    }
+    else if(action==='google-ads-campaigns'&&!isAdmin()&&featureEnabled('google_ads'))await loadGoogleAdsReport();
+    else if(action==='google-ads-disconnect'&&!isAdmin()&&featureEnabled('google_ads')){
+      if(!confirm('¿Desconectar Google Ads de esta empresa? Tus campañas no se borrarán.'))return;
+      const id=state.businessId;state.googleAdsBusy=true;state.googleAdsError='';render();
+      try{await api('/api/google-ads/disconnect?business_id='+encodeURIComponent(id),{method:'POST',body:'{}'});if(id===state.businessId){state.googleAdsReport=null;await loadGoogleAds();}}
+      catch(error){if(id===state.businessId)state.googleAdsError=error.message;}
+      finally{if(id===state.businessId){state.googleAdsBusy=false;render();}}
+    }
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-best'){state.adsBestOnly=!state.adsBestOnly;state.adsLevel='campaign';if(!state.metaCampaigns||state.metaCampaigns.level!=='campaign'){state.metaCampaigns=null;render();await loadAds();}else render();}
     else if(action==='ads-refresh'){if(state.adsPlatform==='google')await loadGoogleAdsReport();else{await loadMeta();await loadAds();}}
