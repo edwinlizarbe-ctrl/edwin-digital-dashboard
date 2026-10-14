@@ -947,8 +947,8 @@ input,select,textarea{max-width:100%}
 /* Popular pages: keep the colored percentage bar, hide the gray line behind it. */
 .bar-list:has([data-act="page-detail"]) .bar-track{background:transparent}
 
-/* Clearer popular page names, views, and percentages at 15px. */
-.bar-list:has([data-act="page-detail"]) .bar-row{font-size:15px}
-.bar-list:has([data-act="page-detail"]) [data-act="page-detail"]{font-size:15px;line-height:1.5}
-.bar-list:has([data-act="page-detail"]) .page-views-value{font-size:15px;line-height:1.45}
-.bar-list:has([data-act="page-detail"]) .page-views-value small{font-size:15px}
+/* Balanced popular-pages typography. */
+.bar-list:has([data-act="page-detail"]) .bar-row{font-size:14px}
+.bar-list:has([data-act="page-detail"]) [data-act="page-detail"]{font-size:14px;line-height:1.45}
+.bar-list:has([data-act="page-detail"]) .page-views-value{font-size:14px;line-height:1.4}
+.bar-list:has([data-act="page-detail"]) .page-views-value small{font-size:12px}
