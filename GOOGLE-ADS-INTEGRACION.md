@@ -1,47 +1,41 @@
-# Google Ads OAuth — implementation plan (development branch)
+# Edwin CRM — Google Ads OAuth (rama de desarrollo)
 
-Status: initial backend, isolated Supabase migration, and customer-facing connector UI implemented in development branch. **Not migrated, not end-to-end tested, and not deployed.**
-Target: Edwin CRM multi-tenant Cloudflare Worker + Supabase.
+**Rama:** `feature/google-ads-oauth`. **Estado:** backend e interfaz implementados para pruebas; **sin desplegar en Cloudflare ni fusionar con main**.
 
-## Existing code verified
-- `worker.js` authenticates Supabase users, then dispatches `/api/meta/*` to `meta.js`.
-- `public/app.js` displays Google Ads as "Próximamente"; its ads tabs already reserve `google`.
-- `feature-access.js` has a `google_ads` entitlement defaulting to false.
-- `wrangler.jsonc` routes `/api/*` through Worker.
-- Production currently uses `GOOGLE_ADS_CLIENT_ID` and `GOOGLE_ADS_CLIENT_SECRET` stored as Cloudflare secrets according to setup; secrets must never enter source control.
-- Google Ads API access is currently **Prueba**, with **Explorador** requested and under review. OAuth app is in Testing, limited to test users.
+Edwin CRM es el SaaS multicliente. Edwin Digital es una de las empresas cliente. Ningún secreto de cliente OAuth ni token Google Ads debe aparecer en este repositorio o en el navegador.
 
-## Implementation boundaries
-1. Keep `main` and deployed Worker untouched until separately authorized and tested.
-2. Backend-only authorization code exchange; exact registered callback `/api/google-ads/callback`.
-3. Protect OAuth start and callback with signed, one-time, expiring state bound to authenticated user and immutable `business_id`. Reject tampering, replay and cross-tenant access. Preserve session cookie handling and same-origin request protections.
-4. Validate business membership via Supabase RLS using the user's JWT; never accept client-supplied `user_id`. Superadministrator account is not a customer business.
-5. Refresh tokens are server-side only and encrypted at rest with independently configured key; never expose them in API responses, HTML or client JS. Protect writes in Supabase with service-role server-only plus strict ownership checks.
-6. Support account listing, account selection, connection status, disconnect/revoke and read-only GAQL campaign metrics; ensure account IDs belong to authorized Google OAuth identity.
-7. Google Ads scope `https://www.googleapis.com/auth/adwords` technically allows edits; expose **read-only backend operations** to clients. Do not implement campaign mutations.
-8. Do not enable `google_ads` feature entitlement or show a functional Connect button before working endpoints and migration are verified.
-9. Handle Google Ads API access-level restrictions and Google's external OAuth testing/verification separately. No claim that real customer accounts are available before both allow it.
-10. Rotate any previously exposed OAuth secret before production deployment and verify the current Cloudflare value is the rotated secret.
+## Implementación verificada
 
-## Recommended integration work, in order
-- Add Supabase SQL migration for per-business `google_ads_connections` and authorized account selection. Explicit unique constraints and RLS; encrypted refresh token columns inaccessible to browser.
-- Add `google-ads.js` Worker module, wired through `worker.js`; endpoints for start, callback, status, accounts, select, report and disconnect.
-- Add dashboard UI integration and error/loading states; strictly scope requests to selected business.
-- Write focused tests for state replay/cross-tenant, missing secrets, token refresh, account access, GAQL metric mapping, disconnected state.
-- Verify locally or in preview Worker, secure review, then request a separate deployment decision.
+- Backend `google-ads.js`: iniciar OAuth, callback protegido por cookie cifrada, estado aleatorio de un solo uso y vencimiento, autorización mediante sesión Supabase, separación por `business_id`, cifrado AES-GCM de los refresh tokens, renovación y desconexión.
+- Google Ads API v25: listar cuentas accesibles y cuentas cliente asociadas a MCC mediante `customer_client`; almacenar `selected_customer_id` y `selected_login_customer_id` por empresa. Consulta de solo lectura con `login-customer-id` cuando corresponde.
+- Reportes por campañas de 7, 30 y 90 días: inversión en moneda de la cuenta, impresiones, clics, CTR, CPC, conversiones, valor de conversiones y ROAS, con paginación y aviso de informe parcial. Los 90 días utilizan fechas explícitas calculadas para la zona horaria de la cuenta.
+- `public/app.js`: tarjeta funcional en **Integraciones** y panel **Campañas Ads**, botones Conectar, seleccionar cuenta, actualizar y desconectar; filtrado por empresa, estados de carga y error, respuesta de regreso de OAuth. No presenta cifras ficticias.
+- La integración únicamente consulta Google Ads; no modifica campañas, presupuestos, anuncios ni grupos de anuncios.
+- Tests `tests/google-ads.test.js`: ID inválido, sesión admin, aislamiento entre empresas, listado MCC, selección autorizada, métricas paginadas y moneda, comprobación de origen, estado OAuth alterado y callback reutilizado. **Las pruebas usan respuestas simuladas**, no cuentas de Google reales.
+- GitHub Actions `.github/workflows/google-ads-check.yml`: comprueba sintaxis de Worker, cliente y tests.
 
-## Implemented in feature/google-ads-oauth
-- `google-ads.js`: authenticated endpoints `/api/google-ads/status`, `/connect`, `/callback`, `/accounts`, `/select`, `/campaigns`, `/disconnect`. Uses official Google Ads API v25 (v22 retired Oct 7, 2026). OAuth refresh tokens encrypted at rest using AES-GCM.
-- `worker.js`: backend route dispatch (authenticated Supabase session).
-- `migrations/20261014_google_ads_connections.sql`: private connection and one-time OAuth nonce tables with RLS enabled, no anonymous/authenticated SQL access.
-- `public/app.js`: Google Ads card in Integraciones, selected account and 30-day campaigns preview, connection status in Campañas Ads.
-- `.github/workflows/google-ads-check.yml`: branch syntax validation.
+## Supabase — migración ejecutada y comprobada
 
-## Remaining release blockers (DO NOT deploy prematurely)
-1. Apply the included SQL migration to the intended Supabase project after review. It has **not** been applied automatically.
-2. Set `GOOGLE_ADS_ENCRYPTION_KEY` in the Cloudflare Worker as a separate secret: exactly 32 random bytes hex-encoded (64 hexadecimal characters), e.g. generated locally using `openssl rand -hex 32`. Never commit or share its value.
-3. Verify the Cloudflare OAuth Client ID/secret is from the currently authorized Google Auth Platform web client; rotate any previously exposed secret.
-4. Google OAuth is currently in Testing (authorized test users only). Approval for Google Ads API Explorador production access is still pending. User-facing external rollout must wait until approval and any required consent-screen verification.
-5. Run branch syntax checks and OAuth/tenant isolation/integration tests with a test business. Confirm the registered redirect URI equals `https://edwin-digital-dashboard.edwinlizarbe.workers.dev/api/google-ads/callback`.
-6. Verify account selection for manager/MCC hierarchies and pagination, campaign metrics/currency/attribution and token refresh/revocation. This is an initial integration, not yet production-complete.
-7. Review a PR and separately authorize merge and Cloudflare deployment.
+La migración `migrations/20261014_google_ads_connections.sql` se aplicó al proyecto `nextpfovlaclnnhlvfhg` durante el trabajo de esta sesión como `google_ads_connections` y se verificó mediante SQL:
+
+- `public.ed_google_ads_connections`, asociada a una empresa; credenciales cifradas e ID de cuenta publicitaria seleccionada.
+- `public.ed_google_oauth_nonces`, para prevenir reutilización del estado OAuth.
+- RLS habilitado en ambas tablas.
+- Sin privilegios directos de lectura para `anon` ni `authenticated`.
+- Con acceso para `service_role` únicamente desde el Worker tras validar pertenencia y permiso de la empresa.
+- No se modificaron las tablas existentes ni se desplegó código de producción.
+
+La alerta informativa **RLS enabled no policy** para estas tablas es intencional: no deben ser legibles por clientes Supabase directamente. El asesor de seguridad de Supabase también informó observaciones **preexistentes** sobre algunas funciones y protección de contraseñas, que requieren una revisión separada antes del lanzamiento general.
+
+## Bloqueos para lanzamiento real
+
+1. Agregar **`GOOGLE_ADS_ENCRYPTION_KEY`** como secreto del Worker, generado de forma segura (32 bytes aleatorios, 64 caracteres hexadecimales). No compartirlo por chat ni guardarlo en GitHub.
+2. Confirmar rotación del **`GOOGLE_ADS_CLIENT_SECRET`** expuesto previamente en una captura y que Cloudflare esté usando el secreto nuevo.
+3. Confirmar la aprobación del nivel **Explorador** o permisos vigentes de la Google Ads API para cuentas reales. La aplicación OAuth sigue en **Testing** y limitada a los usuarios de prueba, mientras se prepara cualquier publicación/verificación que sea obligatoria.
+4. Ejecutar pruebas de OAuth y de campañas **reales** con una empresa de prueba desde un entorno aislado/preview; validar jerarquías MCC, múltiples monedas, revocación y errores de autorización. El CI solo cubre pruebas simuladas.
+5. Revisar las alertas de seguridad del proyecto Supabase existente y crear una tarea de limpieza periódica de OAuth nonces caducados antes de escala.
+6. Revisar Pull Request, pedir autorización expresa y solo después fusionar a `main` y desplegar a Cloudflare.
+
+**Developer token:** a partir del cambio de acceso de Google Ads API de septiembre de 2026, se gestiona por proyecto Google Cloud; no solicitar credenciales adicionales innecesarias ni reconfigurar el cliente OAuth ya creado.
+
+**Limitación actual:** la integración **no está operativa en producción** hasta completar los puntos anteriores.
