@@ -799,7 +799,7 @@ function campaigns(){
       const result=await api('/api/crm/leads?business_id='+encodeURIComponent(businessId));
       if(businessId!==state.businessId)return;
       state.leads=result.leads||[];
-      if(result.partial)state.leadsNotice='Se muestran las 100 oportunidades más recientes. Exporta o filtra desde el CRM.';
+      if(result.partial)state.leadsNotice='Se muestran las 100 oportunidades más recientes. La paginación ampliada aún está pendiente.';
     }catch(error){if(businessId===state.businessId){state.leads=[];state.leadsError=error.message;}}
     finally{if(businessId===state.businessId){state.leadsLoading=false;render();}}
   }
