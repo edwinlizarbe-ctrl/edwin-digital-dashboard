@@ -1,4 +1,5 @@
 import { handleMetaApi } from './meta.js';
+import { handleGoogleAdsApi } from './google-ads.js';
 import { handleAssistantApi } from './assistant-api.js';
 import { handleFeaturesApi, ensureBusinessFeature } from './feature-access.js';
 /**
@@ -153,6 +154,7 @@ async function handleApi(req, env) {
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
   if(path==='/api/client/features'||path.startsWith('/api/admin/business-features'))return handleFeaturesApi(req,env,s);
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
+  if (path.startsWith('/api/google-ads/')) return handleGoogleAdsApi(req, env, s);
   if (path.startsWith('/api/assistant/')) return handleAssistantApi(req, env, s);
   if (path === '/api/me' && method === 'GET') return json({ user: s.user }, 200, s.cookies);
   if (path === '/api/auth/change-password' && method === 'POST') {
