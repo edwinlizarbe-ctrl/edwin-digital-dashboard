@@ -1002,3 +1002,9 @@ input,select,textarea{max-width:100%}
 .layout .sidebar .sidebar-collapse-btn:hover{background:rgba(255,255,255,.09)!important;color:#fff}
 .layout .sidebar .sidebar-collapse-btn:focus-visible{outline:2px solid #86b9ff;outline-offset:2px}
 }
+
+/* Standalone menu collapse control: no generic icon-button white surface. */
+.sidebar-head .sidebar-collapse-btn{display:inline-grid;place-items:center;flex-shrink:0;width:34px;height:34px;padding:0;background:transparent!important;color:#b9c9e5;border:0!important;box-shadow:none!important;outline-offset:3px;cursor:pointer}
+.sidebar-head .sidebar-collapse-btn:hover{background:rgba(255,255,255,.08)!important;color:#fff}
+.sidebar-head .sidebar-collapse-btn:focus-visible{outline:2px solid #86b9ff}
+@media(max-width:768px){.sidebar-head .sidebar-collapse-btn{display:none}}
