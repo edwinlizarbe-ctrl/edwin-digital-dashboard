@@ -144,3 +144,36 @@ test('OAuth callback rejects mismatched user and state before querying the conne
   assert.equal(server.calls.some(x=>x.url.includes('ed_google_oauth_nonces')),false);
  });
 });
+
+
+test('popup OAuth callback returns a safe same-origin completion document',async()=>{
+ await scopedTest(async server=>{
+  const state='popup-success-state';
+  server.nonces().push({nonce_hash:'test-nonce',user_id:session.user.id,business_id:company,expires_at:new Date(Date.now()+60000).toISOString()});
+  const pending=await encrypted({state,user:session.user.id,business:company,until:Date.now()+60000,popup:true},server.env.GOOGLE_ADS_ENCRYPTION_KEY);
+  const req=new Request(origin+'/api/google-ads/callback?state='+state+'&code=mock-code',{headers:{Cookie:'ed_google_pending='+encodeURIComponent(pending)}});
+  const result=await handleGoogleAdsApi(req,server.env,session);
+  assert.equal(result.status,200);
+  assert.match(result.headers.get('Content-Type'),'text/html');
+  assert.match(result.headers.get('Content-Security-Policy'),/script-src 'nonce-/);
+  assert.match(result.headers.get('Set-Cookie'),/ed_google_pending=/);
+  const html=await result.text();
+  assert.match(html,/window\.opener\.postMessage/);
+  assert.match(html,/edwin-google-ads-oauth/);
+  assert.match(html,/connected/);
+  assert.match(html,/https:\/\/example\.workers\.dev/);
+  assert(!html.includes('fake-refresh-token'));
+ });
+});
+test('popup OAuth cancellation never exchanges an authorization code',async()=>{
+ await scopedTest(async server=>{
+  const state='popup-cancel-state';
+  server.nonces().push({nonce_hash:'test-nonce',user_id:session.user.id,business_id:company,expires_at:new Date(Date.now()+60000).toISOString()});
+  const pending=await encrypted({state,user:session.user.id,business:company,until:Date.now()+60000,popup:true},server.env.GOOGLE_ADS_ENCRYPTION_KEY);
+  const response=await handleGoogleAdsApi(new Request(origin+'/api/google-ads/callback?state='+state+'&error=access_denied',{headers:{Cookie:'ed_google_pending='+encodeURIComponent(pending)}}),server.env,session);
+  assert.equal(response.status,200);
+  const html=await response.text();
+  assert.match(html,/cancelled/);
+  assert.equal(server.calls.filter(c=>c.url==='https://oauth2.googleapis.com/token').length,0);
+ });
+});
