@@ -995,3 +995,10 @@ input,select,textarea{max-width:100%}
 .layout.sidebar-collapsed .sidebar .sidebar-workspace{width:50px;height:50px;margin:6px auto 20px;padding:0}
 }
 @media(prefers-reduced-motion:reduce){.sidebar,.main-column,.nav-link{transition:none!important}}
+
+/* SleekFlow-style sidebar toggle: icon only, no white button tile. */
+@media(min-width:769px){
+.layout .sidebar .sidebar-collapse-btn{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:10px;color:#b9c9e5}
+.layout .sidebar .sidebar-collapse-btn:hover{background:rgba(255,255,255,.09)!important;color:#fff}
+.layout .sidebar .sidebar-collapse-btn:focus-visible{outline:2px solid #86b9ff;outline-offset:2px}
+}
