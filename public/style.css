@@ -946,3 +946,9 @@ input,select,textarea{max-width:100%}
 
 /* Popular pages: keep the colored percentage bar, hide the gray line behind it. */
 .bar-list:has([data-act="page-detail"]) .bar-track{background:transparent}
+
+/* Slightly larger, easier-to-read popular page labels and values. */
+.bar-list:has([data-act="page-detail"]) .bar-row{font-size:13px}
+.bar-list:has([data-act="page-detail"]) [data-act="page-detail"]{font-size:13px;line-height:1.5}
+.bar-list:has([data-act="page-detail"]) .page-views-value{font-size:13px;line-height:1.45}
+.bar-list:has([data-act="page-detail"]) .page-views-value small{font-size:12px}
