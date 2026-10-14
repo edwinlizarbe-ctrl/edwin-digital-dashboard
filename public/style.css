@@ -1012,3 +1012,9 @@ input,select,textarea{max-width:100%}
 /* Ensure the collapse icon follows the chosen light or dark sidebar palette. */
 .layout .sidebar .sidebar-collapse-btn{color:var(--muted2)!important}
 .layout .sidebar .sidebar-collapse-btn:hover{color:var(--text)!important}
+
+/* Keep the full brand name readable with either sidebar appearance. */
+[data-sidebar-tone=white] .sidebar .brand-word{color:#17233d!important}
+[data-sidebar-tone=white] .sidebar .brand-word span{color:#2563eb!important}
+[data-sidebar-tone=navy] .sidebar .brand-word{color:#f6f9ff!important}
+[data-sidebar-tone=navy] .sidebar .brand-word span{color:#93c5fd!important}
