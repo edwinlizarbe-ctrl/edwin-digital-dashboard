@@ -1090,3 +1090,41 @@ input,select,textarea{max-width:100%}
 .admin-linked-user small{font-size:11px;color:var(--muted2);display:block;margin-top:5px;line-height:1.5}
 @media(max-width:1050px){.admin-rich-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.admin-rich-header{flex-wrap:wrap}.admin-rich-header .client-plan-tag{margin-left:auto}.admin-detail-line{gap:7px}}
+
+
+/* Google Ads integration — guided, focused UX for each tenant. */
+.ga-card{min-width:0;border:1px solid var(--border);border-radius:19px;background:var(--surface);box-shadow:0 9px 28px rgba(15,49,92,.045);padding:23px}
+.ga-card-heading{display:flex;align-items:center;gap:13px;min-width:0}
+.ga-card-heading>:first-child{flex-shrink:0}
+.ga-card-title{min-width:0;flex:1}
+.ga-card-title small{display:block;margin-bottom:4px;font-size:10px;line-height:1.3;font-weight:800;letter-spacing:1.45px;color:var(--accent);white-space:nowrap}
+.ga-card-title h3{margin:0;font-size:20px;line-height:1.3;font-weight:800;color:var(--text)}
+.ga-card-heading>.tag,.ga-card-heading>.pill{margin-left:auto}
+.ga-caption{font-size:13px;line-height:1.65;color:var(--muted2);margin:17px 0 18px}
+.ga-connect-panel{border:1px solid var(--border);background:var(--surface2);border-radius:15px;padding:18px;min-width:0}
+.ga-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 17px}
+.ga-steps span{display:flex;align-items:center;gap:6px;min-width:0;font-size:11px;font-weight:650;color:var(--muted2);white-space:nowrap}
+.ga-steps b{display:grid;place-items:center;background:rgba(37,99,235,.1);color:var(--accent);width:25px;height:25px;flex:none;border-radius:8px;font-size:12px}
+.ga-connect-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:45px;max-width:100%;padding:10px 17px;font-size:13px;font-weight:750;border-radius:11px;transition:transform .18s ease,box-shadow .18s ease}
+.ga-connect-button:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 5px 17px rgba(37,99,235,.18)}
+.ga-help{display:flex;align-items:center;gap:7px;font-size:11px;line-height:1.5;color:var(--muted2);margin:11px 0 0}
+.ga-help svg{flex-shrink:0}
+.ga-success-mark{display:inline-flex;align-items:center;gap:8px;color:#167452;font-weight:750;font-size:12px;margin-bottom:13px}
+.ga-connect-panel .form-label{display:flex;flex-direction:column;gap:7px;font-size:12px;margin:0 0 12px}
+.ga-connect-panel .meta-select{width:100%;max-width:100%;min-width:0;min-height:42px}
+.ga-buttons{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.ga-buttons button{min-height:38px;font-size:12px}
+.ga-report-table{margin-top:19px;border-radius:12px;overflow:auto}
+@media(max-width:580px){
+ .ga-card{padding:17px}
+ .ga-card-heading{gap:9px;flex-wrap:wrap}
+ .ga-card-heading .ga-card-title{flex:1}
+ .ga-card-title h3{font-size:18px}
+ .ga-connect-panel{padding:14px}
+ .ga-steps{gap:3px}
+ .ga-steps span{flex-direction:column;align-items:flex-start;font-size:10px}
+ .ga-connect-button{width:100%}
+ .ga-buttons{flex-direction:column;align-items:stretch}
+ .ga-buttons button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.ga-connect-button{transition:none}.ga-connect-button:not(:disabled):hover{transform:none}}
