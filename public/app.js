@@ -272,7 +272,7 @@
     return '<div class="bar-list">'+pages.slice(0,6).map((p,i)=>{
       const raw=String(p.pagePath||'/'),path=raw.split('?')[0],name=path==='/'?'Página de inicio':(path.split('/').filter(Boolean).pop()||'Página de inicio').replace(/[-_]+/g,' ').replace(/\.[a-z0-9]+$/i,'');
       const views=Math.max(0,number(p.screenPageViews)),share=base?views/base*100:0;
-      return '<div class="bar-item"><div class="bar-row"><button type="button" class="text-action" data-act="page-detail" data-path="'+clean(raw)+'" title="Ver estadísticas de '+clean(raw)+'"><b class="bar-index">'+String(i+1).padStart(2,'0')+'</b>'+clean(name)+' <span aria-hidden="true">↗</span></button><strong class="page-views-value"><span>'+fmt(views)+' visualizaciones</span><small>'+share.toFixed(1)+' % de todas las vistas</small></strong></div><div class="bar-track"><div class="bar-fill" style="width:'+Math.min(100,share).toFixed(2)+'%"></div></div></div>';
+      return '<div class="bar-item"><div class="bar-row"><button type="button" class="text-action" data-act="page-detail" data-path="'+clean(raw)+'" title="Ver estadísticas de '+clean(raw)+'"><b class="bar-index">'+String(i+1).padStart(2,'0')+'</b>'+clean(name)+' <span aria-hidden="true">↗</span></button><strong class="page-views-value"><span>'+fmt(views)+' visualizaciones</span><small>'+share.toFixed(1)+' % de todas las vistas</small></strong></div></div>';
     }).join('')+'</div><button type="button" class="text-action" data-act="nav" data-page="content">Consultar estadísticas de las páginas →</button>';
   }
   function cleanRows(data){return filterList(data||[]);}
