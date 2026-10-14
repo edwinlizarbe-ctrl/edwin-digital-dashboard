@@ -1008,3 +1008,7 @@ input,select,textarea{max-width:100%}
 .sidebar-head .sidebar-collapse-btn:hover{background:rgba(255,255,255,.08)!important;color:#fff}
 .sidebar-head .sidebar-collapse-btn:focus-visible{outline:2px solid #86b9ff}
 @media(max-width:768px){.sidebar-head .sidebar-collapse-btn{display:none}}
+
+/* Ensure the collapse icon follows the chosen light or dark sidebar palette. */
+.layout .sidebar .sidebar-collapse-btn{color:var(--muted2)!important}
+.layout .sidebar .sidebar-collapse-btn:hover{color:var(--text)!important}
