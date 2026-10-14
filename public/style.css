@@ -948,7 +948,7 @@ input,select,textarea{max-width:100%}
 .bar-list:has([data-act="page-detail"]) .bar-track{background:transparent}
 
 /* Balanced popular-pages typography. */
-.bar-list:has([data-act="page-detail"]) .bar-row{font-size:14px}
-.bar-list:has([data-act="page-detail"]) [data-act="page-detail"]{font-size:14px;line-height:1.45}
-.bar-list:has([data-act="page-detail"]) .page-views-value{font-size:14px;line-height:1.4}
+.bar-list:has([data-act="page-detail"]) .bar-row{font-size:13px}
+.bar-list:has([data-act="page-detail"]) [data-act="page-detail"]{font-size:13px;line-height:1.45}
+.bar-list:has([data-act="page-detail"]) .page-views-value{font-size:13px;line-height:1.4}
 .bar-list:has([data-act="page-detail"]) .page-views-value small{font-size:12px}
