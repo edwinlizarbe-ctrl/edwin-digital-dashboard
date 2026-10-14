@@ -256,6 +256,38 @@ async function handleApi(req, env) {
     return json({configured:true,changes:await result.json()},200,s.cookies);
   }
 
+  // Read-only administrator directory. Company email is a linked user's email, not an invented corporate email.
+  if(path==='/api/admin/directory' && method==='GET') {
+    if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
+    const key=env.SUPABASE_SERVICE_ROLE_KEY;
+    if(!key)return json({error:'No está configurada la conexión administrativa.'},503,s.cookies);
+    const base=String(env.SUPABASE_URL).replace(/\/$/,'');
+    const headers={apikey:key,Authorization:'Bearer '+key,Accept:'application/json'};
+    const endpoints=[
+      '/rest/v1/businesses?select=id,name,slug,created_at&order=name.asc&limit=500',
+      '/rest/v1/business_members?select=*&limit=2000',
+      '/rest/v1/profiles?select=id,role,email&limit=2000',
+      '/auth/v1/admin/users?per_page=200&page=1'
+    ];
+    const responses=await Promise.all(endpoints.map(p=>fetch(base+p,{headers})));
+    const failed=responses.findIndex(r=>!r.ok);
+    if(failed>=0){console.error('Directory upstream error',failed,responses[failed].status);return json({error:'No se pudo consultar el directorio administrativo.',source:['businesses','business_members','profiles','auth'][failed]},502,s.cookies);}
+    const [businesses,members,profiles,auth]=await Promise.all(responses.map(r=>r.json()));
+    const profileMap=new Map((Array.isArray(profiles)?profiles:[]).map(p=>[p.id,p]));
+    const users=(Array.isArray(auth.users)?auth.users:[]).map(u=>({
+      id:u.id,email:u.email||profileMap.get(u.id)?.email||'',
+      role:profileMap.get(u.id)?.role||'Sin asignar',
+      created_at:u.created_at||null,last_sign_in_at:u.last_sign_in_at||null,
+      confirmed_at:u.email_confirmed_at||null
+    }));
+    const allowed=new Set((Array.isArray(businesses)?businesses:[]).map(b=>b.id));
+    const memberships=(Array.isArray(members)?members:[])
+      .filter(m=>allowed.has(m.business_id)&&!!m.user_id)
+      .map(m=>({business_id:m.business_id,user_id:m.user_id}));
+    return json({businesses:Array.isArray(businesses)?businesses:[],
+      users,memberships,truncated:auth.users?.length>=200},200,s.cookies);
+  }
+
   if(path==='/api/admin/accounts' && method==='GET') {
     if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
     const key=env.SUPABASE_SERVICE_ROLE_KEY;
