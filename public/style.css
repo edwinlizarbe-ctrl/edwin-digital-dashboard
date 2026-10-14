@@ -978,17 +978,17 @@ input,select,textarea{max-width:100%}
 
 /* SleekFlow-inspired navigation: keeps current permissions, routes and collapse behavior. */
 @media(min-width:769px){
-.layout .sidebar{--text:#eef3ff;--muted:#8c9ab8;--muted2:#a8b5d0;--surface2:#1a2949;--border:#253351;--accent:#86b9ff;--accent-soft:#263c65;background:#0e1830;border-right:1px solid #243450}
-.layout .sidebar .brand,.layout .sidebar .brand-word{color:#f1f5ff}
-.layout .sidebar .nav-link{height:46px;border-radius:12px;margin-bottom:5px;color:#acbad5;font-size:13px}
-.layout .sidebar .nav-link:hover{background:#1c2b4d;color:#fff}
-.layout .sidebar .nav-link.active{background:#26375f;color:#f5f8ff;font-weight:700}
-.layout .sidebar .nav-link.active svg{color:#92c6ff}
-.layout .sidebar .active-indicator{display:none}
-.layout .sidebar .nav-group-title{color:#778caf;letter-spacing:1px}
-.layout .sidebar .sidebar-workspace{background:#182541;border:1px solid #293b60;color:#fff;border-radius:13px}
-.layout .sidebar .sidebar-bottom{border-color:#283653;color:#dce7ff}
-.layout .sidebar .sidebar-collapse-btn{color:#c8d8f3}
+[data-sidebar-tone=auto] .layout .sidebar{--text:#eef3ff;--muted:#8c9ab8;--muted2:#a8b5d0;--surface2:#1a2949;--border:#253351;--accent:#86b9ff;--accent-soft:#263c65;background:#0e1830;border-right:1px solid #243450}
+[data-sidebar-tone=auto] .layout .sidebar .brand,.layout .sidebar .brand-word{color:#f1f5ff}
+[data-sidebar-tone=auto] .layout .sidebar .nav-link{height:46px;border-radius:12px;margin-bottom:5px;color:#acbad5;font-size:13px}
+[data-sidebar-tone=auto] .layout .sidebar .nav-link:hover{background:#1c2b4d;color:#fff}
+[data-sidebar-tone=auto] .layout .sidebar .nav-link.active{background:#26375f;color:#f5f8ff;font-weight:700}
+[data-sidebar-tone=auto] .layout .sidebar .nav-link.active svg{color:#92c6ff}
+[data-sidebar-tone=auto] .layout .sidebar .active-indicator{display:none}
+[data-sidebar-tone=auto] .layout .sidebar .nav-group-title{color:#778caf;letter-spacing:1px}
+[data-sidebar-tone=auto] .layout .sidebar .sidebar-workspace{background:#182541;border:1px solid #293b60;color:#fff;border-radius:13px}
+[data-sidebar-tone=auto] .layout .sidebar .sidebar-bottom{border-color:#283653;color:#dce7ff}
+[data-sidebar-tone=auto] .layout .sidebar .sidebar-collapse-btn{color:#c8d8f3}
 .layout.sidebar-collapsed .sidebar{width:72px;min-width:72px}
 .layout.sidebar-collapsed .sidebar .nav-link{height:50px;width:50px;margin:0 auto 7px;border-radius:13px}
 .layout.sidebar-collapsed .sidebar .nav-link svg{width:22px;height:22px}
