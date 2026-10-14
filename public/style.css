@@ -1068,3 +1068,25 @@ input,select,textarea{max-width:100%}
 @keyframes profile-save-pop {0%{transform:scale(.96)}55%{transform:scale(1.035)}100%{transform:scale(1)}}
 @keyframes profile-check-enter {0%{opacity:0;transform:scale(.4) rotate(-20deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
 @media (prefers-reduced-motion:reduce){.profile-save-button,.profile-save-button.is-saved,.profile-save-button.is-saved svg{animation:none;transition:none}}
+
+/* Superadministrador: directorio y ficha completos */
+.admin-rich-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
+.admin-rich-client{display:flex;flex-direction:column;gap:0;min-width:0}
+.admin-rich-header{display:flex;gap:13px;align-items:center;margin-bottom:13px;min-width:0}
+.admin-rich-header .client-avatar{margin:0;flex:0 0 48px}
+.admin-rich-header>div:nth-child(2){min-width:0;flex:1}
+.admin-rich-header h3{overflow-wrap:anywhere}
+.admin-rich-header p{margin:4px 0 0;font-size:11px}
+.admin-rich-header .client-plan-tag{flex:0 0 auto;margin:0}
+.admin-detail-line{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:11px 0;border-bottom:1px solid var(--border);font-size:12px}
+.admin-detail-line span{color:var(--muted2);max-width:46%}
+.admin-detail-line strong{color:var(--text);text-align:right;overflow-wrap:anywhere;max-width:58%;font-weight:750}
+.admin-rich-client .fine-print{margin:12px 0;line-height:1.55}
+.admin-card-open{width:100%;margin-top:auto;min-height:42px}
+.admin-linked-user{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);min-width:0}
+.admin-linked-user:last-child{border:0}
+.admin-linked-user>div:last-child{min-width:0;flex:1}
+.admin-linked-user strong{font-size:12px;overflow-wrap:anywhere;display:block}
+.admin-linked-user small{font-size:11px;color:var(--muted2);display:block;margin-top:5px;line-height:1.5}
+@media(max-width:1050px){.admin-rich-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.admin-rich-header{flex-wrap:wrap}.admin-rich-header .client-plan-tag{margin-left:auto}.admin-detail-line{gap:7px}}
