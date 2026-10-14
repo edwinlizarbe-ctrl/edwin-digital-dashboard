@@ -17,7 +17,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false,
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -74,6 +74,7 @@
     acquisition: ['Adquisición', 'mouse-pointer'],
     campaigns: ['Campañas Ads', 'megaphone'],
     sales: ['Ventas', 'shopping-bag'],
+    leads: ['Oportunidades', 'users'],
     utm: ['Fuentes UTM de GA4', 'mouse-pointer'],
     adminHome: ['Panel administrador', 'layout-dashboard'],
     adminIntegrations: ['Integraciones', 'plug'],
@@ -760,6 +761,46 @@ function campaigns(){
     const stats=[['Ventas aprobadas',ok?fmt(h.approved):'—'],['Reembolsos / contracargos',ok&&h.refunded!==null?fmt(h.refunded):'—'],['Movimientos revisados',ok?fmt(h.transactions_examined):'—'],['Productos vendidos',ok?fmt(h.products?.length):'—']];
     return `${heading('Comercio digital','Ventas de Hotmart','Movimientos reales de la cuenta piloto autorizada. No se procesan cobros desde este panel.')}${allowed?tag('Cuenta Edwin Digital · lectura', 'success'):alertBlock('Hotmart todavía necesita una autorización independiente desde la cuenta de tu empresa.')}<div class="small-kpis hotmart-stats">${stats.map(x=>`<div class="small-kpi"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('')}</div><div class="content-grid"><div class="col-8">${card('Ventas aprobadas por día','Transacciones encontradas en la API de Hotmart',ok?chart(h.trend,'count','Ventas'):placeholder)}</div><div class="col-4">${card('Ingresos brutos por moneda','No se combinan BRL, PEN y USD',ok?Object.keys(h.gross_by_currency||{}).length?`<div class="currency-list">${Object.entries(h.gross_by_currency).map(([cur,amount])=>`<div><span>${clean(cur)}</span><strong>${clean(money(amount,cur))}</strong></div>`).join('')}</div>`:empty('No hay importes reportados.'):placeholder)}</div><div class="col-6">${card('Productos más vendidos','Unidades aprobadas por producto',ok?barList((h.products||[]).map(p=>({name:p.name,count:p.count})),'name','count',12):placeholder)}</div><div class="col-6">${card('Métodos de pago','Operaciones por método',ok?barList(h.methods,'name','value',12):placeholder)}</div></div>${ok?alertBlock(`${h.note||'Cifras de consulta, no utilidad neta.'}${h.incomplete?' La paginación o ciertos estados pueden estar incompletos.':''}`,'info'):''}`;
   }
+
+  const leadStages={new:'Nuevo',contacted:'Contactado',qualified:'Calificado',won:'Venta cerrada',lost:'Perdido'};
+  const leadSources={google_ads:'Google Ads',meta_ads:'Meta Ads',organic:'Orgánico',referral:'Referido',whatsapp:'WhatsApp',other:'Otro'};
+  async function loadLeads(){
+    const businessId=state.businessId;
+    if(isAdmin()||!businessId)return;
+    state.leadsLoading=true;state.leadsError='';render();
+    try{
+      const result=await api('/api/crm/leads?business_id='+encodeURIComponent(businessId));
+      if(businessId!==state.businessId)return;
+      state.leads=result.leads||[];
+      if(result.partial)state.leadsNotice='Se muestran las 100 oportunidades más recientes. Exporta o filtra desde el CRM.';
+    }catch(error){if(businessId===state.businessId){state.leads=[];state.leadsError=error.message;}}
+    finally{if(businessId===state.businessId){state.leadsLoading=false;render();}}
+  }
+  function leads(){
+    const data=state.leads||[],counts=Object.fromEntries(Object.keys(leadStages).map(s=>[s,data.filter(l=>l.stage===s).length]));
+    const won=data.filter(l=>l.stage==='won'&&l.amount!==null&&l.amount!==undefined);
+    const currencyTotals={};for(const l of won){const cur=l.currency||'PEN';currencyTotals[cur]=(currencyTotals[cur]||0)+Number(l.amount);}
+    const kpis='<div class="crm-stats">'+[
+      ['Oportunidades',data.length],['Por contactar',counts.new],['En seguimiento',counts.contacted+counts.qualified],['Cerradas',counts.won]
+    ].map(([label,value])=>'<div class="crm-stat"><small>'+label+'</small><strong>'+fmt(value)+'</strong></div>').join('')+'</div>';
+    const form='<form id="crm-lead-form" class="crm-lead-form"><div class="crm-form-grid">'+
+      '<label>Nombre del contacto <input class="simple-input" name="name" minlength="2" maxlength="120" autocomplete="name" required placeholder="Nombre y apellido"></label>'+
+      '<label>Correo (opcional) <input class="simple-input" name="email" type="email" maxlength="160" autocomplete="email" placeholder="contacto@empresa.com"></label>'+
+      '<label>Teléfono / WhatsApp <input class="simple-input" name="phone" type="tel" maxlength="35" autocomplete="tel" placeholder="+51 999 999 999"></label>'+
+      '<label>Origen declarado <select class="simple-input" name="source">'+Object.entries(leadSources).map(([id,label])=>'<option value="'+id+'">'+label+'</option>').join('')+'</select></label>'+
+      '<label>Campaña (opcional) <input class="simple-input" name="campaign" maxlength="150" placeholder="Nombre o código de campaña"></label>'+
+      '<label>Moneda <select name="currency" class="simple-input"><option>PEN</option><option>BRL</option><option>USD</option></select></label>'+
+      '<label>Importe estimado / confirmado <input class="simple-input" name="amount" type="number" min="0" step="0.01" placeholder="Sin importe"></label>'+
+      '<label>Notas <input class="simple-input" name="notes" maxlength="500" placeholder="Necesidad del cliente"></label>'+
+      '</div><div class="crm-form-bottom"><p>El origen y campaña son datos registrados manualmente. No constituyen atribución automática ni una venta confirmada.</p><button class="button button-primary" type="submit" '+(state.leadsBusy?'disabled':'')+'>'+(state.leadsBusy?'Guardando…':'Añadir oportunidad')+'</button></div></form>';
+    const records=data.length?'<div class="table-scroll crm-leads-table"><table><thead><tr><th>Contacto</th><th>Origen</th><th>Campaña</th><th>Estado</th><th>Importe</th><th>Registro</th></tr></thead><tbody>'+data.map(l=>
+      '<tr><td><strong>'+clean(l.name)+'</strong><small>'+clean(l.email||l.phone||'Sin datos de contacto')+'</small></td><td>'+clean(leadSources[l.source]||l.source)+'</td><td>'+clean(l.campaign||'—')+'</td><td><select class="simple-input crm-stage-select" data-id="'+clean(l.id)+'" aria-label="Estado de '+clean(l.name)+'">'+Object.entries(leadStages).map(([k,v])=>'<option value="'+k+'" '+(l.stage===k?'selected':'')+'>'+v+'</option>').join('')+'</select></td><td>'+ (l.amount==null?'—':money(l.amount,l.currency||'PEN'))+'</td><td>'+clean(String(l.created_at||'').slice(0,10))+'</td></tr>'
+    ).join('')+'</tbody></table></div>':'<p class="crm-empty">Todavía no hay oportunidades registradas. Añade el primer contacto para empezar a medir el seguimiento comercial.</p>';
+    return heading('Ventas y contactos','Oportunidades comerciales','Registra contactos reales, su origen declarado y su avance hasta la venta.')+
+      (state.leadsError?alertBlock(state.leadsError):'')+(state.leadsNotice?alertBlock(state.leadsNotice,'info'):'')+
+      kpis+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+data.length+' registros en la empresa seleccionada</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
+  }
+
   function reports(){
     const kinds=[['Resumen del sitio','overview','trend'],['Adquisición','acquisition','sources'],['Campañas UTM','campaigns','campaigns'],['Audiencia','audience','countries'],['Contenido','content','pages'],['Eventos y conversiones','events','events']];
     return `${heading('Centro de reportes','Tus informes, listos para analizar','Descarga archivos CSV con las métricas que realmente devuelve tu propiedad.')}${statusStrip()}<div class="report-grid">${kinds.map(([name,page,key])=>`<div class="report-item"><div class="report-icon">${icon('file-bar-chart',22)}</div><div><h3>${name}</h3><p>${gaReady()?`${fmt(rows(key).length)} registros · ${periodLabel()}`:'Esperando conexión GA4'}</p></div><button class="button button-soft" data-act="download" data-report="${key}" ${!gaReady()||!rows(key).length?'disabled':''}>${icon('download',17)} CSV</button></div>`).join('')}${selectedBusinessIsHotmart()?`<div class="report-item"><div class="report-icon rose">${icon('shopping-bag',22)}</div><div><h3>Productos vendidos · Hotmart</h3><p>${state.hm?`${fmt(state.hm.products?.length)} productos`:state.hmLoading?'Consultando…':'Sin conexión'}</p></div><button class="button button-soft" data-act="download" data-report="hotmart-products" ${!state.hm?'disabled':''}>${icon('download',17)} CSV</button></div>`:''}</div>${alertBlock('Los CSV contienen las filas que entrega la API en el período seleccionado. El panel no genera cifras sintéticas, ni incluye el costo de las campañas publicitarias.','info')}`;
@@ -1309,7 +1350,7 @@ async function loadAccounts(){
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}" title="${clean(pages[id][0])}" aria-label="${clean(pages[id][0])}" ${state.page===id?'aria-current="page"':''}>${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','accounts','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
- `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition'].map(navLink).join('')+adsNavigation()+['audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${salesNavigation()}${['reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
+ `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition'].map(navLink).join('')+adsNavigation()+['audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${salesNavigation()}${['leads','reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
  return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('panel-left-close',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><button type="button" class="sidebar-workspace" data-act="nav" data-page="${isAdmin()?'adminHome':'company'}" title="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}" aria-label="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Panel administrador':'Editar datos de mi empresa'}</small></span>${icon('chevron',16)}</button>${menu}</div><div class="sidebar-bottom"><div class="avatar" title="${clean(state.user?.email||'Cuenta')}">${icon('user',20)}</div><div class="account"><b>${isAdmin()?'Superadministrador':clean(displayBusiness())}</b><span>${isAdmin()?'Cuenta de administración':'Cuenta de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('power',19)}</button></div></aside>`;
 }
     function topbar(){
@@ -1327,7 +1368,7 @@ function sidebar(){
     if(!state.user){login();return;}
     if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
     if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
-    const contents={overview,analytics,acquisition,campaigns,sales,utm,audience,content,events,hotmart,reports,clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
+    const contents={overview,analytics,acquisition,campaigns,sales,leads,utm,audience,content,events,hotmart,reports,clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
     let pageMarkup;
     try {pageMarkup=(contents[state.page]||overview)();}
     catch(error){
@@ -1372,10 +1413,10 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.googleAdsError='';state.googleAdsReturnMessage='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
-    if(!isAdmin()){await loadClientEntitlements(id);await refresh();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
+    if(!isAdmin()){await loadClientEntitlements(id);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
   }
   async function init(){
     state.loading=true;render();
@@ -1404,7 +1445,13 @@ function sidebar(){
   }
   function doCsv(dataset=''){
     let list=[];
-    if(dataset==='ads'){
+    if(dataset==='crm-leads'){
+      list=state.leads.map(x=>({Contacto:x.name,Correo:x.email||'',Telefono:x.phone||'',Origen:leadSources[x.source]||x.source,Campana:x.campaign||'',Estado:leadStages[x.stage]||x.stage,Importe:x.amount,Moneda:x.currency,Fecha:x.created_at,Notas:x.notes||''}));
+    }
+    else if(dataset==='google-ads'){
+      list=(state.googleAdsReport?.rows||[]).map(x=>({Cuenta:state.googleAdsReport?.customer_id,Campana:x.name,Moneda:state.googleAdsReport.currency,Inversion:x.spend,Impresiones:x.impressions,Clics:x.clicks,CTR:x.ctr,CPC:x.cpc,Conversiones:x.conversions,Valor:x.conversions_value,ROAS:x.roas,Periodo_dias:state.googleAdsReport.days}));
+    }
+    else if(dataset==='ads'){
       list=adsFilteredRows().map(x=>({
         Cuenta:x.account_name,Campaña:x.campaign_name||x.name,
         Detalle:x.name,Estado:metaStatusLabel(x.effective_status),Objetivo:metaObjectiveLabel(x.objective),
@@ -1505,8 +1552,8 @@ function sidebar(){
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
-    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
-    else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh({force:true}));
+    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='refresh'){if(state.page==='leads'&&!isAdmin())await loadLeads();else await (isAdmin()?loadAdminStats():refresh({force:true}));}
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
     else if(action==='copy-meta-redirect'&&isAdmin()){
@@ -1625,7 +1672,7 @@ function sidebar(){
       state.adsFilterError='';state.adsCustomStart=start;state.adsCustomEnd=end;state.metaCampaigns=null;
       await loadMeta();await loadAds();
     }
-    else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;if(state.adsPlatform==='google'){state.adsLevel='campaign';if(![7,30,90].includes(Number(state.adsPeriod)))state.adsPeriod='30';}state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns'){if(state.adsPlatform==='google')await loadGoogleAds();else await loadAds();}}
+    else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;if(state.adsPlatform==='google'){state.adsLevel='campaign';if(![7,30,90].includes(Number(state.adsPeriod)))state.adsPeriod='30';}state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns'){if(state.adsPlatform==='google'){await loadGoogleAds();if(state.googleAds?.connected&&state.googleAds?.selected_customer_id)await loadGoogleAdsReport();}else await loadAds();}}
     else if(action==='meta-disconnect'){
       if(!confirm('¿Desconectar Meta Ads de este navegador? Se dejarán de mostrar sus anuncios y métricas en eDigital. Tus campañas en Meta no se borrarán.'))return;
       const current=state.businessId;
@@ -1706,6 +1753,13 @@ function sidebar(){
       return;
     }
     if(e.target.id==='integration-only-connected'){filterIntegrations();return;}
+    if(e.target.classList?.contains('crm-stage-select')){
+      const businessId=state.businessId,leadId=e.target.dataset.id,stage=e.target.value;
+      if(!['new','contacted','qualified','won','lost'].includes(stage)||isAdmin())return;
+      try{await api('/api/crm/leads?business_id='+encodeURIComponent(businessId)+'&lead_id='+encodeURIComponent(leadId),{method:'PATCH',body:JSON.stringify({stage})});if(state.businessId===businessId){state.leadsNotice='Estado actualizado correctamente.';await loadLeads();}}
+      catch(err){if(state.businessId===businessId){state.leadsError=err.message;render();}}
+      return;
+    }
     if(e.target.id==='business-selector')await chooseBusiness(e.target.value);
     else if(e.target.id==='site-selector'){state.siteId=e.target.value;await refresh();}
     else if(e.target.classList?.contains('meta-account-check')){
@@ -1770,6 +1824,18 @@ function sidebar(){
     state.search=q;render();const input=document.getElementById('global-search');if(input){input.focus();input.setSelectionRange(selStart,selEnd);}
   });
   document.addEventListener('submit',async e=>{
+    if(e.target.id==='crm-lead-form'){
+      e.preventDefault();if(isAdmin()||state.leadsBusy||!state.businessId)return;
+      const businessId=state.businessId,data=Object.fromEntries(new FormData(e.target));
+      data.amount=data.amount===''?null:Number(data.amount);
+      state.leadsBusy=true;state.leadsError='';state.leadsNotice='';render();
+      try{
+        await api('/api/crm/leads?business_id='+encodeURIComponent(businessId),{method:'POST',body:JSON.stringify(data)});
+        if(state.businessId===businessId){state.leadsNotice='Oportunidad registrada correctamente.';await loadLeads();}
+      }catch(err){if(state.businessId===businessId)state.leadsError=err.message;}
+      finally{state.leadsBusy=false;if(state.businessId===businessId)render();}
+      return;
+    }
     if(e.target.id==='user-profile-form'){
       e.preventDefault();if(!state.user?.id)return;
       const fullName=String(new FormData(e.target).get('fullName')||'').trim().replace(/\s+/g,' ');
