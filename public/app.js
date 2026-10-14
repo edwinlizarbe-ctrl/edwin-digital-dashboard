@@ -17,7 +17,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null,
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -662,7 +662,7 @@ function campaigns(){
  const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']];
  const tabs='<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">'+choices.map(([value,label])=>
    '<button type="button" class="ads-platform-tab '+(platform===value?'active':'')+'" data-act="ads-platform" data-platform="'+value+'" aria-pressed="'+(platform===value?'true':'false')+'">'+providerLogo(label)+'<span class="ads-tab-label">'+label+'</span><small class="ads-tab-status '+adsConnectionStatus(value).kind+'">'+clean(adsConnectionStatus(value).label)+'</small></button>').join('')+'</div>';
- const periods=[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses'],['custom','Personalizado']];
+ const periods=platform==='google'?[['7','7 días'],['30','30 días'],['90','90 días']]:[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses'],['custom','Personalizado']];
  const periodOptions=periods.map(([value,label])=>'<option value="'+value+'" '+(state.adsPeriod===value?'selected':'')+'>'+label+'</option>').join('');
  const levelOptions=[['campaign','Campañas'],['adset','Conjuntos de anuncios'],['ad','Anuncios']].map(([value,label])=>'<option value="'+value+'" '+(level===value?'selected':'')+'>'+label+'</option>').join('');
  const toolbar='<div class="ads-toolbar ads-detail-toolbar">'+
@@ -677,7 +677,7 @@ function campaigns(){
     '<button class="button button-primary" data-act="ads-apply-dates">Aplicar fechas</button></div>':'')+
    (state.adsFilterError?alertBlock(state.adsFilterError,'info'):'');
  let result='';
- if(platform==='google')result=state.googleAds?.connected?googleAdsCard():empty('Abre Integraciones y autoriza una cuenta de Google Ads para ver campañas.','Conectar Google Ads');
+ if(platform==='google')result=googleAdsCard();
  else if(platform!=='meta')result=empty('Esta plataforma todavía requiere la autorización de su API oficial.','Integración próximamente');
  else if(!connected)result=campaignMetaSetup();
  else if(state.adsLoading)result='<div class="ads-loading-detail" role="status"><div class="ga-loading-bars"><i></i><i></i><i></i></div><p>Consultando cuentas, fechas y campañas de Meta…</p></div>';
@@ -886,7 +886,7 @@ const businessFeatureKey=name=>({
  'Facebook / Instagram orgánico':'social_organic','Hotmart':'hotmart','Shopify':'shopify',
  'Meta Ads':'meta_ads','Google Ads':'google_ads','TikTok Ads':'tiktok_ads','LinkedIn Ads':'linkedin_ads'
 })[name]||'';
-const featureEnabled=key=>!state.clientEntitlements||state.clientEntitlements.features?.[key]!==false;
+const featureEnabled=key=>key==='google_ads'?state.clientEntitlements?.features?.google_ads===true:!state.clientEntitlements||state.clientEntitlements.features?.[key]!==false;
 
 async function saveAdminFeature(feature,enabled,plan){
  if(!isAdmin()||state.adminFeatureBusy||!state.adminFeatureBusiness||state.adminEntitlements?.configured!==true)return;
@@ -1178,7 +1178,17 @@ async function loadAccounts(){
   }catch(e){if(id===state.businessId)state.googleAdsError=e.message;}
   finally{if(id===state.businessId){state.googleAdsBusy=false;render();}}
  }
- function googleAdsCard(){
+ async function loadGoogleAdsReport(){
+    const id=state.businessId,days=[7,30,90].includes(Number(state.adsPeriod))?Number(state.adsPeriod):30;
+    if(!id||isAdmin()||!featureEnabled('google_ads')||!state.googleAds?.connected||!state.googleAds?.selected_customer_id)return;
+    state.googleAdsBusy=true;state.googleAdsError='';state.googleAdsReport=null;render();
+    try{
+      const report=await api('/api/google-ads/campaigns?business_id='+encodeURIComponent(id)+'&days='+days);
+      if(state.businessId===id)state.googleAdsReport=report;
+    }catch(e){if(state.businessId===id)state.googleAdsError=e.message;}
+    finally{if(state.businessId===id){state.googleAdsBusy=false;render();}}
+  }
+  function googleAdsCard(){
   const g=state.googleAds||{},on=!!g.connected,accounts=state.googleAdsAccounts||[];
   const options=accounts.map(a=>'<option value="'+clean(a.id)+'" '+(a.id===g.selected_customer_id?'selected':'')+'>'+clean(a.id)+'</option>').join('');
   const actions=on?'<label class="form-label">Cuenta autorizada<select class="meta-select" id="google-ads-account"><option value="">Selecciona una cuenta</option>'+options+'</select></label><div class="meta-actions"><button class="button button-outline" data-act="google-ads-select">Guardar selección</button><button class="button button-outline" data-act="google-ads-campaigns">Ver campañas (30 días)</button><button class="button button-soft" data-act="google-ads-disconnect">Desconectar</button></div>':'<button class="button button-primary" data-act="google-ads-connect" '+(!g.configured?'disabled':'')+'>Conectar Google Ads</button>';
@@ -1206,6 +1216,7 @@ async function loadAccounts(){
   const feature=businessFeatureKey(p.name);
   if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false"><div class="integration-head">${providerLogo(p.name)}${tag('No incluida','neutral')}</div><h3>${clean(p.name)}</h3><p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span></div></article>`;
   if(p.name==='Meta Ads')return metaCard();
+   if(p.name==='Google Ads')return googleAdsCard();
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
    <div class="integration-head">${providerLogo(p.name)}${tag(p.status,p.connected?'success':'neutral')}</div>
    <h3>${clean(p.name)}</h3><p>${clean(p.info)}</p>
@@ -1318,7 +1329,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.googleAdsError='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await loadClientEntitlements(id);await refresh();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
@@ -1443,7 +1454,7 @@ function sidebar(){
     else if(action==='sales-menu'){state.salesMenuOpen=!state.salesMenuOpen;render();}
     else if(action==='sales-select'){const source=b.dataset.source;if(!['overview','shopify','hotmart'].includes(source))return;state.salesSource=source;state.page='sales';state.mobileOpen=false;render();window.scrollTo(0,0);}
     else if(action==='campaign-menu'){state.campaignsMenuOpen=!state.campaignsMenuOpen;render();}
-    else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();}
+    else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
     else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
@@ -1535,7 +1546,7 @@ function sidebar(){
     }
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-best'){state.adsBestOnly=!state.adsBestOnly;state.adsLevel='campaign';if(!state.metaCampaigns||state.metaCampaigns.level!=='campaign'){state.metaCampaigns=null;render();await loadAds();}else render();}
-    else if(action==='ads-refresh'){await loadMeta();await loadAds();}
+    else if(action==='ads-refresh'){if(state.adsPlatform==='google')await loadGoogleAdsReport();else{await loadMeta();await loadAds();}}
     else if(action==='ads-apply-dates'){
       const start=document.getElementById('ads-start-date')?.value||'';
       const end=document.getElementById('ads-end-date')?.value||'';
@@ -1549,7 +1560,7 @@ function sidebar(){
       state.adsFilterError='';state.adsCustomStart=start;state.adsCustomEnd=end;state.metaCampaigns=null;
       await loadMeta();await loadAds();
     }
-    else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
+    else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;if(state.adsPlatform==='google'){state.adsLevel='campaign';if(![7,30,90].includes(Number(state.adsPeriod)))state.adsPeriod='30';}state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns'){if(state.adsPlatform==='google')await loadGoogleAds();else await loadAds();}}
     else if(action==='meta-disconnect'){
       if(!confirm('¿Desconectar Meta Ads de este navegador? Se dejarán de mostrar sus anuncios y métricas en eDigital. Tus campañas en Meta no se borrarán.'))return;
       const current=state.businessId;
@@ -1640,6 +1651,7 @@ function sidebar(){
     }
     else if(e.target.id==='ads-platform'){state.adsPlatform=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
     else if(e.target.id==='ads-level'){state.adsLevel=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
+    else if(e.target.id==='google-ads-period'){state.adsPeriod=e.target.value;state.googleAdsReport=null;render();}
     else if(e.target.id==='ads-period'){
       state.adsPeriod=e.target.value;state.adsFilterError='';state.metaCampaigns=null;
       render();
