@@ -17,7 +17,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -1166,7 +1166,45 @@ async function loadAccounts(){
     finally {if(state.businessId===current){state.metaLoading=false;render();}}
   }
     
- async function loadGoogleAds(){
+ 
+  // A child window keeps clients on the same dashboard during Google OAuth.
+  let googleAdsOAuthWindow=null,googleAdsOAuthMonitor=null;
+  function stopGoogleAdsPopup(){
+    if(googleAdsOAuthMonitor!==null)clearInterval(googleAdsOAuthMonitor);
+    googleAdsOAuthMonitor=null;googleAdsOAuthWindow=null;state.googleAdsPopupActive=false;
+  }
+  async function finishGoogleAdsPopup(businessId,outcome){
+    if(businessId!==state.businessId||isAdmin())return;
+    state.googleAdsReturnMessage=outcome==='connected'?'Autorización recibida. Comprobando tu cuenta…':outcome==='cancelled'?'Cancelaste la autorización; puedes volver a intentarlo.':outcome==='no_refresh_token'?'Google no permitió mantener el acceso. Vuelve a autorizar.':'La ventana se cerró. Verificando conexión…';
+    render();await loadGoogleAds();
+    if(businessId!==state.businessId)return;
+    if(state.googleAds?.connected)state.googleAdsReturnMessage='Google Ads conectado. Ahora elige tu cuenta publicitaria.';
+    else if(outcome==='connected')state.googleAdsReturnMessage='No se pudo confirmar la conexión. Inténtalo nuevamente.';
+    else if(!outcome)state.googleAdsReturnMessage='No se confirmó una conexión. Puedes volver a intentar el acceso.';
+    render();
+  }
+  function startGoogleAdsPopup(){
+    if(!state.businessId||isAdmin()||!featureEnabled('google_ads')||!state.googleAds?.configured)return;
+    if(googleAdsOAuthWindow&&!googleAdsOAuthWindow.closed){googleAdsOAuthWindow.focus();return;}
+    const businessId=state.businessId,path='/api/google-ads/connect?business_id='+encodeURIComponent(businessId);
+    const width=520,height=670,left=Math.max(0,Math.round(window.screenX+(window.outerWidth-width)/2)),top=Math.max(0,Math.round(window.screenY+(window.outerHeight-height)/2));
+    const popup=window.open(path+'&popup=1','edwinGoogleAdsOAuth','popup=yes,width='+width+',height='+height+',left='+left+',top='+top+',resizable=yes,scrollbars=yes');
+    if(!popup){window.location.assign(path);return;}
+    googleAdsOAuthWindow=popup;state.googleAdsPopupActive=true;state.googleAdsError='';state.googleAdsReturnMessage='Completa la autorización en la ventana de Google.';render();
+    try{popup.focus();}catch{}
+    if(googleAdsOAuthMonitor!==null)clearInterval(googleAdsOAuthMonitor);
+    googleAdsOAuthMonitor=setInterval(()=>{
+      if(googleAdsOAuthWindow===popup&&popup.closed){stopGoogleAdsPopup();finishGoogleAdsPopup(businessId,null);}
+    },650);
+  }
+  window.addEventListener('message',event=>{
+    const data=event.data;
+    if(event.origin!==location.origin||event.source!==googleAdsOAuthWindow||data?.type!=='edwin-google-ads-oauth')return;
+    if(data.business_id!==state.businessId||!['connected','cancelled','no_refresh_token'].includes(data.result))return;
+    const businessId=state.businessId;stopGoogleAdsPopup();finishGoogleAdsPopup(businessId,data.result);
+  });
+
+  async function loadGoogleAds(){
   const id=state.businessId;
   if(!id||isAdmin()||!featureEnabled('google_ads'))return;
   state.googleAdsBusy=true;state.googleAdsError='';render();
@@ -1188,17 +1226,21 @@ async function loadAccounts(){
     }catch(e){if(state.businessId===id)state.googleAdsError=e.message;}
     finally{if(state.businessId===id){state.googleAdsBusy=false;render();}}
   }
+  
   function googleAdsCard(){
- const g=state.googleAds||{},on=!!g.connected,busy=!!state.googleAdsBusy,report=state.googleAdsReport,rows=report?.rows||[];
- const accounts=(state.googleAdsAccounts||[]).filter(x=>!x.manager);
- const options=accounts.map(x=>'<option value="'+clean(x.id)+'" '+(x.id===g.selected_customer_id?'selected':'')+'>'+clean(x.name||x.id)+' ('+clean(x.id)+')</option>').join('');
- const actions=on?'<label class="form-label">Cuenta publicitaria<select class="meta-select" id="google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label><div class="meta-actions"><button class="button button-outline" data-act="google-ads-select" '+(busy?'disabled':'')+'>Guardar cuenta</button><button class="button button-outline" data-act="google-ads-campaigns" '+(busy||!g.selected_customer_id?'disabled':'')+'>Consultar campañas</button><button class="button button-soft" data-act="google-ads-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>':'<button class="button button-primary" data-act="google-ads-connect" '+(!g.configured||busy?'disabled':'')+'>Conectar Google Ads</button>';
- const moneyAds=n=>report?.currency?money(n,report.currency):'—';
- const num=n=>n==null?'—':clean(String(n));
- const detail=report?(rows.length?'<div class="table-scroll"><table><thead><tr><th>Campaña</th><th>Inversión</th><th>Impresiones</th><th>Clics</th><th>CTR</th><th>CPC</th><th>Conversiones</th><th>Valor</th><th>ROAS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+moneyAds(r.spend)+'</td><td>'+fmt(r.impressions)+'</td><td>'+fmt(r.clicks)+'</td><td>'+num(r.ctr==null?null:r.ctr.toFixed(2)+'%')+'</td><td>'+num(r.cpc==null?null:moneyAds(r.cpc))+'</td><td>'+fmt1(r.conversions)+'</td><td>'+moneyAds(r.conversions_value)+'</td><td>'+num(r.roas==null?null:r.roas.toFixed(2)+'x')+'</td></tr>').join('')+'</tbody></table></div>':'<p>No hay campañas para el período elegido.</p>')+(report.partial?'<p class="fine-print">Informe parcial. No se muestran totales incompletos.</p>':''):'';
- return '<article class="integration-card provider-card" data-connected="'+on+'"><div class="integration-head">'+providerLogo('Google Ads')+tag(on?'Conectado':g.configured?'Disponible':'En preparación',on?'success':'neutral')+'</div><h3>Google Ads</h3><p>Información de solo lectura por empresa.</p>'+(state.googleAdsReturnMessage?alertBlock(state.googleAdsReturnMessage,'info'):'')+(state.googleAdsError?alertBlock(state.googleAdsError):'')+'<div class="integration-status">'+actions+(busy?'<p>Consultando Google Ads…</p>':'')+detail+'</div></article>';
- }
- function integrations(){
+    const g=state.googleAds||{},on=!!g.connected,busy=!!state.googleAdsBusy,pending=!!state.googleAdsPopupActive,report=state.googleAdsReport,rows=report?.rows||[];
+    const accounts=(state.googleAdsAccounts||[]).filter(x=>!x.manager);
+    const options=accounts.map(x=>'<option value="'+clean(x.id)+'" '+(x.id===g.selected_customer_id?'selected':'')+'>'+clean(x.name||x.id)+' · '+clean(x.id)+'</option>').join('');
+    const caption=on?'Cuenta conectada · Consulta tus campañas desde Edwin CRM':g.configured?'Autoriza tu cuenta Google en una ventana pequeña, sin salir del dashboard.':'Esta conexión aún no está disponible para tu empresa.';
+    const controls=on?
+      '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('check',15)+' Acceso autorizado de solo lectura</span><label class="form-label">Cuenta publicitaria<select class="meta-select" id="google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label><div class="ga-buttons"><button class="button button-primary" data-act="google-ads-select" '+(busy||!accounts.length?'disabled':'')+'>Guardar cuenta</button><button class="button button-outline" data-act="google-ads-campaigns" '+(busy||!g.selected_customer_id?'disabled':'')+'>Ver campañas</button><button class="button button-soft" data-act="google-ads-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>'+(accounts.length?'':'<p class="ga-help">No se encontraron cuentas publicitarias autorizadas.</p>')+'</div>':
+      '<div class="ga-connect-panel"><div class="ga-steps"><span><b>1</b> Conectar</span><span><b>2</b> Autorizar</span><span><b>3</b> Ver resultados</span></div><button class="button button-primary ga-connect-button" data-act="google-ads-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+icon('plug',18)+(pending?'Esperando autorización…':'Conectar con Google Ads')+'</button><p class="ga-help">'+icon('lock',14)+' Acceso seguro y de solo lectura. No modificaremos tus anuncios.</p></div>';
+    const moneyAds=n=>report?.currency?money(n,report.currency):'—';
+    const num=n=>n==null?'—':clean(String(n));
+    const detail=report?(rows.length?'<div class="table-scroll ga-report-table"><table><thead><tr><th>Campaña</th><th>Inversión</th><th>Impresiones</th><th>Clics</th><th>CTR</th><th>CPC</th><th>Conversiones</th><th>Valor</th><th>ROAS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+moneyAds(r.spend)+'</td><td>'+fmt(r.impressions)+'</td><td>'+fmt(r.clicks)+'</td><td>'+num(r.ctr==null?null:r.ctr.toFixed(2)+'%')+'</td><td>'+num(r.cpc==null?null:moneyAds(r.cpc))+'</td><td>'+fmt1(r.conversions)+'</td><td>'+moneyAds(r.conversions_value)+'</td><td>'+num(r.roas==null?null:r.roas.toFixed(2)+'x')+'</td></tr>').join('')+'</tbody></table></div>':'<p class="ga-help">No hay campañas para el período elegido.</p>')+(report.partial?'<p class="fine-print">Informe parcial. Algunos resultados están pendientes.</p>':''):'';
+    return '<article class="integration-card provider-card ga-card" data-connected="'+on+'"><div class="ga-card-heading">'+providerLogo('Google Ads')+'<div class="ga-card-title"><small>PUBLICIDAD DIGITAL</small><h3>Google Ads</h3></div>'+tag(on?'Conectado':pending?'Autorizando':g.configured?'Disponible':'En preparación',on?'success':'neutral')+'</div><p class="ga-caption">'+clean(caption)+'</p>'+(state.googleAdsReturnMessage?alertBlock(state.googleAdsReturnMessage,'info'):'')+(state.googleAdsError?alertBlock(state.googleAdsError):'')+controls+(busy?'<p class="ga-help">Consultando Google Ads…</p>':'')+detail+'</article>';
+  }
+  function integrations(){
  const ga=gaReady(),lookup=[
   ['Analítica y contenidos',[
    {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Este sitio aún no tiene estadísticas disponibles de Analytics.'},
@@ -1550,7 +1592,7 @@ function sidebar(){
       }catch(error){if(state.businessId===current){state.metaError=error.message;state.campaignConnectionOpen=true;state.campaignWizardStage='confirm';render();}}
       finally{state.campaignAccountSaving=false;if(state.businessId===current)render();}
     }
-    else if(action==='google-ads-connect'&&!isAdmin()&&featureEnabled('google_ads')&&state.googleAds?.configured){window.location.assign('/api/google-ads/connect?business_id='+encodeURIComponent(state.businessId));}
+    else if(action==='google-ads-connect'&&!isAdmin()&&featureEnabled('google_ads')&&state.googleAds?.configured)startGoogleAdsPopup();
     else if(action==='google-ads-select'&&!isAdmin()&&featureEnabled('google_ads')){
       const id=state.businessId,customerId=document.getElementById('google-ads-account')?.value||'';
       if(!customerId){state.googleAdsError='Selecciona una cuenta publicitaria.';render();return;}
