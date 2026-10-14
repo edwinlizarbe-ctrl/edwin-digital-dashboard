@@ -17,7 +17,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -664,7 +664,7 @@ function campaigns(){
    '<button type="button" class="ads-platform-tab '+(platform===value?'active':'')+'" data-act="ads-platform" data-platform="'+value+'" aria-pressed="'+(platform===value?'true':'false')+'">'+providerLogo(label)+'<span class="ads-tab-label">'+label+'</span><small class="ads-tab-status '+adsConnectionStatus(value).kind+'">'+clean(adsConnectionStatus(value).label)+'</small></button>').join('')+'</div>';
  const periods=platform==='google'?[['7','7 días'],['30','30 días'],['90','90 días']]:[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses'],['custom','Personalizado']];
  const periodOptions=periods.map(([value,label])=>'<option value="'+value+'" '+(state.adsPeriod===value?'selected':'')+'>'+label+'</option>').join('');
- const levelOptions=[['campaign','Campañas'],['adset','Conjuntos de anuncios'],['ad','Anuncios']].map(([value,label])=>'<option value="'+value+'" '+(level===value?'selected':'')+'>'+label+'</option>').join('');
+ const levelOptions=(platform==='google'?[['campaign','Campañas']]:[['campaign','Campañas'],['adset','Conjuntos de anuncios'],['ad','Anuncios']]).map(([value,label])=>'<option value="'+value+'" '+(level===value?'selected':'')+'>'+label+'</option>').join('');
  const toolbar='<div class="ads-toolbar ads-detail-toolbar">'+
    '<label class="form-label">Vista de resultados<select id="ads-level" class="meta-select">'+levelOptions+'</select></label>'+
    '<label class="form-label">Fechas del informe<select id="ads-period" class="meta-select">'+periodOptions+'</select></label>'+
@@ -1193,10 +1193,10 @@ async function loadAccounts(){
  const accounts=(state.googleAdsAccounts||[]).filter(x=>!x.manager);
  const options=accounts.map(x=>'<option value="'+clean(x.id)+'" '+(x.id===g.selected_customer_id?'selected':'')+'>'+clean(x.name||x.id)+' ('+clean(x.id)+')</option>').join('');
  const actions=on?'<label class="form-label">Cuenta publicitaria<select class="meta-select" id="google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label><div class="meta-actions"><button class="button button-outline" data-act="google-ads-select" '+(busy?'disabled':'')+'>Guardar cuenta</button><button class="button button-outline" data-act="google-ads-campaigns" '+(busy||!g.selected_customer_id?'disabled':'')+'>Consultar campañas</button><button class="button button-soft" data-act="google-ads-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>':'<button class="button button-primary" data-act="google-ads-connect" '+(!g.configured||busy?'disabled':'')+'>Conectar Google Ads</button>';
- const moneyAds=n=>money(n,report?.currency||'USD');
+ const moneyAds=n=>report?.currency?money(n,report.currency):'—';
  const num=n=>n==null?'—':clean(String(n));
  const detail=report?(rows.length?'<div class="table-scroll"><table><thead><tr><th>Campaña</th><th>Inversión</th><th>Impresiones</th><th>Clics</th><th>CTR</th><th>CPC</th><th>Conversiones</th><th>Valor</th><th>ROAS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+moneyAds(r.spend)+'</td><td>'+fmt(r.impressions)+'</td><td>'+fmt(r.clicks)+'</td><td>'+num(r.ctr==null?null:r.ctr.toFixed(2)+'%')+'</td><td>'+num(r.cpc==null?null:moneyAds(r.cpc))+'</td><td>'+fmt1(r.conversions)+'</td><td>'+moneyAds(r.conversions_value)+'</td><td>'+num(r.roas==null?null:r.roas.toFixed(2)+'x')+'</td></tr>').join('')+'</tbody></table></div>':'<p>No hay campañas para el período elegido.</p>')+(report.partial?'<p class="fine-print">Informe parcial. No se muestran totales incompletos.</p>':''):'';
- return '<article class="integration-card provider-card" data-connected="'+on+'"><div class="integration-head">'+providerLogo('Google Ads')+tag(on?'Conectado':g.configured?'Disponible':'En preparación',on?'success':'neutral')+'</div><h3>Google Ads</h3><p>Información de solo lectura por empresa.</p>'+(state.googleAdsError?alertBlock(state.googleAdsError):'')+'<div class="integration-status">'+actions+(busy?'<p>Consultando Google Ads…</p>':'')+detail+'</div></article>';
+ return '<article class="integration-card provider-card" data-connected="'+on+'"><div class="integration-head">'+providerLogo('Google Ads')+tag(on?'Conectado':g.configured?'Disponible':'En preparación',on?'success':'neutral')+'</div><h3>Google Ads</h3><p>Información de solo lectura por empresa.</p>'+(state.googleAdsReturnMessage?alertBlock(state.googleAdsReturnMessage,'info'):'')+(state.googleAdsError?alertBlock(state.googleAdsError):'')+'<div class="integration-status">'+actions+(busy?'<p>Consultando Google Ads…</p>':'')+detail+'</div></article>';
  }
  function integrations(){
  const ga=gaReady(),lookup=[
@@ -1330,7 +1330,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.googleAdsError='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.googleAdsError='';state.googleAdsReturnMessage='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await loadClientEntitlements(id);await refresh();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
@@ -1341,17 +1341,22 @@ function sidebar(){
       const status=await api('/api/status');if(!status.configured)throw new Error(`Configuración pendiente: ${(status.missing||[]).join(', ')}`);
       const user=await api('/api/me');const companies=await api('/api/businesses');
       const returnBusiness=new URLSearchParams(location.search).get('business_id');
+      const googleAuthOutcome=new URLSearchParams(location.search).get('google_ads');
       state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){
         const parameters=new URLSearchParams(location.search),campaignReturn=parameters.get('return_to')==='campaigns';
         state.page=campaignReturn?'campaigns':'integrations';
         if(campaignReturn)state.campaignConnectionOpen=true;
         if(parameters.get('meta')==='cancelled')state.metaError='Se canceló la autorización con Facebook.';
         history.replaceState({},'',location.pathname+location.hash);
-      }state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
+      }
+      if(!isAdmin()&&googleAuthOutcome){state.page='integrations';history.replaceState({},'',location.pathname+location.hash);}
+      state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
       if(isAdmin()){await loadAdminStats();await loadAdminPlans();await loadAdminDirectory();}
       else if(state.businesses.length){
         const targetBusiness=state.businesses.find(x=>x.id===returnBusiness)?.id||state.businesses[0].id;
-        await chooseBusiness(targetBusiness);if(state.page==='campaigns')await loadAds();
+        await chooseBusiness(targetBusiness);
+        if(googleAuthOutcome){state.googleAdsReturnMessage=googleAuthOutcome==='connected'?'Autorización recibida. Selecciona la cuenta publicitaria que deseas consultar.':googleAuthOutcome==='cancelled'?'Se canceló la autorización con Google.':googleAuthOutcome==='no_refresh_token'?'Google no devolvió acceso persistente. Desconecta el acceso anterior en tu cuenta de Google y vuelve a autorizar.':'No fue posible terminar la autorización con Google.';render();}
+        if(state.page==='campaigns')await loadAds();
       }
     }catch(e){state.loading=false;state.user=null;state.loginBusy=false;if(e.status!==401)state.startupError=e.message;render();}
   }
@@ -1668,12 +1673,12 @@ function sidebar(){
       catch(error){state.metaError=error.message;render();}
     }
     else if(e.target.id==='ads-platform'){state.adsPlatform=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
-    else if(e.target.id==='ads-level'){state.adsLevel=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
+    else if(e.target.id==='ads-level'){state.adsLevel=state.adsPlatform==='google'?'campaign':e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns'&&state.adsPlatform==='meta')await loadAds();}
     else if(e.target.id==='google-ads-period'){state.adsPeriod=e.target.value;state.googleAdsReport=null;render();}
     else if(e.target.id==='ads-period'){
       state.adsPeriod=e.target.value;state.adsFilterError='';state.metaCampaigns=null;
       render();
-      if(state.page==='campaigns'&&state.adsPeriod!=='custom'){await loadMeta();await loadAds();}
+      if(state.page==='campaigns'&&state.adsPeriod!=='custom'){if(state.adsPlatform==='google')await loadGoogleAdsReport();else{await loadMeta();await loadAds();}}
     }
     else if(e.target.id==='ads-account'){state.adsAccount=e.target.value;render();}
     else if(e.target.id==='ads-status'){state.adsStatus=e.target.value;render();}
