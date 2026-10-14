@@ -18,7 +18,7 @@ const redirect=req=>new URL(req.url).origin+'/api/google-ads/callback';
 function ready(env){return !!(env.GOOGLE_ADS_CLIENT_ID&&env.GOOGLE_ADS_CLIENT_SECRET&&env.SUPABASE_SERVICE_ROLE_KEY&&/^[a-f0-9]{64}$/i.test(env.GOOGLE_ADS_ENCRYPTION_KEY||''));}
 async function oauthToken(env,values){const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.GOOGLE_ADS_CLIENT_ID,client_secret:env.GOOGLE_ADS_CLIENT_SECRET,...values})});if(!r.ok)throw Error('Google rechazó la autorización (HTTP '+r.status+').');return r.json();}
 async function access(env,row){const t=await oauthToken(env,{grant_type:'refresh_token',refresh_token:(await unseal(env,row.refresh_token_cipher))?.refresh_token||''});if(!t.access_token)throw Error('No se pudo renovar el acceso. Vuelve a conectar Google Ads.');return t.access_token;}
-async function ads(env,path,token,post){const h={Authorization:'Bearer '+token,Accept:'application/json'};if(env.GOOGLE_ADS_DEVELOPER_TOKEN)h['developer-token']=env.GOOGLE_ADS_DEVELOPER_TOKEN;if(post)h['Content-Type']='application/json';const r=await fetch('https://googleads.googleapis.com/v25/'+path,{method:post?'POST':'GET',headers:h,...(post?{body:JSON.stringify(post)}:{})});if(!r.ok)throw Error('Google Ads API rechazó la consulta (HTTP '+r.status+'). Revisa el nivel de acceso y permisos.');return r.json();}
+async function ads(env,path,token,post){const h={Authorization:'Bearer '+token,Accept:'application/json'};/* Google Cloud project OAuth access: developer-token deprecated Sep 2026. */if(post)h['Content-Type']='application/json';const r=await fetch('https://googleads.googleapis.com/v25/'+path,{method:post?'POST':'GET',headers:h,...(post?{body:JSON.stringify(post)}:{})});if(!r.ok)throw Error('Google Ads API rechazó la consulta (HTTP '+r.status+'). Revisa el nivel de acceso y permisos.');return r.json();}
 const cfg=(req,env)=>({callback:redirect(req),configured:ready(env)});
 function sameOrigin(req){const o=req.headers.get('Origin');return !o||o===new URL(req.url).origin;}
 const asRows=(x)=>Array.isArray(x)?x:[];
@@ -81,10 +81,27 @@ export async function handleGoogleAdsApi(req,env,s){
  if(p==='/api/google-ads/campaigns'&&m==='GET'){
   if(!row.selected_customer_id)return error('Primero selecciona una cuenta publicitaria.');
   const days=Number(url.searchParams.get('days')||30);if(![7,30,90].includes(days))return error('Período inválido.');
-  const query='SELECT campaign.id, campaign.name, campaign.status, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value FROM campaign WHERE segments.date DURING LAST_'+days+'_DAYS LIMIT 500';
-  const result=await ads(env,'customers/'+row.selected_customer_id+'/googleAds:search',await access(env,row),{query});
-  const data=asRows(result.results).map(r=>({id:String(r.campaign?.id||''),name:r.campaign?.name||'',status:r.campaign?.status||'',impressions:Number(r.metrics?.impressions||0),clicks:Number(r.metrics?.clicks||0),spend:Number(r.metrics?.costMicros||0)/1000000,conversions:Number(r.metrics?.conversions||0),conversions_value:Number(r.metrics?.conversionsValue||0)}));
-  return reply({connected:true,customer_id:row.selected_customer_id,days,rows:data,updated_at:new Date().toISOString(),partial:!!result.nextPageToken});
+  const token=await access(env,row);
+  const profile=await ads(env,'customers/'+row.selected_customer_id+'/googleAds:search',token,{query:'SELECT customer.currency_code, customer.time_zone FROM customer LIMIT 1'});
+  const details=asRows(profile.results)[0]?.customer;
+  if(!details?.currencyCode||!details?.timeZone)return error('No se pudo obtener moneda o zona horaria de Google Ads.',502);
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:details.timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const digit=name=>Number(parts.find(x=>x.type===name)?.value);
+  const today=Date.UTC(digit('year'),digit('month')-1,digit('day')),fmt=ms=>new Date(ms).toISOString().slice(0,10);
+  const range=days===90?"segments.date BETWEEN '"+fmt(today-90*86400000)+"' AND '"+fmt(today-86400000)+"'":'segments.date DURING LAST_'+days+'_DAYS';
+  const query='SELECT campaign.id, campaign.name, campaign.status, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value FROM campaign WHERE '+range+' ORDER BY campaign.id';
+  const pages=[];let pageToken=null,partial=false;
+  for(let page=0;page<5;page++){
+   const result=await ads(env,'customers/'+row.selected_customer_id+'/googleAds:search',token,{query,...(pageToken?{pageToken}:{})});
+   pages.push(...asRows(result.results));pageToken=result.nextPageToken||null;
+   if(!pageToken)break;
+   if(page===4)partial=true;
+  }
+  const data=pages.map(r=>{
+   const impressions=Number(r.metrics?.impressions||0),clicks=Number(r.metrics?.clicks||0),spend=Number(r.metrics?.costMicros||0)/1000000,conversions=Number(r.metrics?.conversions||0),value=Number(r.metrics?.conversionsValue||0);
+   return {id:String(r.campaign?.id||''),name:r.campaign?.name||'',status:r.campaign?.status||'',impressions,clicks,spend,conversions,conversions_value:value,ctr:impressions?100*clicks/impressions:null,cpc:clicks?spend/clicks:null,roas:spend?value/spend:null,currency:details.currencyCode};
+  });
+  return reply({connected:true,customer_id:row.selected_customer_id,days,currency:details.currencyCode,rows:data,updated_at:new Date().toISOString(),partial});
  }
  return error('Ruta de Google Ads no encontrada.',404);
 }
