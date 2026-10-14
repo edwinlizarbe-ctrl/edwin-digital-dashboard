@@ -8,7 +8,7 @@
     loading: true, gaLoading: false, hmLoading: false, ga: null, hm: null,
     gaError: '', hmError: '', startupError: '', loginError: '', loginBusy: false,
     mobileOpen: false, campaignsMenuOpen: false, salesMenuOpen: false, salesSource: 'overview', sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
-    passwordBusy: false, passwordError: '', loginNotice: '',
+    passwordBusy: false, passwordError: '', profileNotice: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
     metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsBestOnly: false, adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
@@ -1145,7 +1145,7 @@ async function loadAccounts(){
  const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${key==='accent'?`<i class="accent-swatch swatch-${v}" aria-hidden="true"></i>`:''}${t}</button>`).join('')}</div>`;
  return `${heading('Preferencias','Mi cuenta y seguridad','Acceso, contraseña y colores del panel en un mismo lugar.')}
  <div class="content-grid account-grid">
- <div class="col-12">${card('Mi perfil','Personaliza cómo te saludamos en el panel',`<form id="user-profile-form" class="security-form"><label class="form-label" for="user-profile-name">Nombre y apellidos</label><input id="user-profile-name" class="simple-input" type="text" name="fullName" minlength="2" maxlength="100" required autocomplete="name" value="${clean(state.user?.id?localStorage.getItem('ed-profile-name:'+state.user.id)||'':'')}" placeholder="Ej. Edwin Lizarbe" /><p class="fine-print">Este nombre se usa en tu saludo y se guarda solo en este navegador. No modifica el nombre de tu empresa.</p><button class="button button-primary" type="submit">Guardar mi nombre</button></form>`)}</div>
+ <div class="col-12">${card('Mi perfil','Personaliza cómo te saludamos en el panel',`<form id="user-profile-form" class="security-form"><label class="form-label" for="user-profile-name">Nombre y apellidos</label><input id="user-profile-name" class="simple-input" type="text" name="fullName" minlength="2" maxlength="100" required autocomplete="name" value="${clean(state.user?.id?localStorage.getItem('ed-profile-name:'+state.user.id)||'':'')}" placeholder="Ej. Edwin Lizarbe" /><p class="fine-print">Este nombre se usa en tu saludo y se guarda solo en este navegador. No modifica el nombre de tu empresa.</p><button class="button button-primary" type="submit">Guardar mi nombre</button>${state.profileNotice?`<p class="fine-print" role="status" aria-live="polite">${clean(state.profileNotice)}</p>`:""}</form>`)}</div>
  <div class="col-7">${card('Cambiar mi contraseña','Tu seguridad, siempre a la vista',`<form id="change-password-form" class="security-form" autocomplete="off">
   <label class="form-label" for="current-pass">Contraseña actual</label><div class="form-input">${icon('lock',17)}<input id="current-pass" type="password" name="currentPassword" autocomplete="current-password" required maxlength="512"/></div>
   <label class="form-label" for="next-pass">Nueva contraseña</label><div class="form-input">${icon('lock',17)}<input id="next-pass" type="password" name="newPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
@@ -1614,7 +1614,12 @@ function sidebar(){
       e.preventDefault();if(!state.user?.id)return;
       const fullName=String(new FormData(e.target).get('fullName')||'').trim().replace(/\s+/g,' ');
       if(fullName.length<2||fullName.length>100)return;
-      localStorage.setItem('ed-profile-name:'+state.user.id,fullName);
+      try {
+        localStorage.setItem('ed-profile-name:'+state.user.id,fullName);
+        state.profileNotice='Nombre guardado: '+fullName+'. Ve a Resumen general para ver tu saludo.';
+      } catch (error) {
+        state.profileNotice='No se pudo guardar el nombre en este navegador.';
+      }
       render();return;
     }
     if(e.target.id==='company-profile-form'){e.preventDefault();await saveCompany(e.target);return;}
