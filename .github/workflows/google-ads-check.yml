@@ -1,0 +1,26 @@
+name: Google Ads branch checks
+on:
+  push:
+    branches:
+      - feature/google-ads-oauth
+  pull_request:
+    paths:
+      - 'google-ads.js'
+      - 'worker.js'
+      - 'public/app.js'
+      - 'migrations/*google_ads*'
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Worker and frontend JavaScript syntax
+        run: |
+          node --check google-ads.js
+          node --check worker.js
+          node --check public/app.js
+          node --check feature-access.js
+          node --test tests/google-ads.test.js
