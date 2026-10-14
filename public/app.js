@@ -904,7 +904,7 @@ async function saveAdminFeature(feature,enabled,plan){
 async function loadClientEntitlements(id){
  try{
   const data=await api('/api/client/features?business_id='+encodeURIComponent(id));
-  if(state.businessId===id){state.clientEntitlements=data;render();}
+  if(state.businessId===id){state.clientEntitlements=data;render();if(data.features?.google_ads)loadGoogleAds();}
  }catch{if(state.businessId===id){state.clientEntitlements=null;render();}}
 }
 async function loadAdminPlans(){
@@ -1161,7 +1161,29 @@ async function loadAccounts(){
     }catch(e) {if(state.businessId===current)state.metaError=e.message;}
     finally {if(state.businessId===current){state.metaLoading=false;render();}}
   }
-    function integrations(){
+    
+ async function loadGoogleAds(){
+  const id=state.businessId;
+  if(!id||isAdmin()||!featureEnabled('google_ads'))return;
+  state.googleAdsBusy=true;state.googleAdsError='';render();
+  try{
+   const info=await api('/api/google-ads/status?business_id='+encodeURIComponent(id));
+   if(id!==state.businessId)return;
+   state.googleAds=info;state.googleAdsAccounts=[];
+   if(info.connected){const a=await api('/api/google-ads/accounts?business_id='+encodeURIComponent(id));if(id===state.businessId)state.googleAdsAccounts=a.accounts||[];}
+  }catch(e){if(id===state.businessId)state.googleAdsError=e.message;}
+  finally{if(id===state.businessId){state.googleAdsBusy=false;render();}}
+ }
+ function googleAdsCard(){
+  const g=state.googleAds||{},on=!!g.connected,accounts=state.googleAdsAccounts||[];
+  const options=accounts.map(a=>'<option value="'+clean(a.id)+'" '+(a.id===g.selected_customer_id?'selected':'')+'>'+clean(a.id)+'</option>').join('');
+  const actions=on?'<label class="form-label">Cuenta autorizada<select class="meta-select" id="google-ads-account"><option value="">Selecciona una cuenta</option>'+options+'</select></label><div class="meta-actions"><button class="button button-outline" data-act="google-ads-select">Guardar selección</button><button class="button button-outline" data-act="google-ads-campaigns">Ver campañas (30 días)</button><button class="button button-soft" data-act="google-ads-disconnect">Desconectar</button></div>':'<button class="button button-primary" data-act="google-ads-connect" '+(!g.configured?'disabled':'')+'>Conectar Google Ads</button>';
+  const rows=state.googleAdsReport?.rows||[];
+  const report=rows.length?'<div class="table-scroll"><table><thead><tr><th>Campaña</th><th>Inversión</th><th>Clics</th><th>Impresiones</th><th>Conversiones</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+clean(String(r.spend))+'</td><td>'+clean(String(r.clicks))+'</td><td>'+clean(String(r.impressions))+'</td><td>'+clean(String(r.conversions))+'</td></tr>').join('')+'</tbody></table></div>':'';
+  return '<article class="integration-card provider-card" data-connected="'+on+'"><div class="integration-head">'+providerLogo('Google Ads')+tag(on?'Conectado':g.configured?'Disponible':'En preparación',on?'success':'neutral')+'</div><h3>Google Ads</h3><p>Solo lectura. Cada empresa conecta su propia cuenta.</p>'+(state.googleAdsError?alertBlock(state.googleAdsError):'')+'<div class="integration-status">'+actions+(state.googleAdsBusy?'<p>Consultando Google Ads…</p>':'')+report+'</div></article>';
+ }
+ 
+ function integrations(){
  const ga=gaReady(),lookup=[
   ['Analítica y contenidos',[
    {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Este sitio aún no tiene estadísticas disponibles de Analytics.'},
@@ -1169,7 +1191,7 @@ async function loadAccounts(){
    {name:'Facebook / Instagram orgánico',info:'Alcance y estadísticas de perfiles sociales.',status:'Próximamente',details:'Pendiente de permisos de páginas y perfiles.'}] ],
   ['Publicidad',[
    {name:'Meta Ads',info:'Facebook e Instagram Ads.'},
-   {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'Próximamente',details:'API oficial y OAuth pendientes.'},
+   {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'En desarrollo',details:'Autorización por empresa.'},
    {name:'TikTok Ads',info:'Anuncios y campañas en TikTok.',status:'Próximamente',details:'Permisos de TikTok Ads pendientes.'}] ],
   ['Ventas y e-commerce',[
    {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'},
