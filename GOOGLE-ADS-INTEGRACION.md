@@ -39,3 +39,19 @@ La alerta informativa **RLS enabled no policy** para estas tablas es intencional
 **Developer token:** a partir del cambio de acceso de Google Ads API de septiembre de 2026, se gestiona por proyecto Google Cloud; no solicitar credenciales adicionales innecesarias ni reconfigurar el cliente OAuth ya creado.
 
 **Limitación actual:** la integración **no está operativa en producción** hasta completar los puntos anteriores.
+
+## Prueba aislada con Cloudflare Preview (sin producción)
+
+La rama contiene `"previews": {}` en `wrangler.jsonc` (Wrangler fijado a 4.149.0, compatible con Previews). **Esto prepara el entorno: NO lo crea, no despliega ni copia los secretos de producción.** Cloudflare Preview es público por defecto: protegerlo con Cloudflare Access y limitar los usuarios OAuth de prueba.
+
+1. Con acceso propio a Cloudflare, abrir una copia local de `feature/google-ads-oauth` y ejecutar `npm install`. Confirmar el proyecto/Worker correcto antes de cualquier operación.
+2. Configurar **secretos independientes del entorno Preview** mediante `npx wrangler preview secret put SECRET_NAME --name google-ads-pilot` para cada nombre requerido: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_ENCRYPTION_KEY`. Preparar las credenciales privadas solo en Cloudflare; no guardarlas en GitHub, capturas ni conversaciones. La clave AES-GCM debe ser de 64 caracteres hexadecimales aleatorios (`openssl rand -hex 32`).
+3. Crear el entorno exclusivamente de la rama con `npx wrangler preview --name google-ads-pilot`. **Nunca usar `wrangler deploy` para el piloto.** Verificar que la URL real devuelta esté protegida. Si la CLI indica que faltan variables o bindings, configurarlos únicamente para Preview.
+4. Agregar en Google Cloud → APIs y servicios → Credenciales → cliente OAuth existente la URL EXACTA: `https://<URL_REAL_DE_LA_PREVIEW>/api/google-ads/callback` (sin duplicar `https://` ni escribir `<>` literales). No borrar el callback productivo existente.
+5. Verificar Google Ads API en nivel **Explorador** (o superior) antes de consultas a una cuenta real; en nivel **Prueba** solo se permiten cuentas de Google Ads de prueba. Mantener la app OAuth en Testing solo con usuarios de prueba autorizados.
+6. Usar una **empresa dedicada al piloto** y un usuario de pruebas autorizado; si se utiliza Supabase principal, el Preview y producción **comparten la misma base física** y deben aislarse estrictamente por empresa, no asumir una base de pruebas separada. Nunca registrar campañas falsas en la cuenta publicitaria.
+7. En la Preview probar: conexión OAuth, callback, cuentas directas y MCC, selección de cliente, campaña con datos reales, 7/30/90 días, moneda, zona horaria, conversiones, gasto, CTR, CPC y ROAS comparados con Google Ads; comprobar empresas ajenas, revocación, desconexión y reconexión. Una ausencia de datos no confirma integración funcional.
+8. Observar logs sanitizados, sin incluir access/refresh tokens ni secretos. Deshabilitar o eliminar la Preview al acabar (`npx wrangler preview delete --name google-ads-pilot`).
+9. Solo con evidencias de la prueba satisfactoria solicitar revisión y autorización explícita para publicar en `main`. No fusionar ni desplegar producción automáticamente.
+
+**Pendiente externo:** no hay conexión operativa real registrada en Supabase. El despliegue de Preview, gestión de secretos y autorización Google requieren acceso a las cuentas Cloudflare/Google y consentimiento OAuth del usuario, que los tests de GitHub no sustituyen.
