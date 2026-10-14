@@ -952,3 +952,26 @@ input,select,textarea{max-width:100%}
 .bar-list:has([data-act="page-detail"]) [data-act="page-detail"]{font-size:13px;line-height:1.45}
 .bar-list:has([data-act="page-detail"]) .page-views-value{font-size:13px;line-height:1.4}
 .bar-list:has([data-act="page-detail"]) .page-views-value small{font-size:12px}
+
+/* Resumen general: reference-inspired cards, restricted to this section. */
+.overview-modern-kpis .kpi-grid{gap:14px}
+.overview-modern-kpis .kpi{
+  position:relative;min-height:175px;border:1px solid transparent;border-radius:17px;
+  padding:17px 18px;background:linear-gradient(135deg,#2563eb,#1644a6);
+  color:#fff;box-shadow:0 7px 18px rgba(25,73,144,.12);
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.overview-modern-kpis .kpi:nth-child(2){background:linear-gradient(135deg,#087eae,#0aaac8)}
+.overview-modern-kpis .kpi:nth-child(3){background:linear-gradient(135deg,#2457a9,#197b9a)}
+.overview-modern-kpis .kpi:nth-child(4){background:linear-gradient(135deg,#087f79,#13a39a)}
+.overview-modern-kpis .kpi:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(25,73,144,.2)}
+.overview-modern-kpis .kpi:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.overview-modern-kpis .kpi .kpi-name,.overview-modern-kpis .kpi .kpi-value,.overview-modern-kpis .kpi .kpi-dots,.overview-modern-kpis .kpi .delta-muted,.overview-modern-kpis .kpi .delta-note{color:#fff}
+.overview-modern-kpis .kpi .kpi-icon{background:rgba(255,255,255,.17);color:#fff}
+.overview-modern-kpis .kpi .kpi-name{font-size:13px}
+.overview-modern-kpis .kpi .kpi-value{font-size:clamp(25px,2.5vw,33px)}
+.overview-modern-kpis .kpi .kpi-change{color:#fff}
+.overview-modern-kpis .kpi .delta.up,.overview-modern-kpis .kpi .delta.down{color:#fff;background:rgba(255,255,255,.18)}
+.overview-modern-kpis .kpi .mini-graphic{opacity:.8}
+.overview-modern-kpis .kpi.selected{outline:2px solid #fff;outline-offset:-5px}
+@media(prefers-reduced-motion:reduce){.overview-modern-kpis .kpi{transition:none}.overview-modern-kpis .kpi:hover{transform:none}}
