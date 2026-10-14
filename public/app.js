@@ -1158,15 +1158,27 @@ function sidebar(){
  }catch(e){if(state.businessId===businessId)state.adsError=e.message;}
  finally{if(state.businessId===businessId){state.adsLoading=false;render();}}
 }
-  async function refresh() {
+  // Short-lived, per-client in-memory GA4 cache. Never persisted or shared across accounts.
+  const gaReportCache=new Map();
+  const GA_REPORT_TTL=120000;
+  async function refresh({force=false}={}) {
     const generation=++state.requestId, b=state.businessId, s=state.siteId, p=state.period;
-    state.ga=null;state.hm=null;state.gaError='';state.hmError='';
-    state.gaLoading=!!s&&featureEnabled('ga4');state.hmLoading=selectedBusinessIsHotmart();render();
+    const cacheKey=JSON.stringify([state.user?.id,b,s,p]);
+    const cached=gaReportCache.get(cacheKey);
+    const useCache=!force&&cached&&Date.now()-cached.at<GA_REPORT_TTL;
+    state.ga=useCache?cached.value:null;state.hm=null;state.gaError='';state.hmError='';
+    state.gaLoading=!!s&&featureEnabled('ga4')&&!useCache;state.hmLoading=selectedBusinessIsHotmart();render();
     const jobs=[];
-    if(s&&featureEnabled('ga4'))jobs.push(api(`/api/ga4/report?business_id=${encodeURIComponent(b)}&site_id=${encodeURIComponent(s)}&period=${encodeURIComponent(p)}`).then(x=>({type:'ga',value:x})).catch(e=>({type:'ga',error:e.message})));
+    if(s&&featureEnabled('ga4')&&!useCache)jobs.push(api(`/api/ga4/report?business_id=${encodeURIComponent(b)}&site_id=${encodeURIComponent(s)}&period=${encodeURIComponent(p)}`).then(x=>({type:'ga',value:x})).catch(e=>({type:'ga',error:e.message})));
     if(selectedBusinessIsHotmart())jobs.push(api(`/api/hotmart/summary?business_id=${encodeURIComponent(b)}&period=${encodeURIComponent(p)}`).then(x=>({type:'hm',value:x})).catch(e=>({type:'hm',error:e.message})));
     const results=await Promise.all(jobs);if(state.requestId!==generation)return;
-    for(const result of results){ if(result.type==='ga'){state.ga=result.value||null;state.gaError=result.error||'';}else{state.hm=result.value||null;state.hmError=result.error||'';} }
+    for(const result of results){ if(result.type==='ga'){
+      state.ga=result.value||null;state.gaError=result.error||'';
+      if(result.value?.configured&&result.value?.reports){
+        if(gaReportCache.size>=12)gaReportCache.delete(gaReportCache.keys().next().value);
+        gaReportCache.set(cacheKey,{at:Date.now(),value:result.value});
+      }
+    }else{state.hm=result.value||null;state.hmError=result.error||'';} }
     state.gaLoading=false;state.hmLoading=false;render();
   }
   async function chooseBusiness(id){
