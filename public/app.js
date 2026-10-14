@@ -4,7 +4,7 @@
   const root = document.getElementById('app');
   const state = {
     user: null, businesses: [], sites: [], businessId: '', siteId: '',
-    page: 'overview', analyticMetric: 'totalUsers', period: '7', theme: localStorage.getItem('ed-theme-v3') || 'light',
+    page: 'overview', analyticMetric: 'totalUsers', period: '7', theme: localStorage.getItem('ed-theme-v3') === 'dark' ? 'dark' : 'light',
     loading: true, gaLoading: false, hmLoading: false, ga: null, hm: null,
     gaError: '', hmError: '', startupError: '', loginError: '', loginBusy: false,
     mobileOpen: false, campaignsMenuOpen: true, sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
@@ -13,7 +13,7 @@
     metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsBestOnly: false, adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
     emailBusy: false, emailError: '', emailNotice: '',
-    accent: (localStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(localStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: localStorage.getItem('ed-sidebar-v7')||'auto',
+    accent: (localStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(localStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: localStorage.getItem('ed-sidebar-v7')==='white' ? 'white' : 'navy',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
@@ -1088,9 +1088,9 @@ async function loadAccounts(){
 }
 
   function settings(){
- const theme=[['light','Claro'],['dark','Oscuro'],['black','Negro']];
+ const theme=[['light','Claro'],['dark','Oscuro']];
  const palettes=[['purple','Violeta'],['blue','Azul'],['teal','Turquesa'],['coral','Coral'],['amber','Ámbar'],['rose','Rosa'],['graphite','Grafito']];
- const sidebar=[['auto','Según tema'],['white','Blanco'],['blue','Azul oscuro'],['navy','Azul marino'],['graphite','Grafito oscuro'],['black','Negro']];
+ const sidebar=[['white','Claro'],['navy','Oscuro']];
  const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${key==='accent'?`<i class="accent-swatch swatch-${v}" aria-hidden="true"></i>`:''}${t}</button>`).join('')}</div>`;
  return `${heading('Preferencias','Mi cuenta y seguridad','Acceso, contraseña y colores del panel en un mismo lugar.')}
  <div class="content-grid account-grid">
@@ -1298,9 +1298,9 @@ function sidebar(){
     if(action==='theme'){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('ed-theme-v3',state.theme);render();}
     else if(action==='set-pref'){
       const key=b.dataset.key,value=b.dataset.value;
-      if(key==='theme'&&['light','dark','black'].includes(value)){state.theme=value;localStorage.setItem('ed-theme-v3',value);}
+      if(key==='theme'&&['light','dark'].includes(value)){state.theme=value;localStorage.setItem('ed-theme-v3',value);}
       else if(key==='accent'&&['purple','blue','teal','coral','amber','rose','graphite'].includes(value)){state.accent=value;localStorage.setItem('ed-accent-v7',value);}
-      else if(key==='sidebar'&&['auto','white','blue','navy','graphite','black'].includes(value)){state.sidebarTone=value;localStorage.setItem('ed-sidebar-v7',value);}
+      else if(key==='sidebar'&&['white','navy'].includes(value)){state.sidebarTone=value;localStorage.setItem('ed-sidebar-v7',value);}
       render();
     }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
