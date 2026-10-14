@@ -597,6 +597,7 @@
 
 
 function adsConnectionStatus(value){
+ if(value==='google')return !featureEnabled('google_ads')?{label:'No incluido',kind:'restricted'}:state.googleAds?.connected?{label:'Conectado',kind:'connected'}:state.googleAds?.configured?{label:'Por conectar',kind:'waiting'}:{label:'En preparación',kind:'soon'};
  if(value!=='meta')return {label:'Próximamente',kind:'soon'};
  if(!featureEnabled('meta_ads'))return {label:'No incluido',kind:'restricted'};
  if(state.metaLoading)return {label:'Verificando',kind:'waiting'};
@@ -611,7 +612,8 @@ function adsOverviewHero(platform){
  const provider=labels[platform]||'Meta Ads',m=state.meta||{},status=adsConnectionStatus(platform);
  const selected=platform==='meta'?(m.selected_accounts||[m.selected_account].filter(Boolean)).length:0;
  const open=platform==='meta'&&featureEnabled('meta_ads');
- const sub=platform!=='meta'?'La integración oficial de esta plataforma aún está en desarrollo.':
+ const googleOpen=platform==='google'&&featureEnabled('google_ads');
+ const sub=platform==='google'?(state.googleAds?.connected?'Cuenta autorizada. Consulta las campañas desde Integraciones.':'Conecta tu cuenta publicitaria desde Integraciones.'):platform!=='meta'?'La integración oficial de esta plataforma aún está en desarrollo.':
   !featureEnabled('meta_ads')?'Esta empresa no tiene permiso para utilizar Meta Ads.':
   status.kind==='connected'?selected+' cuenta(s) publicitarias seleccionadas · Estadísticas reales de Meta.':
   status.label==='Elegir cuentas'?'Facebook autorizado. Selecciona las cuentas que deseas analizar.':
@@ -620,6 +622,7 @@ function adsOverviewHero(platform){
  return '<section class="ads-overview-hero" aria-label="Estado de la plataforma">'+
   '<div class="ads-overview-main">'+providerLogo(provider)+'<div><span class="ads-eyebrow">PLATAFORMA PUBLICITARIA</span><h2>'+clean(provider)+'</h2><p>'+clean(sub)+'</p></div></div>'+
   '<div class="ads-overview-actions"><span class="ads-status-pill ads-status-'+status.kind+'"><span class="ads-pill-indicator"></span>'+clean(status.label)+'</span>'+
+  (googleOpen?'<button class="ads-hero-button" type="button" data-act="nav" data-page="integrations">Administrar Google Ads'+icon('chevron',15)+'</button>':'')+
   (open?'<button class="ads-hero-button" type="button" data-act="campaign-connect-toggle">'+(m.connected?'Administrar conexión':'Conectar mi cuenta')+icon('chevron',15)+'</button>':'')+
   '</div></section>';
 }
@@ -674,7 +677,8 @@ function campaigns(){
     '<button class="button button-primary" data-act="ads-apply-dates">Aplicar fechas</button></div>':'')+
    (state.adsFilterError?alertBlock(state.adsFilterError,'info'):'');
  let result='';
- if(platform!=='meta')result=empty('Esta plataforma todavía requiere la autorización de su API oficial.','Integración próximamente');
+ if(platform==='google')result=state.googleAds?.connected?googleAdsCard():empty('Abre Integraciones y autoriza una cuenta de Google Ads para ver campañas.','Conectar Google Ads');
+ else if(platform!=='meta')result=empty('Esta plataforma todavía requiere la autorización de su API oficial.','Integración próximamente');
  else if(!connected)result=campaignMetaSetup();
  else if(state.adsLoading)result='<div class="ads-loading-detail" role="status"><div class="ga-loading-bars"><i></i><i></i><i></i></div><p>Consultando cuentas, fechas y campañas de Meta…</p></div>';
  else if(state.adsError)result=alertBlock(state.adsError);
