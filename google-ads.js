@@ -18,10 +18,37 @@ const redirect=req=>new URL(req.url).origin+'/api/google-ads/callback';
 function ready(env){return !!(env.GOOGLE_ADS_CLIENT_ID&&env.GOOGLE_ADS_CLIENT_SECRET&&env.SUPABASE_SERVICE_ROLE_KEY&&/^[a-f0-9]{64}$/i.test(env.GOOGLE_ADS_ENCRYPTION_KEY||''));}
 async function oauthToken(env,values){const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.GOOGLE_ADS_CLIENT_ID,client_secret:env.GOOGLE_ADS_CLIENT_SECRET,...values})});if(!r.ok)throw Error('Google rechazó la autorización (HTTP '+r.status+').');return r.json();}
 async function access(env,row){const t=await oauthToken(env,{grant_type:'refresh_token',refresh_token:(await unseal(env,row.refresh_token_cipher))?.refresh_token||''});if(!t.access_token)throw Error('No se pudo renovar el acceso. Vuelve a conectar Google Ads.');return t.access_token;}
-async function ads(env,path,token,post){const h={Authorization:'Bearer '+token,Accept:'application/json'};/* Google Cloud project OAuth access: developer-token deprecated Sep 2026. */if(post)h['Content-Type']='application/json';const r=await fetch('https://googleads.googleapis.com/v25/'+path,{method:post?'POST':'GET',headers:h,...(post?{body:JSON.stringify(post)}:{})});if(!r.ok)throw Error('Google Ads API rechazó la consulta (HTTP '+r.status+'). Revisa el nivel de acceso y permisos.');return r.json();}
+async function ads(env,path,token,post,loginCustomerId){const h={Authorization:'Bearer '+token,Accept:'application/json'};if(loginCustomerId)h['login-customer-id']=loginCustomerId;/* Google Cloud project OAuth access: developer-token deprecated Sep 2026. */if(post)h['Content-Type']='application/json';const r=await fetch('https://googleads.googleapis.com/v25/'+path,{method:post?'POST':'GET',headers:h,...(post?{body:JSON.stringify(post)}:{})});if(!r.ok)throw Error('Google Ads API rechazó la consulta (HTTP '+r.status+'). Revisa el nivel de acceso y permisos.');return r.json();}
 const cfg=(req,env)=>({callback:redirect(req),configured:ready(env)});
 function sameOrigin(req){const o=req.headers.get('Origin');return !o||o===new URL(req.url).origin;}
 const asRows=(x)=>Array.isArray(x)?x:[];
+const validCustomerId=id=>/^[0-9]{10}$/.test(String(id||''));
+async function availableAccounts(env,token){
+ const response=await ads(env,'customers:listAccessibleCustomers',token);
+ const roots=[...new Set(asRows(response.resourceNames).map(v=>String(v).split('/')[1]).filter(validCustomerId))];
+ if(roots.length>30)throw Error('Demasiadas cuentas publicitarias directas.');
+ const all=new Map(roots.map(id=>[id,{id,name:id,currency:null,manager:false,login_customer_id:null}]));
+ let partial=false;
+ for(const root of roots){
+  try{
+   const query="SELECT customer_client.id, customer_client.descriptive_name, customer_client.currency_code, customer_client.manager, customer_client.status FROM customer_client WHERE customer_client.status = 'ENABLED'";
+   let pageToken=null;
+   for(let page=0;page<5;page++){
+    const response=await ads(env,'customers/'+root+'/googleAds:search',token,{query,...(pageToken?{pageToken}:{})},root);
+    for(const item of asRows(response.results)){
+     const row=item.customerClient||{},id=String(row.id||'');
+     if(!validCustomerId(id))continue;
+     const current=all.get(id),candidate={id,name:row.descriptiveName||id,currency:row.currencyCode||null,manager:!!row.manager,login_customer_id:id===root?null:root};
+     if(!current||id===root||(!current.login_customer_id&&current.name===current.id))all.set(id,candidate);
+    }
+    pageToken=response.nextPageToken||null;
+    if(!pageToken)break;
+    if(page===4)partial=true;
+   }
+  }catch{partial=true;}
+ }
+ return {accounts:[...all.values()].sort((a,b)=>a.name.localeCompare(b.name)),partial};
+}
 export async function handleGoogleAdsApi(req,env,s){
  const url=new URL(req.url),p=url.pathname,m=req.method.toUpperCase(),c=s.cookies||[], reply=(v,status=200,more=[])=>json(v,status,[...c,...more]);
  const error=(message,status=400)=>reply({error:message},status);
@@ -39,7 +66,7 @@ export async function handleGoogleAdsApi(req,env,s){
   const code=url.searchParams.get('code')||'';if(!code||code.length>4096)return error('Google no devolvió un código válido.');
   const t=await oauthToken(env,{grant_type:'authorization_code',code,redirect_uri:redirect(req)});
   if(!t.refresh_token){home.searchParams.set('google_ads','no_refresh_token');return new Response(null,{status:302,headers:{Location:home.toString(),'Set-Cookie':clear}});}
-  await db(env,'ed_google_ads_connections','on_conflict=business_id','POST',{business_id:pending.business,user_id:s.user.id,refresh_token_cipher:await seal(env,{refresh_token:t.refresh_token}),selected_customer_id:null,updated_at:new Date().toISOString()});
+  await db(env,'ed_google_ads_connections','on_conflict=business_id','POST',{business_id:pending.business,user_id:s.user.id,refresh_token_cipher:await seal(env,{refresh_token:t.refresh_token}),selected_customer_id:null,selected_login_customer_id:null,updated_at:new Date().toISOString()});
   const h=new Headers({Location:home.toString(),'Cache-Control':'no-store'});for(const v of [...c,clear])h.append('Set-Cookie',v);return new Response(null,{status:302,headers:h});
  }
  if(!await owns(env,s,businessId))return error('No tienes acceso a esta empresa.',403);
@@ -58,7 +85,7 @@ export async function handleGoogleAdsApi(req,env,s){
   for(const [k,v] of Object.entries({client_id:env.GOOGLE_ADS_CLIENT_ID,redirect_uri:redirect(req),response_type:'code',scope:'https://www.googleapis.com/auth/adwords',access_type:'offline',prompt:'consent',state}))auth.searchParams.set(k,v);
   const h=new Headers({Location:auth.toString(),'Cache-Control':'no-store'});for(const v of [...c,ck('ed_google_pending',pending,600)])h.append('Set-Cookie',v);return new Response(null,{status:302,headers:h});
  }
- const rows=await db(env,'ed_google_ads_connections','select=business_id,refresh_token_cipher,selected_customer_id&business_id=eq.'+encodeURIComponent(businessId)+'&limit=1');
+ const rows=await db(env,'ed_google_ads_connections','select=business_id,refresh_token_cipher,selected_customer_id,selected_login_customer_id&business_id=eq.'+encodeURIComponent(businessId)+'&limit=1');
  if(!rows.length)return error('Primero conecta Google Ads.',401);
  const row=rows[0];
  if(p==='/api/google-ads/disconnect'&&m==='POST'){
@@ -66,23 +93,26 @@ export async function handleGoogleAdsApi(req,env,s){
   await db(env,'ed_google_ads_connections','business_id=eq.'+encodeURIComponent(businessId),'DELETE');return reply({ok:true});
  }
  if(p==='/api/google-ads/accounts'&&m==='GET'){
-  const token=await access(env,row);const found=await ads(env,'customers:listAccessibleCustomers',token);
-  const ids=asRows(found.resourceNames).map(v=>String(v).split('/')[1]).filter(v=>/^\d{1,20}$/.test(v)).slice(0,100);
-  return reply({accounts:ids.map(id=>({id})),selected_customer_id:row.selected_customer_id});
+  const found=await availableAccounts(env,await access(env,row));
+  return reply({...found,selected_customer_id:row.selected_customer_id});
  }
  if(p==='/api/google-ads/select'&&m==='POST'){
   if(!sameOrigin(req)||(req.headers.get('Content-Type')||'').split(';')[0]!=='application/json')return error('Origen no autorizado.',403);
-  const body=await req.json().catch(()=>null),id=String(body?.customer_id||'');
-  if(!/^\d{1,20}$/.test(id))return error('ID de cuenta inválido.');
-  const found=await ads(env,'customers:listAccessibleCustomers',await access(env,row));
-  if(!asRows(found.resourceNames).includes('customers/'+id))return error('Cuenta no autorizada para este usuario.',403);
-  await db(env,'ed_google_ads_connections','business_id=eq.'+encodeURIComponent(businessId),'PATCH',{selected_customer_id:id,updated_at:new Date().toISOString()});return reply({ok:true,selected_customer_id:id});
+  const raw=await req.text();if(raw.length>500)return error('Solicitud demasiado grande.',413);
+  let body;try{body=JSON.parse(raw)}catch{return error('Selección inválida.');}
+  const id=String(body?.customer_id||'');
+  if(!validCustomerId(id))return error('ID de cuenta inválido.');
+  const available=await availableAccounts(env,await access(env,row));
+  const chosen=available.accounts.find(v=>v.id===id);
+  if(!chosen||chosen.manager)return error('Cuenta no autorizada o es administradora.',403);
+  await db(env,'ed_google_ads_connections','business_id=eq.'+encodeURIComponent(businessId),'PATCH',{selected_customer_id:id,selected_login_customer_id:chosen.login_customer_id,updated_at:new Date().toISOString()});
+  return reply({ok:true,selected_customer_id:id});
  }
  if(p==='/api/google-ads/campaigns'&&m==='GET'){
   if(!row.selected_customer_id)return error('Primero selecciona una cuenta publicitaria.');
   const days=Number(url.searchParams.get('days')||30);if(![7,30,90].includes(days))return error('Período inválido.');
-  const token=await access(env,row);
-  const profile=await ads(env,'customers/'+row.selected_customer_id+'/googleAds:search',token,{query:'SELECT customer.currency_code, customer.time_zone FROM customer LIMIT 1'});
+  const token=await access(env,row),login=row.selected_login_customer_id||null;
+  const profile=await ads(env,'customers/'+row.selected_customer_id+'/googleAds:search',token,{query:'SELECT customer.currency_code, customer.time_zone FROM customer LIMIT 1'},login);
   const details=asRows(profile.results)[0]?.customer;
   if(!details?.currencyCode||!details?.timeZone)return error('No se pudo obtener moneda o zona horaria de Google Ads.',502);
   const parts=new Intl.DateTimeFormat('en-US',{timeZone:details.timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -92,7 +122,7 @@ export async function handleGoogleAdsApi(req,env,s){
   const query='SELECT campaign.id, campaign.name, campaign.status, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value FROM campaign WHERE '+range+' ORDER BY campaign.id';
   const pages=[];let pageToken=null,partial=false;
   for(let page=0;page<5;page++){
-   const result=await ads(env,'customers/'+row.selected_customer_id+'/googleAds:search',token,{query,...(pageToken?{pageToken}:{})});
+   const result=await ads(env,'customers/'+row.selected_customer_id+'/googleAds:search',token,{query,...(pageToken?{pageToken}:{})},login);
    pages.push(...asRows(result.results));pageToken=result.nextPageToken||null;
    if(!pageToken)break;
    if(page===4)partial=true;
