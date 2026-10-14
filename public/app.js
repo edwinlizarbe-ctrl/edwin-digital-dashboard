@@ -405,7 +405,8 @@
     const hour=new Date().getHours();
     const greeting=hour<12?'Buenos días':hour<19?'Buenas tardes':'Buenas noches';
     const user=state.user||{};
-    const possibleNames=[user.full_name,user.name,user.user_metadata?.full_name,user.user_metadata?.name,user.profile?.full_name];
+    const savedName=user.id?localStorage.getItem('ed-profile-name:'+user.id):'';
+    const possibleNames=[savedName,user.full_name,user.name,user.user_metadata?.full_name,user.user_metadata?.name,user.profile?.full_name];
     const name=possibleNames.find(n=>typeof n==='string'&&n.trim())?.trim().split(/\s+/)[0]||'';
     const subtitle=isAdmin()?'Consulta el estado de tu plataforma.':'Aquí tienes los resultados más importantes de tu negocio.';
     return `<section class="welcome-banner" aria-label="Bienvenida"><div class="welcome-banner-content"><span class="welcome-eyebrow">TU ESPACIO DE ANÁLISIS</span><h2>${greeting}${name?', '+clean(name):''}! <span aria-hidden="true">👋</span></h2><p>${clean(subtitle)}</p></div><div class="welcome-decor" aria-hidden="true">${icon('activity',60)}</div></section>`;
@@ -1144,6 +1145,7 @@ async function loadAccounts(){
  const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${key==='accent'?`<i class="accent-swatch swatch-${v}" aria-hidden="true"></i>`:''}${t}</button>`).join('')}</div>`;
  return `${heading('Preferencias','Mi cuenta y seguridad','Acceso, contraseña y colores del panel en un mismo lugar.')}
  <div class="content-grid account-grid">
+ <div class="col-12">${card('Mi perfil','Personaliza cómo te saludamos en el panel',`<form id="user-profile-form" class="security-form"><label class="form-label" for="user-profile-name">Nombre y apellidos</label><input id="user-profile-name" class="simple-input" type="text" name="fullName" minlength="2" maxlength="100" required autocomplete="name" value="${clean(state.user?.id?localStorage.getItem('ed-profile-name:'+state.user.id)||'':'')}" placeholder="Ej. Edwin Lizarbe" /><p class="fine-print">Este nombre se usa en tu saludo y se guarda solo en este navegador. No modifica el nombre de tu empresa.</p><button class="button button-primary" type="submit">Guardar mi nombre</button></form>`)}</div>
  <div class="col-7">${card('Cambiar mi contraseña','Tu seguridad, siempre a la vista',`<form id="change-password-form" class="security-form" autocomplete="off">
   <label class="form-label" for="current-pass">Contraseña actual</label><div class="form-input">${icon('lock',17)}<input id="current-pass" type="password" name="currentPassword" autocomplete="current-password" required maxlength="512"/></div>
   <label class="form-label" for="next-pass">Nueva contraseña</label><div class="form-input">${icon('lock',17)}<input id="next-pass" type="password" name="newPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
@@ -1608,6 +1610,13 @@ function sidebar(){
     state.search=q;render();const input=document.getElementById('global-search');if(input){input.focus();input.setSelectionRange(selStart,selEnd);}
   });
   document.addEventListener('submit',async e=>{
+    if(e.target.id==='user-profile-form'){
+      e.preventDefault();if(!state.user?.id)return;
+      const fullName=String(new FormData(e.target).get('fullName')||'').trim().replace(/\s+/g,' ');
+      if(fullName.length<2||fullName.length>100)return;
+      localStorage.setItem('ed-profile-name:'+state.user.id,fullName);
+      render();return;
+    }
     if(e.target.id==='company-profile-form'){e.preventDefault();await saveCompany(e.target);return;}
     if(e.target.id==='site-edit-form'){e.preventDefault();await saveSite(e.target);return;}
     if(e.target.id==='change-password-form'){
