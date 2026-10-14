@@ -15,6 +15,17 @@ async function owns(env,s,id){if(!validId(id)||s.user.role==='admin')return fals
 async function permitted(env,s,id){return await owns(env,s,id)&&await ensureBusinessFeature(env,s,id,'google_ads');}
 async function db(env,table,query='',method='GET',body){const k=env.SUPABASE_SERVICE_ROLE_KEY;if(!k)throw Error('Falta configuración segura de Supabase.');const r=await fetch(base(env)+'/rest/v1/'+table+(query?'?'+query:''),{method,headers:{apikey:k,Authorization:'Bearer '+k,Accept:'application/json','Content-Type':'application/json',Prefer:method==='POST'&&table==='ed_google_ads_connections'?'resolution=merge-duplicates,return=representation':'return=representation'},...(body?{body:JSON.stringify(body)}:{})});if(!r.ok)throw Error('No se pudo consultar el almacenamiento de Google Ads (HTTP '+r.status+').');return await r.json();}
 const redirect=req=>new URL(req.url).origin+'/api/google-ads/callback';
+// Result screen for the OAuth popup. Only our own origin receives the completion message.
+function popupCompleted(req,result,businessId,cookies=[]){
+ const origin=new URL(req.url).origin,nonce=b64(crypto.getRandomValues(new Uint8Array(16)));
+ const title=result==='connected'?'Google Ads conectado':result==='cancelled'?'Autorización cancelada':'No se pudo completar la conexión';
+ const description=result==='connected'?'Tu cuenta se autorizó correctamente. Puedes volver a Edwin CRM.':result==='cancelled'?'No se realizaron cambios. Puedes intentarlo otra vez.':'Google no entregó el acceso necesario. Vuelve a intentarlo desde Edwin CRM.';
+ const payload=JSON.stringify({type:'edwin-google-ads-oauth',result,business_id:businessId});
+ const html='<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Edwin CRM · Google Ads</title><style>body{min-height:100vh;margin:0;display:grid;place-items:center;background:#f5f7fc;color:#122b4b;font:15px/1.6 system-ui,-apple-system,sans-serif}.panel{max-width:390px;background:#fff;border:1px solid #dce6f5;box-shadow:0 16px 48px #102d5515;padding:34px 30px;text-align:center;border-radius:22px;margin:18px}.mark{margin:auto auto 17px;width:54px;height:54px;border-radius:16px;background:#e8f4ff;display:grid;place-items:center;font-size:29px;color:#1868da}h1{font-size:21px;line-height:1.3;margin:0 0 10px}p{font-size:14px;color:#64748b;margin:0 0 23px}a{display:inline-block;background:#156cdb;color:white;padding:10px 19px;border-radius:11px;font-weight:700;text-decoration:none}</style></head><body><main class="panel"><div class="mark">✓</div><h1>'+title+'</h1><p>'+description+'</p><a href="/">Volver a Edwin CRM</a></main><script nonce="'+nonce+'">try{if(window.opener&&window.opener!==window){window.opener.postMessage('+payload+','+JSON.stringify(origin)+');window.close();}}catch(e){}</script></body></html>';
+ const h=new Headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; style-src 'unsafe-inline'; script-src 'nonce-"+nonce+"'"});
+ for(const cookie of cookies)h.append('Set-Cookie',cookie);
+ return new Response(html,{status:200,headers:h});
+}
 function ready(env){return !!(env.GOOGLE_ADS_CLIENT_ID&&env.GOOGLE_ADS_CLIENT_SECRET&&env.SUPABASE_SERVICE_ROLE_KEY&&/^[a-f0-9]{64}$/i.test(env.GOOGLE_ADS_ENCRYPTION_KEY||''));}
 async function oauthToken(env,values){const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.GOOGLE_ADS_CLIENT_ID,client_secret:env.GOOGLE_ADS_CLIENT_SECRET,...values})});if(!r.ok)throw Error('Google rechazó la autorización (HTTP '+r.status+').');return r.json();}
 async function access(env,row){const t=await oauthToken(env,{grant_type:'refresh_token',refresh_token:(await unseal(env,row.refresh_token_cipher))?.refresh_token||''});if(!t.access_token)throw Error('No se pudo renovar el acceso. Vuelve a conectar Google Ads.');return t.access_token;}
@@ -60,14 +71,18 @@ export async function handleGoogleAdsApi(req,env,s){
   // Consume the nonce atomically before code exchange; only the first callback can succeed.
   const consumed=await db(env,'ed_google_oauth_nonces','nonce_hash=eq.'+encodeURIComponent(await sha(pending.state))+'&user_id=eq.'+encodeURIComponent(s.user.id)+'&expires_at=gt.'+encodeURIComponent(new Date().toISOString()),'DELETE');
   if(!consumed.length)return error('Autorización ya utilizada o vencida.',403);
-  const home=new URL('/',url.origin);home.searchParams.set('google_ads',url.searchParams.has('error')?'cancelled':'connected');
-  home.searchParams.set('business_id',pending.business);
-  if(url.searchParams.has('error'))return new Response(null,{status:302,headers:{Location:home.toString(),'Set-Cookie':clear}});
+  const finish=result=>{
+   if(pending.popup===true)return popupCompleted(req,result,pending.business,[...c,clear]);
+   const home=new URL('/',url.origin);home.searchParams.set('google_ads',result);home.searchParams.set('business_id',pending.business);
+   const headers=new Headers({Location:home.toString(),'Cache-Control':'no-store'});for(const cookie of [...c,clear])headers.append('Set-Cookie',cookie);
+   return new Response(null,{status:302,headers});
+  };
+  if(url.searchParams.has('error'))return finish('cancelled');
   const code=url.searchParams.get('code')||'';if(!code||code.length>4096)return error('Google no devolvió un código válido.');
   const t=await oauthToken(env,{grant_type:'authorization_code',code,redirect_uri:redirect(req)});
-  if(!t.refresh_token){home.searchParams.set('google_ads','no_refresh_token');return new Response(null,{status:302,headers:{Location:home.toString(),'Set-Cookie':clear}});}
+  if(!t.refresh_token)return finish('no_refresh_token');
   await db(env,'ed_google_ads_connections','on_conflict=business_id','POST',{business_id:pending.business,user_id:s.user.id,refresh_token_cipher:await seal(env,{refresh_token:t.refresh_token}),selected_customer_id:null,selected_login_customer_id:null,updated_at:new Date().toISOString()});
-  const h=new Headers({Location:home.toString(),'Cache-Control':'no-store'});for(const v of [...c,clear])h.append('Set-Cookie',v);return new Response(null,{status:302,headers:h});
+  return finish('connected');
  }
  if(!await owns(env,s,businessId))return error('No tienes acceso a esta empresa.',403);
  if(!await ensureBusinessFeature(env,s,businessId,'google_ads'))return error('Google Ads no está habilitado para esta empresa.',403);
@@ -80,7 +95,7 @@ export async function handleGoogleAdsApi(req,env,s){
  if(p==='/api/google-ads/connect'&&m==='GET'){
   const state=b64(crypto.getRandomValues(new Uint8Array(32))),until=Date.now()+600000;
   await db(env,'ed_google_oauth_nonces','','POST',{nonce_hash:await sha(state),user_id:s.user.id,business_id:businessId,expires_at:new Date(until).toISOString()});
-  const pending=await seal(env,{state,user:s.user.id,business:businessId,until});
+  const pending=await seal(env,{state,user:s.user.id,business:businessId,until,popup:url.searchParams.get('popup')==='1'});
   const auth=new URL('https://accounts.google.com/o/oauth2/v2/auth');
   for(const [k,v] of Object.entries({client_id:env.GOOGLE_ADS_CLIENT_ID,redirect_uri:redirect(req),response_type:'code',scope:'https://www.googleapis.com/auth/adwords',access_type:'offline',prompt:'consent',state}))auth.searchParams.set(k,v);
   const h=new Headers({Location:auth.toString(),'Cache-Control':'no-store'});for(const v of [...c,ck('ed_google_pending',pending,600)])h.append('Set-Cookie',v);return new Response(null,{status:302,headers:h});
