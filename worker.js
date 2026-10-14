@@ -314,6 +314,49 @@ async function handleApi(req, env) {
     return json({configured:true,accounts,truncated:users.length>=200},200,s.cookies);
   }
 
+  // Alta manual de cliente para fase piloto. No crea empresa ficticia: el cliente elegirá su marca.
+  if(path==='/api/admin/accounts/create-client' && method==='POST') {
+    if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
+    if(!companyJsonRequest(req,1500))return json({error:'Solicitud no autorizada.'},403,s.cookies);
+    let input;try{input=await companyParse(req,1500);}catch{return json({error:'Solicitud inválida.'},400,s.cookies);}
+    const email=String(input?.email||'').trim().toLowerCase();
+    if(email.length>254||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return json({error:'Correo inválido.'},400,s.cookies);
+    const key=env.SUPABASE_SERVICE_ROLE_KEY;
+    if(!key)return json({error:'Falta la configuración administrativa de Supabase.'},503,s.cookies);
+    const base=String(env.SUPABASE_URL).replace(/\\/$/,'');
+    const headers={apikey:key,Authorization:'Bearer '+key,Accept:'application/json','Content-Type':'application/json'};
+    const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+    const bytes=crypto.getRandomValues(new Uint8Array(28));
+    const password=Array.from(bytes,b=>chars[b%chars.length]).join('');
+    const created=await fetch(base+'/auth/v1/admin/users',{method:'POST',headers,
+      body:JSON.stringify({email,password,email_confirm:true,app_metadata:{ed_created_by_admin:true}})});
+    if(!created.ok){
+      const status=created.status===422||created.status===409?409:502;
+      return json({error:status===409?'Ya existe una cuenta con este correo.':'No se pudo registrar al cliente en Supabase Auth.'},status,s.cookies);
+    }
+    const user=await created.json();
+    if(!isUuid(user.id))return json({error:'Supabase no devolvió un usuario válido. Revisa el registro antes de reintentar.'},502,s.cookies);
+    // Puede existir un trigger de creación de perfil. Nunca cambiar un rol ya existente a admin.
+    const check=await fetch(base+'/rest/v1/profiles?select=id,role&id=eq.'+encodeURIComponent(user.id),{headers});
+    let profileOk=false;
+    if(check.ok){
+      const rows=await check.json();
+      if(rows.length===1)profileOk=rows[0].role==='client';
+      else if(rows.length===0){
+        const inserted=await fetch(base+'/rest/v1/profiles',{method:'POST',headers:{...headers,Prefer:'return=minimal'},
+          body:JSON.stringify({id:user.id,email,role:'client'})});
+        profileOk=inserted.ok;
+      }
+    }
+    if(!profileOk){
+      // Evitar una cuenta a medio crear; si el rollback falla, alertar sin exponer la clave.
+      const rollback=await fetch(base+'/auth/v1/admin/users/'+encodeURIComponent(user.id),{method:'DELETE',headers});
+      return json({error:rollback.ok?'No se pudo completar el perfil: no se creó la cuenta.':'Alta incompleta: revisa la cuenta en Supabase antes de reintentar.'},502,s.cookies);
+    }
+    return json({ok:true,email,user_id:user.id,temporary_password:password,
+      business_status:'pending_configuration',
+      message:'Cuenta creada. Entrega la contraseña por canal seguro; el cliente puede definir su empresa al ingresar.'},201,s.cookies);
+  }
   if(path==='/api/admin/accounts/temporary-password' && method==='POST') {
     if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
     if(!companyJsonRequest(req,1500))return json({error:'Solicitud no autorizada.'},403,s.cookies);
