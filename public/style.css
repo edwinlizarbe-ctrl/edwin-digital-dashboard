@@ -943,3 +943,6 @@ input,select,textarea{max-width:100%}
 
 /* Page names remain clickable without an underlining rule. */
 .bar-item [data-act="page-detail"]:hover,.bar-item [data-act="page-detail"]:focus-visible{text-decoration:none;color:var(--accent)}
+
+/* Popular pages: keep the colored percentage bar, hide the gray line behind it. */
+.bar-list:has([data-act="page-detail"]) .bar-track{background:transparent}
