@@ -341,6 +341,17 @@
     if(topPage)add(4,'file-text','Página más vista: '+(topPage.pagePath||'/'),fmt(topPage.screenPageViews)+' vistas. Revisa el contenido y las acciones clave asociadas a esta página.');
     if(!lines.length)add(5,'activity','Sin señales destacadas','No se detectaron variaciones suficientes con los datos comparables disponibles. Prueba otro período y verifica la conexión con GA4.');
     lines.sort((a,b)=>a.priority-b.priority);
+    // Four distinct items: fill missing slots with honest review tasks, never fabricated trends.
+    const checks=[
+      {symbol:'target',title:'Revisa la medición de objetivos',desc:'Confirma en Eventos y metas que las acciones importantes de tu sitio estén marcadas y registradas correctamente en GA4.'},
+      {symbol:'mouse-pointer',title:'Explora las fuentes de tráfico',desc:'Consulta Adquisición para identificar los canales de visita y evaluar cuáles merecen mayor atención.'},
+      {symbol:'file-text',title:'Revisa el contenido de tu sitio',desc:'En Contenido web puedes identificar las páginas con más visitas y comprobar que sus llamadas a la acción sean claras.'},
+      {symbol:'activity',title:'Compara otros períodos',desc:'Selecciona un período diferente para buscar señales adicionales y confirmar que los cambios no sean puntuales.'}
+    ];
+    for(const check of checks){
+      if(lines.length>=4)break;
+      if(!lines.some(x=>x.title===check.title))lines.push({priority:6,...check});
+    }
     return '<div class="insight-list">'+lines.slice(0,4).map(x=>'<div class="insight-item"><div class="insight-icon">'+icon(x.symbol,18)+'</div><div><strong>'+clean(x.title)+'</strong><p>'+clean(x.desc)+'</p></div></div>').join('')+'</div><p class="fine-print">Señales calculadas con GA4 · '+clean(periodLabel())+'. Los cambios se muestran solo con una base anterior válida y suficiente; no se infieren causas ni ventas.</p>';
   }
 
