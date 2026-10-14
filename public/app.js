@@ -7,7 +7,7 @@
     page: 'overview', analyticMetric: 'totalUsers', period: '7', theme: localStorage.getItem('ed-theme-v3') === 'dark' ? 'dark' : 'light',
     loading: true, gaLoading: false, hmLoading: false, ga: null, hm: null,
     gaError: '', hmError: '', startupError: '', loginError: '', loginBusy: false,
-    mobileOpen: false, campaignsMenuOpen: true, salesMenuOpen: true, salesSource: 'overview', sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
+    mobileOpen: false, campaignsMenuOpen: true, salesMenuOpen: false, salesSource: 'overview', sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
     metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsBestOnly: false, adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
