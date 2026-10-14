@@ -7,7 +7,7 @@
     page: 'overview', analyticMetric: 'totalUsers', period: '7', theme: localStorage.getItem('ed-theme-v3') === 'dark' ? 'dark' : 'light',
     loading: true, gaLoading: false, hmLoading: false, ga: null, hm: null,
     gaError: '', hmError: '', startupError: '', loginError: '', loginBusy: false,
-    mobileOpen: false, campaignsMenuOpen: true, sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
+    mobileOpen: false, campaignsMenuOpen: true, salesMenuOpen: true, salesSource: 'overview', sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
     metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsBestOnly: false, adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
@@ -73,6 +73,7 @@
     analytics: ['Analítica web', 'activity'],
     acquisition: ['Adquisición', 'mouse-pointer'],
     campaigns: ['Campañas Ads', 'megaphone'],
+    sales: ['Ventas', 'shopping-bag'],
     utm: ['Fuentes UTM de GA4', 'mouse-pointer'],
     adminHome: ['Panel administrador', 'layout-dashboard'],
     adminIntegrations: ['Integraciones', 'plug'],
@@ -415,6 +416,10 @@
     const blocks=[['Ventas confirmadas','shopping-bag'],['Ingresos','activity'],['Ticket promedio','target'],['Variación de ventas','chart-bar']];
     const cards=blocks.map(([label,symbol])=>`<div class="sales-overview-metric"><span class="sales-overview-icon">${icon(symbol==='chart-bar'?'activity':symbol,19)}</span><small>${label}</small><strong>—</strong><span>Sin datos conectados</span></div>`).join('');
     return `<section class="sales-overview" aria-label="Resumen de ventas"><div class="sales-overview-head"><div><span class="sales-overview-eyebrow">COMERCIO DIGITAL</span><h2>Ventas</h2><p>Indicadores reales de la empresa seleccionada · ${clean(periodLabel())}</p></div><button class="button button-outline" type="button" data-act="nav" data-page="integrations">${icon('plug',16)} Ver integraciones</button></div><div class="sales-overview-grid">${cards}</div><p class="sales-overview-note">Aún no hay una fuente de ventas autorizada para esta empresa. Shopify y Hotmart requieren integración propia antes de mostrar importes, pedidos o tendencias. Los eventos clave de GA4 no se contabilizan como ventas.</p></section>`;
+  }
+  function sales(){
+    const name={overview:'Resumen',shopify:'Shopify',hotmart:'Hotmart'}[state.salesSource]||'Resumen';
+    return `${heading('Ventas',name,'Datos comerciales de la empresa seleccionada · '+periodLabel())}${salesOverview()}<div class="content-grid"><div class="col-12">${card('Estado de las fuentes de ventas','Conexiones individuales por empresa',connectionOverview())}</div></div>`;
   }
   function overview() {
     const ok=gaReady();
@@ -1163,10 +1168,11 @@ async function loadAccounts(){
 
     const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
   const adsNavigation=()=>`<div class="crm-ads-nav"><button class="nav-link ${state.page==='campaigns'?'active':''}" data-act="campaign-menu" aria-expanded="${state.campaignsMenuOpen}" title="Campañas Ads">${icon('megaphone',19)}<span>Campañas Ads</span>${icon(state.campaignsMenuOpen?'chevronDown':'chevron',15)}</button>${state.campaignsMenuOpen?'<div class="crm-ads-subnav">'+[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']].map(([key,label])=>'<button class="crm-ads-subitem '+(state.page==='campaigns'&&state.adsPlatform===key?'active':'')+'" data-act="campaign-select" data-platform="'+key+'"><span>'+label+'</span></button>').join('')+'</div>':''}</div>`;
+  const salesNavigation=()=>`<div class="crm-ads-nav"><button class="nav-link ${state.page==='sales'?'active':''}" data-act="sales-menu" aria-expanded="${state.salesMenuOpen}" title="Ventas">${icon('shopping-bag',19)}<span>Ventas</span>${icon(state.salesMenuOpen?'chevronDown':'chevron',15)}</button>${state.salesMenuOpen?'<div class="crm-ads-subnav">'+[['overview','Resumen de ventas'],['shopify','Shopify'],['hotmart','Hotmart']].map(([key,label])=>'<button class="crm-ads-subitem '+(state.page==='sales'&&state.salesSource===key?'active':'')+'" data-act="sales-select" data-source="'+key+'"><span>'+label+'</span></button>').join('')+'</div>':''}</div>`;
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}" title="${clean(pages[id][0])}" aria-label="${clean(pages[id][0])}" ${state.page===id?'aria-current="page"':''}>${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','accounts','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
- `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition'].map(navLink).join('')+adsNavigation()+['audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${['reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
+ `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition'].map(navLink).join('')+adsNavigation()+['audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${salesNavigation()}${['reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
  return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('panel-left-close',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><button type="button" class="sidebar-workspace" data-act="nav" data-page="${isAdmin()?'adminHome':'company'}" title="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}" aria-label="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Panel administrador':'Editar datos de mi empresa'}</small></span>${icon('chevron',16)}</button>${menu}</div><div class="sidebar-bottom"><div class="avatar" title="${clean(state.user?.email||'Cuenta')}">${icon('user',20)}</div><div class="account"><b>${isAdmin()?'Superadministrador':clean(displayBusiness())}</b><span>${isAdmin()?'Cuenta de administración':'Cuenta de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('power',19)}</button></div></aside>`;
 }
     function topbar(){
@@ -1184,7 +1190,7 @@ function sidebar(){
     if(!state.user){login();return;}
     if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
     if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
-    const contents={overview,analytics,acquisition,campaigns,utm,audience,content,events,hotmart,reports,clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
+    const contents={overview,analytics,acquisition,campaigns,sales,utm,audience,content,events,hotmart,reports,clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
     let pageMarkup;
     try {pageMarkup=(contents[state.page]||overview)();}
     catch(error){
@@ -1351,6 +1357,8 @@ function sidebar(){
     }
     else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
+    else if(action==='sales-menu'){state.salesMenuOpen=!state.salesMenuOpen;render();}
+    else if(action==='sales-select'){const source=b.dataset.source;if(!['overview','shopify','hotmart'].includes(source))return;state.salesSource=source;state.page='sales';state.mobileOpen=false;render();window.scrollTo(0,0);}
     else if(action==='campaign-menu'){state.campaignsMenuOpen=!state.campaignsMenuOpen;render();}
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
