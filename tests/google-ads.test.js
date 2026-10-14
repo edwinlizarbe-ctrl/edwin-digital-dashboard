@@ -154,7 +154,7 @@ test('popup OAuth callback returns a safe same-origin completion document',async
   const req=new Request(origin+'/api/google-ads/callback?state='+state+'&code=mock-code',{headers:{Cookie:'ed_google_pending='+encodeURIComponent(pending)}});
   const result=await handleGoogleAdsApi(req,server.env,session);
   assert.equal(result.status,200);
-  assert.match(result.headers.get('Content-Type'),'text/html');
+  assert.match(result.headers.get('Content-Type'),/text\/html/);
   assert.match(result.headers.get('Content-Security-Policy'),/script-src 'nonce-/);
   assert.match(result.headers.get('Set-Cookie'),/ed_google_pending=/);
   const html=await result.text();
