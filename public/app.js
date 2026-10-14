@@ -939,7 +939,7 @@ function adminPermissionsPanel(){
  const options=businesses.map(b=>'<option value="'+clean(b.id)+'" '+(id===b.id?' selected':'')+'>'+clean(b.name)+'</option>').join('');
  const controls=businessFeatureLabels.map(([key,name])=>{
    const on=premium?true:!!flags[key];
-   const unavailable=['search_console','social_organic','hotmart','shopify','google_ads','tiktok_ads','linkedin_ads'].includes(key);
+   const unavailable=['search_console','social_organic','hotmart','shopify','tiktok_ads','linkedin_ads'].includes(key);
    const editable=ready&&free&&!state.adminFeatureBusy;
    return '<div class="admin-feature-row">'+providerLogo(name)+
     '<div class="admin-feature-name"><strong>'+clean(name)+'</strong><small>'+
