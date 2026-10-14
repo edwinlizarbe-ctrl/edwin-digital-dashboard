@@ -320,10 +320,10 @@ async function handleApi(req, env) {
     if(!companyJsonRequest(req,1500))return json({error:'Solicitud no autorizada.'},403,s.cookies);
     let input;try{input=await companyParse(req,1500);}catch{return json({error:'Solicitud inválida.'},400,s.cookies);}
     const email=String(input?.email||'').trim().toLowerCase();
-    if(email.length>254||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return json({error:'Correo inválido.'},400,s.cookies);
+    if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json({error:'Correo inválido.'},400,s.cookies);
     const key=env.SUPABASE_SERVICE_ROLE_KEY;
     if(!key)return json({error:'Falta la configuración administrativa de Supabase.'},503,s.cookies);
-    const base=String(env.SUPABASE_URL).replace(/\\/$/,'');
+    const base=String(env.SUPABASE_URL).replace(/\/$/,'');
     const headers={apikey:key,Authorization:'Bearer '+key,Accept:'application/json','Content-Type':'application/json'};
     const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
     const bytes=crypto.getRandomValues(new Uint8Array(28));
