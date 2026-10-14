@@ -1018,3 +1018,8 @@ input,select,textarea{max-width:100%}
 [data-sidebar-tone=white] .sidebar .brand-word span{color:#2563eb!important}
 [data-sidebar-tone=navy] .sidebar .brand-word{color:#f6f9ff!important}
 [data-sidebar-tone=navy] .sidebar .brand-word span{color:#93c5fd!important}
+
+/* SleekFlow reference: sampled navy background #0C122C, dark sidebar only. */
+[data-sidebar-tone=navy] .layout .sidebar,[data-sidebar-tone=navy] .sidebar{background:#0c122c!important}
+[data-sidebar-tone=navy] .sidebar .nav-link.active{background:#202644!important;color:#f4f6ff!important}
+[data-sidebar-tone=navy] .sidebar .nav-link:hover{background:#202644!important}
