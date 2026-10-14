@@ -23,3 +23,4 @@ jobs:
           node --check worker.js
           node --check public/app.js
           node --check feature-access.js
+          node --test tests/google-ads.test.js
