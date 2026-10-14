@@ -359,6 +359,8 @@
     const sources=[
       ['Google Analytics 4',gaReady()?'Conectado':'Pendiente','analytics',gaReady()?'Informes web disponibles':'Sin propiedad GA4 autorizada'],
       ['Meta Ads',state.meta?.connected?'Conectado':state.meta?.configured?'Listo para conectar':'Pendiente','campaigns',state.meta?.connected?'Campañas disponibles según las cuentas autorizadas':'Completa la conexión en Integraciones'],
+      ['Shopify','Próximamente','integrations','Requiere conexión independiente de la tienda de esta empresa'],
+      ['Hotmart','Próximamente','integrations','Requiere autorización comercial independiente por empresa'],
       ['Google Ads','Próximamente','campaigns','API pendiente'],
       ['TikTok Ads','Próximamente','campaigns','API pendiente'],
       ['LinkedIn Ads','Próximamente','campaigns','API pendiente']
