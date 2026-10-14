@@ -1033,3 +1033,14 @@ input,select,textarea{max-width:100%}
 .welcome-decor{position:absolute;right:33px;top:50%;transform:translateY(-50%);opacity:.17}
 .welcome-banner::after{content:"";position:absolute;width:250px;height:250px;border-radius:50%;right:-75px;top:-100px;background:rgba(255,255,255,.09)}
 @media(max-width:600px){.welcome-banner{padding:20px;min-height:125px}.welcome-banner-content{max-width:100%}.welcome-decor{display:none}}
+
+/* Layered, subtle icon artwork inspired by the supplied dashboard reference. */
+.overview-modern-kpis .kpi{isolation:isolate}
+.overview-modern-kpis .kpi-backdrop-icon{position:absolute;right:-17px;top:44px;width:116px;height:116px;color:#fff;opacity:.12;transform:rotate(-13deg);pointer-events:none;z-index:-1}
+.overview-modern-kpis .kpi-backdrop-icon svg{display:block;width:100%;height:100%;stroke-width:1.4}
+.overview-modern-kpis .kpi-header,.overview-modern-kpis .kpi-name,.overview-modern-kpis .kpi-value,.overview-modern-kpis .kpi-bottom{position:relative;z-index:1}
+.kpi-backdrop-icon{display:none}
+.overview-modern-kpis .kpi-backdrop-icon{display:block}
+.welcome-decor{right:35px;opacity:.22}
+.welcome-decor svg{width:92px;height:92px;stroke-width:1.2}
+@media(max-width:600px){.overview-modern-kpis .kpi-backdrop-icon{width:86px;height:86px;right:-10px;top:40px}}
