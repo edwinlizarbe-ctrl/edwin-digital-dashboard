@@ -16,7 +16,7 @@
     accent: (localStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(localStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: localStorage.getItem('ed-sidebar-v7')==='white' ? 'white' : 'navy',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
-    adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
+    adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -1014,7 +1014,7 @@ async function loadAccounts(){
   const date=v=>{if(!v)return 'Sin registro';const d=new Date(v);return Number.isNaN(d.valueOf())?'Sin registro':d.toLocaleDateString('es-PE',{year:'numeric',month:'short',day:'numeric'});};
   const results=list.map(u=>`<div class="client-site-row account-access-row">
     <div class="client-avatar compact">${icon('users',19)}</div>
-    <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Rol: ${clean(u.role||'Cliente')} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
+    <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Empresa: ${clean((state.adminDirectory?.memberships||[]).filter(m=>m.user_id===u.id).map(m=>state.businesses.find(b=>b.id===m.business_id)?.name).filter(Boolean).join(', ')||'Sin empresa vinculada')}</small><small>Rol: ${clean(u.role||'Cliente')} · Alta: ${clean(date(u.created_at))} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
     <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button><button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button></div>
   </div>`).join('');
   return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
@@ -1033,23 +1033,79 @@ async function loadAccounts(){
     ):''}
     <p class="fine-print">Las contraseñas no se almacenan ni pueden consultarse aquí. El administrador puede generar una clave temporal y entregarla al cliente de forma privada. Los accesos a empresas siguen sujetos a permisos.</p>`;
 }
+  const directoryUsersFor=id=>{
+    const d=state.adminDirectory;
+    if(!d)return [];
+    const ids=new Set((d.memberships||[]).filter(x=>x.business_id===id).map(x=>x.user_id));
+    return (d.users||[]).filter(u=>ids.has(u.id));
+  };
+  const adminDate=v=>{
+    if(!v)return 'No registrado';
+    const d=new Date(v);
+    return Number.isNaN(d.getTime())?'No registrado':d.toLocaleString('es-PE',{day:'2-digit',month:'short',year:'numeric'});
+  };
+  const linkedEmail=businessId=>{
+    const all=directoryUsersFor(businessId);
+    return all[0]?.email||'Sin correo vinculado';
+  };
+  async function loadAdminDirectory(){
+    if(!isAdmin()||state.directoryLoading)return;
+    state.directoryLoading=true;state.directoryError='';render();
+    try{
+      const result=await api('/api/admin/directory');
+      if(!isAdmin())return;
+      state.adminDirectory=result;
+    }catch(e){state.directoryError=e.message||'No se pudo consultar el directorio.';}
+    finally{state.directoryLoading=false;render();}
+  }
   function clients(){
- if(!isAdmin())return overview();
- const query=state.adminQuery.trim().toLowerCase(), filtered=state.businesses.filter(b=>(b.name+' '+(b.slug||'')).toLowerCase().includes(query));
- return `${heading('Administración','Mis clientes','Empresas a las que tienes acceso por Supabase. Las cuentas publicitarias y ventas siguen siendo privadas de cada negocio.')}
- <div class="admin-toolbar"><label class="admin-search">${icon('search',18)}<input id="admin-client-search" type="search" value="${clean(state.adminQuery)}" placeholder="Buscar empresa o identificador" aria-label="Buscar clientes"/></label><span>${fmt(filtered.length)} de ${fmt(state.businesses.length)} empresas</span></div>
- <div class="client-grid">${filtered.map(b=>`<article class="client-card client-card-clickable" data-act="client-detail" data-id="${clean(b.id)}" role="button" tabindex="0"><div class="client-avatar">${icon('building',27)}</div><h3>${clean(b.name)}</h3><p>${clean(b.slug)}</p><div class="client-plan-tag">${clean(state.adminPlans[b.id]||'Plan sin asignar')}</div><div class="client-line">${icon('lock',14)} ${clean(adminStatusFor(b))} · Aislamiento por empresa</div><span class="button button-outline">Ver ficha ${icon('chevron',15)}</span></article>`).join('')||empty(query?'No hay clientes que coincidan con la búsqueda.':'No hay negocios autorizados.')}</div>`;
-}
-
+    if(!isAdmin())return overview();
+    const query=state.adminQuery.trim().toLowerCase();
+    const filtered=state.businesses.filter(b=>[b.name,b.slug,linkedEmail(b.id),...directoryUsersFor(b.id).map(u=>u.email)].join(' ').toLowerCase().includes(query));
+    const cards=filtered.map(b=>{
+      const users=directoryUsersFor(b.id);
+      return `<article class="client-card admin-rich-client">
+        <div class="admin-rich-header"><div class="client-avatar">${icon('building',25)}</div><div><h3>${clean(b.name)}</h3><p>${clean(b.slug||'Empresa')}</p></div><span class="client-plan-tag">${clean(state.adminPlans[b.id]||'Sin plan registrado')}</span></div>
+        <div class="admin-detail-line"><span>Correo de usuario vinculado</span><strong>${clean(linkedEmail(b.id))}</strong></div>
+        <div class="admin-detail-line"><span>Registrada</span><strong>${clean(adminDate(b.created_at))}</strong></div>
+        <div class="admin-detail-line"><span>Usuarios vinculados</span><strong>${state.adminDirectory?fmt(users.length):'Por consultar'}</strong></div>
+        <div class="admin-detail-line"><span>Último acceso registrado</span><strong>${clean(adminDate(users.map(u=>u.last_sign_in_at).filter(Boolean).sort().at(-1)))}</strong></div>
+        <p class="fine-print">El correo corresponde a un usuario vinculado; no necesariamente al correo comercial de la empresa.</p>
+        <button class="button button-primary admin-card-open" type="button" data-act="client-detail" data-id="${clean(b.id)}">Ver ficha completa ${icon('chevron',16)}</button>
+      </article>`;
+    }).join('');
+    return `${heading('Administración','Mis clientes','Identidad, correos vinculados, fechas y accesos de cada empresa autorizada.')}
+      <div class="admin-toolbar"><label class="admin-search">${icon('search',18)}<input id="admin-client-search" type="search" value="${clean(state.adminQuery)}" placeholder="Buscar empresa, correo o identificador" aria-label="Buscar clientes"/></label><button class="button button-outline" data-act="directory-refresh" ${state.directoryLoading?'disabled':''}>${icon('refresh',15)} ${state.directoryLoading?'Consultando…':'Actualizar directorio'}</button><span>${fmt(filtered.length)} de ${fmt(state.businesses.length)} empresas</span></div>
+      ${state.directoryError?alertBlock(state.directoryError,'info'):''}
+      ${!state.adminDirectory?'<p class="fine-print">Los correos y fechas de acceso aparecerán cuando termine la consulta administrativa.</p>':''}
+      <div class="client-grid admin-rich-grid">${cards||empty('No se encontraron empresas con ese nombre o correo.')}</div>`;
+  }
+  
   function clientDetail(){
- if(!isAdmin())return overview();
- const b=business();if(!b)return clients();
- const sites=state.sites.map(s=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(s.name)}</strong><small>${clean(s.url||'URL no registrada')}</small></div><span class="client-site-badge">${s.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
- return `${heading('Cliente',b.name,'Consulta administrativa: sin usar sus tokens ni mezclar sus datos con otras empresas.')}
- <div class="client-detail-actions"><button class="button button-primary" data-act="admin-manage-features" data-id="${clean(b.id)}">Configurar permisos y plan</button><button class="button button-outline" data-act="nav" data-page="clients">${icon('chevron',16)} Volver</button></div>
- <div class="content-grid"><div class="col-7">${card('Sitios visibles',fmt(state.sites.length)+' registros accesibles',sites||empty('No hay sitios visibles con tu rol actual; esto no confirma que el cliente no tenga sitios.'))}</div>
- <div class="col-5">${card('Privacidad','Gestión de la plataforma',`<p>Las campañas y conexiones se consultan desde la sesión del cliente. No se muestran contraseñas ni secretos.</p><p class="fine-print">Invitaciones, planes y facturación requieren flujos administrativos propios antes de habilitar acciones de escritura.</p>`)}</div></div>`;
-}
+    if(!isAdmin())return overview();
+    const b=business();if(!b)return clients();
+    const users=directoryUsersFor(b.id);
+    const sites=state.sites.map(site=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(site.name)}</strong><small>${clean(site.url||'URL no registrada')}</small></div><span class="client-site-badge">${site.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
+    const accounts=users.map(u=>`<div class="admin-linked-user"><div class="client-avatar compact">${icon('user',18)}</div><div><strong>${clean(u.email||'Correo no registrado')}</strong><small>Rol: ${clean(u.role)} · Alta: ${clean(adminDate(u.created_at))}</small><small>Último acceso: ${clean(adminDate(u.last_sign_in_at))} · Email verificado: ${u.confirmed_at?'Sí':'No confirmado / sin datos'}</small></div></div>`).join('');
+    return `${heading('Ficha del cliente',b.name,'Información administrativa real, relaciones autorizadas y datos disponibles de la empresa.')}
+      <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">Volver a mis clientes</button><button class="button button-primary" data-act="admin-manage-features" data-id="${clean(b.id)}">Configurar plan y permisos</button><button class="button button-outline" data-act="directory-refresh">${icon('refresh',15)} Actualizar datos</button></div>
+      ${state.directoryError?alertBlock(state.directoryError,'info'):''}
+      <div class="content-grid"><div class="col-6">${card('Identidad de la empresa','Información registrada en la plataforma',
+        '<div class="admin-detail-line"><span>Nombre comercial</span><strong>'+clean(b.name)+'</strong></div>'+
+        '<div class="admin-detail-line"><span>Identificador</span><strong>'+clean(b.slug||'No registrado')+'</strong></div>'+
+        '<div class="admin-detail-line"><span>Correo de usuario vinculado</span><strong>'+clean(linkedEmail(b.id))+'</strong></div>'+
+        '<div class="admin-detail-line"><span>Correo comercial oficial</span><strong>No registrado</strong></div>'+
+        '<div class="admin-detail-line"><span>Creación</span><strong>'+clean(adminDate(b.created_at))+'</strong></div>'+
+        '<div class="admin-detail-line"><span>Plan</span><strong>'+clean(state.adminPlans[b.id]||'No registrado')+'</strong></div>')}</div>
+      <div class="col-6">${card('Usuarios asociados',users.length+' usuario(s) vinculados según business_members',accounts||(state.adminDirectory?empty('No hay usuarios vinculados en business_members.'):empty('Pulsa Actualizar datos para consultar usuarios.')))}</div>
+      <div class="col-6">${card('Sitios web autorizados',state.sites.length+' sitios visibles',sites||empty('No hay sitios disponibles con tu rol actual.'))}</div>
+      <div class="col-6">${card('Actividad y control','Indicadores comprobables y permisos',`
+        <div class="admin-detail-line"><span>Último acceso de un usuario</span><strong>${clean(adminDate(users.map(u=>u.last_sign_in_at).filter(Boolean).sort().at(-1)))}</strong></div>
+        <div class="admin-detail-line"><span>Usuarios registrados en la empresa</span><strong>${state.adminDirectory?fmt(users.length):'Por consultar'}</strong></div>
+        <div class="admin-detail-line"><span>Estado de suscripción</span><strong>Sin facturación conectada</strong></div>
+        <p class="fine-print">No se inventan estados de actividad ni fechas. Los cambios administrativos y accesos históricos requieren un registro de auditoría independiente.</p>`)}</div></div>`;
+  }
+  
     function metaPilotEligible() { return !isAdmin() && !!business()?.id && featureEnabled('meta_ads'); }
   function metaMetric(value, digits=0) {
     const n=Number(value);
@@ -1254,7 +1310,7 @@ function sidebar(){
         if(parameters.get('meta')==='cancelled')state.metaError='Se canceló la autorización con Facebook.';
         history.replaceState({},'',location.pathname+location.hash);
       }state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
-      if(isAdmin()){await loadAdminStats();await loadAdminPlans();}
+      if(isAdmin()){await loadAdminStats();await loadAdminPlans();await loadAdminDirectory();}
       else if(state.businesses.length){
         const targetBusiness=state.businesses.find(x=>x.id===returnBusiness)?.id||state.businesses[0].id;
         await chooseBusiness(targetBusiness);if(state.page==='campaigns')await loadAds();
@@ -1364,7 +1420,7 @@ function sidebar(){
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
-    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin())await loadAccounts();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh({force:true}));
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
@@ -1391,6 +1447,7 @@ function sidebar(){
       finally{if(state.emailHistoryUserId===userId){state.emailHistoryLoading=false;render();}}
     }
     else if(action==='account-email-hide'){state.emailHistoryUserId='';state.emailHistoryData=[];render();}
+    else if(action==='directory-refresh'&&isAdmin())await loadAdminDirectory();
     else if(action==='accounts-refresh'&&isAdmin()){state.temporaryAccess=null;await loadAccounts();}
     else if(action==='account-copy-temp'&&isAdmin()&&state.temporaryAccess){
       try{await navigator.clipboard.writeText(state.temporaryAccess.password);state.accountNotice='Clave copiada al portapapeles. Compártela por un canal privado.';}
@@ -1483,7 +1540,7 @@ function sidebar(){
       }catch(e){if(state.businessId===current){state.metaError=e.message;render();}}
     }
     else if(action==='choose'){state.page='overview';await chooseBusiness(b.dataset.id);}
-    else if(action==='client-detail'){if(isAdmin()){state.page='clientDetail';await chooseBusiness(b.dataset.id);window.scrollTo(0,0);}}
+    else if(action==='client-detail'){if(isAdmin()){state.page='clientDetail';await chooseBusiness(b.dataset.id);if(!state.adminDirectory)await loadAdminDirectory();window.scrollTo(0,0);}}
     else if(action==='client-site'){if(isAdmin()&&state.sites.some(s=>s.id===b.dataset.id)){state.siteId=b.dataset.id;state.page='analytics';await refresh();window.scrollTo(0,0);}}
     else if(action==='csv')doCsv();
     else if(action==='download')doCsv(b.dataset.report);
