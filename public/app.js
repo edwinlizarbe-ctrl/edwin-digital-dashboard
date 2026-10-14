@@ -17,7 +17,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null,
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false,
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -55,7 +55,7 @@
       company:company?.name || '', businessId:state.businessId,
       site:currentSite?.name || '', siteId:state.siteId,
       period:state.period, periodLabel:periodLabel(), ga, gaPrevious:prev,
-      metaConnected:!!state.meta?.connected, meta,
+      metaConnected:!!state.meta?.connected, meta, googleAdsConnected:!!state.googleAds?.connected,googleAdsCampaigns:state.googleAdsReport?.partial?[]:(state.googleAdsReport?.rows||[]).slice(0,10).map(r=>({name:r.name,spend:r.spend,clicks:r.clicks,impressions:r.impressions,conversions:r.conversions,currency:state.googleAdsReport.currency})),salesPipeline:{recorded:(state.leads||[]).length,closed:(state.leads||[]).filter(r=>r.stage==='won').length,attribution:'manual'},
       topChannels: (state.ga?.reports?.channels||[]).slice(0,5).map(x=>({name:String(x.sessionDefaultChannelGroup||'No identificado'),sessions:Number(x.sessions)||0})),
       topPages: (state.ga?.reports?.pages||[]).slice(0,5).map(x=>({name:String(x.pagePath||'/'),views:Number(x.screenPageViews)||0})),
       topEvents: (state.ga?.reports?.events||[]).slice(0,5).map(x=>({name:String(x.eventName||'Sin nombre'),count:Number(x.eventCount)||0}))
@@ -74,6 +74,7 @@
     acquisition: ['Adquisición', 'mouse-pointer'],
     campaigns: ['Campañas Ads', 'megaphone'],
     sales: ['Ventas', 'shopping-bag'],
+    leads: ['Oportunidades', 'users'],
     utm: ['Fuentes UTM de GA4', 'mouse-pointer'],
     adminHome: ['Panel administrador', 'layout-dashboard'],
     adminIntegrations: ['Integraciones', 'plug'],
@@ -423,8 +424,13 @@
   }
   function overview() {
     const ok=gaReady();
-    return `${heading('Vista general','Resumen general','Conoce el rendimiento de tu negocio durante '+periodLabel().toLowerCase())}${welcomeBanner()}${statusStrip()}<div class="overview-modern-kpis">${mainKpis(true)}</div>${businessPulse()}${salesOverview()}<div class="content-grid"><div class="col-8">${card('¿Cómo evolucionan las visitas a tu web?',`Selecciona un indicador · ${periodLabel()} · ${{totalUsers:'Personas que visitaron tu web',sessions:'Visitas realizadas a tu web',screenPageViews:'Páginas visualizadas',keyEvents:'Acciones importantes configuradas en GA4'}[state.overviewMetric]||'Personas que visitaron tu web'}`,overviewMetricPicker()+( ok?chart(rows('trend'),(['totalUsers','sessions','screenPageViews','keyEvents'].includes(state.overviewMetric)?state.overviewMetric:'totalUsers'),({totalUsers:'Usuarios totales',sessions:'Sesiones',screenPageViews:'Vistas de páginas',keyEvents:'Eventos clave'})[state.overviewMetric]||'Usuarios totales'):dataPlaceholder() ))}</div><div class="col-4">${card('¿Cómo llegan las personas a tu web?','Visitas desde Google, redes sociales, enlaces y otras fuentes',ok?donut(rows('channels').map(r=>({...r,channelLabel:friendlyChannel(r.sessionDefaultChannelGroup)})),'channelLabel','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Haz clic en una página para consultar sus estadísticas',ok?popularPagesOverview():dataPlaceholder())}</div><div class="col-5">${card('Centro de oportunidades','Señales reales para revisar en tu negocio',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${connectedAdsOverview()}${flags()}`;
+    return `${heading('Vista general','Resumen general','Conoce el rendimiento de tu negocio durante '+periodLabel().toLowerCase())}${welcomeBanner()}${statusStrip()}<div class="overview-modern-kpis">${mainKpis(true)}</div>${businessPulse()}${salesOverview()}<div class="content-grid"><div class="col-8">${card('¿Cómo evolucionan las visitas a tu web?',`Selecciona un indicador · ${periodLabel()} · ${{totalUsers:'Personas que visitaron tu web',sessions:'Visitas realizadas a tu web',screenPageViews:'Páginas visualizadas',keyEvents:'Acciones importantes configuradas en GA4'}[state.overviewMetric]||'Personas que visitaron tu web'}`,overviewMetricPicker()+( ok?chart(rows('trend'),(['totalUsers','sessions','screenPageViews','keyEvents'].includes(state.overviewMetric)?state.overviewMetric:'totalUsers'),({totalUsers:'Usuarios totales',sessions:'Sesiones',screenPageViews:'Vistas de páginas',keyEvents:'Eventos clave'})[state.overviewMetric]||'Usuarios totales'):dataPlaceholder() ))}</div><div class="col-4">${card('¿Cómo llegan las personas a tu web?','Visitas desde Google, redes sociales, enlaces y otras fuentes',ok?donut(rows('channels').map(r=>({...r,channelLabel:friendlyChannel(r.sessionDefaultChannelGroup)})),'channelLabel','sessions'):dataPlaceholder())}</div><div class="col-7">${card('Páginas más visitadas','Haz clic en una página para consultar sus estadísticas',ok?popularPagesOverview():dataPlaceholder())}</div><div class="col-5">${card('Centro de oportunidades','Señales reales para revisar en tu negocio',insights())}</div></div>${selectedBusinessIsHotmart()?hotmartRibbon():''}<div class="spacer-lg"></div>${card('Mis integraciones','Las fuentes conectadas alimentan sus reportes en tu empresa',connectionOverview())}${connectedAdsOverview()}${leadSummaryOverview()}${flags()}`;
   }
+
+function leadSummaryOverview(){
+ const data=state.leads||[],closed=data.filter(x=>x.stage==='won').length;
+ return '<section class="crm-overview-line"><div><b>Oportunidades comerciales</b><span>Registro manual por empresa; sin atribución automática.</span></div><strong>'+fmt(data.length)+' contactos · '+fmt(closed)+' cerrados</strong><button class="button button-outline" data-act="nav" data-page="leads">Gestionar clientes</button></section>';
+}
   function heading(kicker,title,subtitle){const downloadable=['overview','analytics','acquisition','utm','audience','content','events','reports'].includes(state.page);return `<div class="page-title"><div><div class="eyebrow">${clean(kicker)}</div><h1>${clean(title)}</h1><p>${clean(subtitle)}</p></div>${downloadable?`<button class="button button-outline title-export" data-act="csv">${icon('download',17)} Exportar CSV</button>`:''}</div>`;}
   function detailKpis() {
     const v=m(),ok=gaReady(), series=rows('trend_detail');
@@ -597,6 +603,7 @@
 
 
 function adsConnectionStatus(value){
+ if(value==='google')return !featureEnabled('google_ads')?{label:'No incluido',kind:'restricted'}:state.googleAds?.connected?{label:'Conectado',kind:'connected'}:state.googleAds?.configured?{label:'Por conectar',kind:'waiting'}:{label:'En preparación',kind:'soon'};
  if(value!=='meta')return {label:'Próximamente',kind:'soon'};
  if(!featureEnabled('meta_ads'))return {label:'No incluido',kind:'restricted'};
  if(state.metaLoading)return {label:'Verificando',kind:'waiting'};
@@ -611,7 +618,8 @@ function adsOverviewHero(platform){
  const provider=labels[platform]||'Meta Ads',m=state.meta||{},status=adsConnectionStatus(platform);
  const selected=platform==='meta'?(m.selected_accounts||[m.selected_account].filter(Boolean)).length:0;
  const open=platform==='meta'&&featureEnabled('meta_ads');
- const sub=platform!=='meta'?'La integración oficial de esta plataforma aún está en desarrollo.':
+ const googleOpen=platform==='google'&&featureEnabled('google_ads');
+ const sub=platform==='google'?(state.googleAds?.connected?'Cuenta autorizada. Consulta las campañas desde Integraciones.':'Conecta tu cuenta publicitaria desde Integraciones.'):platform!=='meta'?'La integración oficial de esta plataforma aún está en desarrollo.':
   !featureEnabled('meta_ads')?'Esta empresa no tiene permiso para utilizar Meta Ads.':
   status.kind==='connected'?selected+' cuenta(s) publicitarias seleccionadas · Estadísticas reales de Meta.':
   status.label==='Elegir cuentas'?'Facebook autorizado. Selecciona las cuentas que deseas analizar.':
@@ -620,6 +628,7 @@ function adsOverviewHero(platform){
  return '<section class="ads-overview-hero" aria-label="Estado de la plataforma">'+
   '<div class="ads-overview-main">'+providerLogo(provider)+'<div><span class="ads-eyebrow">PLATAFORMA PUBLICITARIA</span><h2>'+clean(provider)+'</h2><p>'+clean(sub)+'</p></div></div>'+
   '<div class="ads-overview-actions"><span class="ads-status-pill ads-status-'+status.kind+'"><span class="ads-pill-indicator"></span>'+clean(status.label)+'</span>'+
+  (googleOpen?'<button class="ads-hero-button" type="button" data-act="nav" data-page="integrations">Administrar Google Ads'+icon('chevron',15)+'</button>':'')+
   (open?'<button class="ads-hero-button" type="button" data-act="campaign-connect-toggle">'+(m.connected?'Administrar conexión':'Conectar mi cuenta')+icon('chevron',15)+'</button>':'')+
   '</div></section>';
 }
@@ -653,15 +662,37 @@ function adsGuidance(platform,connected){
   '<div class="ads-guidance-grid">'+suggestions.map(([title,body],idx)=>'<article class="ads-guidance-item"><span class="ads-guidance-num">'+String(idx+1).padStart(2,'0')+'</span><strong>'+clean(title)+'</strong><p>'+clean(body)+'</p></article>').join('')+'</div></section>';
 }
 
+
+function marketingHub(){
+ const google=state.googleAdsReport,gr=google?.rows||[],meta=metaAccountSummary();
+ const gs=google?.partial?null:gr.reduce((sum,r)=>sum+Number(r.spend||0),0);
+ const conversions=google?.partial?null:gr.reduce((sum,r)=>sum+Number(r.conversions||0),0);
+ const gClicks=google?.partial?null:gr.reduce((sum,r)=>sum+Number(r.clicks||0),0);
+ const alerts=[];
+ if(state.googleAdsError)alerts.push('Google Ads: '+state.googleAdsError);
+ if(state.metaError||state.adsError)alerts.push('Meta Ads: '+(state.metaError||state.adsError));
+ if(google?.partial)alerts.push('Google Ads entregó datos parciales; no se calculan totales incompletos.');
+ if(state.metaCampaigns?.partial)alerts.push('Meta Ads entregó datos parciales. Revisa el detalle.');
+ if(google&&!google.partial&&gs>0&&conversions===0)alerts.push('Google Ads registró gasto sin conversiones reportadas en este período. Revisa el seguimiento.');
+ const googleCard='<div class="crm-channel"><div class="crm-channel-head">'+providerLogo('Google Ads')+'<b>Google Ads</b><span>'+clean(google?google.days+' días':'Sin informe cargado')+'</span></div>'+
+ (google&&!google.partial?'<div class="crm-channel-kpis"><div><small>Inversión</small><b>'+money(gs,google.currency)+'</b></div><div><small>Clics</small><b>'+fmt(gClicks)+'</b></div><div><small>Conversiones Ads</small><b>'+fmt1(conversions)+'</b></div></div>':'<p class="crm-channel-empty">'+(google?'Informe parcial. Revisa detalles.':state.googleAds?.connected?'Consulta las campañas para ver cifras reales.':'Todavía no hay una cuenta conectada.')+'</p>')+
+ '<button class="button button-outline" type="button" data-act="ads-platform" data-platform="google">Ver Google Ads</button></div>';
+ const metaCard='<div class="crm-channel"><div class="crm-channel-head">'+providerLogo('Meta Ads')+'<b>Meta Ads</b><span>Datos autorizados</span></div>'+
+ (meta?'<div class="crm-channel-kpis"><div><small>Inversión</small><b>'+(meta.currencyMixed?'Monedas distintas':meta.spend==null?'—':money(meta.spend,meta.currency))+'</b></div><div><small>Clics</small><b>'+fmt(meta.clicks)+'</b></div><div><small>CTR</small><b>'+(meta.ctr==null?'—':fmt1(meta.ctr)+'%')+'</b></div></div>':'<p class="crm-channel-empty">Consulta tus campañas de Meta Ads para ver sus métricas autorizadas.</p>')+
+ '<button class="button button-outline" type="button" data-act="ads-platform" data-platform="meta">Ver Meta Ads</button></div>';
+ return '<section class="crm-marketing-hub"><div class="crm-marketing-head"><div><span>ANÁLISIS UNIFICADO</span><h2>Centro de rendimiento publicitario</h2><p>Google y Meta en un solo espacio, sin combinar monedas ni períodos distintos.</p></div><button class="button button-outline" type="button" data-act="nav" data-page="leads">Ver oportunidades</button></div><div class="crm-channel-grid">'+googleCard+metaCard+'</div>'+
+ (alerts.length?'<div class="crm-alerts" role="status"><b>Señales que merecen revisión</b>'+alerts.slice(0,4).map(x=>'<p>'+icon('alert',15)+' '+clean(x)+'</p>').join('')+'</div>':'<p class="crm-marketing-footnote">Estas alertas se calculan sobre informes cargados. Todavía no son notificaciones programadas.</p>')+'</section>';
+}
+
 function campaigns(){
  const connected=!!(state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account));
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
  const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']];
  const tabs='<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">'+choices.map(([value,label])=>
    '<button type="button" class="ads-platform-tab '+(platform===value?'active':'')+'" data-act="ads-platform" data-platform="'+value+'" aria-pressed="'+(platform===value?'true':'false')+'">'+providerLogo(label)+'<span class="ads-tab-label">'+label+'</span><small class="ads-tab-status '+adsConnectionStatus(value).kind+'">'+clean(adsConnectionStatus(value).label)+'</small></button>').join('')+'</div>';
- const periods=[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses'],['custom','Personalizado']];
+ const periods=platform==='google'?[['7','7 días'],['30','30 días'],['90','90 días']]:[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses'],['custom','Personalizado']];
  const periodOptions=periods.map(([value,label])=>'<option value="'+value+'" '+(state.adsPeriod===value?'selected':'')+'>'+label+'</option>').join('');
- const levelOptions=[['campaign','Campañas'],['adset','Conjuntos de anuncios'],['ad','Anuncios']].map(([value,label])=>'<option value="'+value+'" '+(level===value?'selected':'')+'>'+label+'</option>').join('');
+ const levelOptions=(platform==='google'?[['campaign','Campañas']]:[['campaign','Campañas'],['adset','Conjuntos de anuncios'],['ad','Anuncios']]).map(([value,label])=>'<option value="'+value+'" '+(level===value?'selected':'')+'>'+label+'</option>').join('');
  const toolbar='<div class="ads-toolbar ads-detail-toolbar">'+
    '<label class="form-label">Vista de resultados<select id="ads-level" class="meta-select">'+levelOptions+'</select></label>'+
    '<label class="form-label">Fechas del informe<select id="ads-period" class="meta-select">'+periodOptions+'</select></label>'+
@@ -674,7 +705,8 @@ function campaigns(){
     '<button class="button button-primary" data-act="ads-apply-dates">Aplicar fechas</button></div>':'')+
    (state.adsFilterError?alertBlock(state.adsFilterError,'info'):'');
  let result='';
- if(platform!=='meta')result=empty('Esta plataforma todavía requiere la autorización de su API oficial.','Integración próximamente');
+ if(platform==='google')result=googleAdsCard();
+ else if(platform!=='meta')result=empty('Esta plataforma todavía requiere la autorización de su API oficial.','Integración próximamente');
  else if(!connected)result=campaignMetaSetup();
  else if(state.adsLoading)result='<div class="ads-loading-detail" role="status"><div class="ga-loading-bars"><i></i><i></i><i></i></div><p>Consultando cuentas, fechas y campañas de Meta…</p></div>';
  else if(state.adsError)result=alertBlock(state.adsError);
@@ -722,7 +754,7 @@ function campaigns(){
  const summary=platform==='meta'&&connected?adsMetricsStrip():'';
  const settings=platform==='meta'&&connected?campaignMetaSetup():'';
  return heading('Publicidad','Campañas Ads','Revisa el estado de tus cuentas y analiza datos publicitarios reales desde un solo lugar.')+
-   tabs+adsOverviewHero(platform)+toolbar+settings+summary+
+   marketingHub()+tabs+adsOverviewHero(platform)+toolbar+settings+summary+
    card(platform==='meta'?'Resultados y campañas de Meta Ads':'Rendimiento publicitario',platform==='meta'?adsPeriodLabel():'Conexión oficial pendiente',result)+
    adsGuidance(platform,connected)+
    '<div class="spacer-sm"></div>'+card('Tráfico UTM en Google Analytics','Las visitas medidas por GA4 son diferentes del gasto de Meta Ads.',
@@ -756,9 +788,55 @@ function campaigns(){
     const stats=[['Ventas aprobadas',ok?fmt(h.approved):'—'],['Reembolsos / contracargos',ok&&h.refunded!==null?fmt(h.refunded):'—'],['Movimientos revisados',ok?fmt(h.transactions_examined):'—'],['Productos vendidos',ok?fmt(h.products?.length):'—']];
     return `${heading('Comercio digital','Ventas de Hotmart','Movimientos reales de la cuenta piloto autorizada. No se procesan cobros desde este panel.')}${allowed?tag('Cuenta Edwin Digital · lectura', 'success'):alertBlock('Hotmart todavía necesita una autorización independiente desde la cuenta de tu empresa.')}<div class="small-kpis hotmart-stats">${stats.map(x=>`<div class="small-kpi"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('')}</div><div class="content-grid"><div class="col-8">${card('Ventas aprobadas por día','Transacciones encontradas en la API de Hotmart',ok?chart(h.trend,'count','Ventas'):placeholder)}</div><div class="col-4">${card('Ingresos brutos por moneda','No se combinan BRL, PEN y USD',ok?Object.keys(h.gross_by_currency||{}).length?`<div class="currency-list">${Object.entries(h.gross_by_currency).map(([cur,amount])=>`<div><span>${clean(cur)}</span><strong>${clean(money(amount,cur))}</strong></div>`).join('')}</div>`:empty('No hay importes reportados.'):placeholder)}</div><div class="col-6">${card('Productos más vendidos','Unidades aprobadas por producto',ok?barList((h.products||[]).map(p=>({name:p.name,count:p.count})),'name','count',12):placeholder)}</div><div class="col-6">${card('Métodos de pago','Operaciones por método',ok?barList(h.methods,'name','value',12):placeholder)}</div></div>${ok?alertBlock(`${h.note||'Cifras de consulta, no utilidad neta.'}${h.incomplete?' La paginación o ciertos estados pueden estar incompletos.':''}`,'info'):''}`;
   }
+
+  const leadStages={new:'Nuevo',contacted:'Contactado',qualified:'Calificado',won:'Venta cerrada',lost:'Perdido'};
+  const leadSources={google_ads:'Google Ads',meta_ads:'Meta Ads',organic:'Orgánico',referral:'Referido',whatsapp:'WhatsApp',other:'Otro'};
+  async function loadLeads(){
+    const businessId=state.businessId;
+    if(isAdmin()||!businessId)return;
+    state.leadsLoading=true;state.leadsError='';render();
+    try{
+      const result=await api('/api/crm/leads?business_id='+encodeURIComponent(businessId));
+      if(businessId!==state.businessId)return;
+      state.leads=result.leads||[];
+      if(result.partial)state.leadsNotice='Se muestran las 100 oportunidades más recientes. La paginación ampliada aún está pendiente.';
+    }catch(error){if(businessId===state.businessId){state.leads=[];state.leadsError=error.message;}}
+    finally{if(businessId===state.businessId){state.leadsLoading=false;render();}}
+  }
+  function leads(){
+    const data=state.leads||[],counts=Object.fromEntries(Object.keys(leadStages).map(s=>[s,data.filter(l=>l.stage===s).length]));
+    const won=data.filter(l=>l.stage==='won'&&l.amount!==null&&l.amount!==undefined);
+    const currencyTotals={};for(const l of won){const cur=l.currency||'PEN';currencyTotals[cur]=(currencyTotals[cur]||0)+Number(l.amount);}
+    const kpis='<div class="crm-stats">'+[
+      ['Oportunidades',data.length],['Por contactar',counts.new],['En seguimiento',counts.contacted+counts.qualified],['Cerradas',counts.won]
+    ].map(([label,value])=>'<div class="crm-stat"><small>'+label+'</small><strong>'+fmt(value)+'</strong></div>').join('')+'</div>';
+    const form='<form id="crm-lead-form" class="crm-lead-form"><div class="crm-form-grid">'+
+      '<label>Nombre del contacto <input class="simple-input" name="name" minlength="2" maxlength="120" autocomplete="name" required placeholder="Nombre y apellido"></label>'+
+      '<label>Correo (opcional) <input class="simple-input" name="email" type="email" maxlength="160" autocomplete="email" placeholder="contacto@empresa.com"></label>'+
+      '<label>Teléfono / WhatsApp <input class="simple-input" name="phone" type="tel" maxlength="35" autocomplete="tel" placeholder="+51 999 999 999"></label>'+
+      '<label>Origen declarado <select class="simple-input" name="source">'+Object.entries(leadSources).map(([id,label])=>'<option value="'+id+'">'+label+'</option>').join('')+'</select></label>'+
+      '<label>Campaña (opcional) <input class="simple-input" name="campaign" maxlength="150" placeholder="Nombre o código de campaña"></label>'+
+      '<label>Moneda <select name="currency" class="simple-input"><option>PEN</option><option>BRL</option><option>USD</option></select></label>'+
+      '<label>Importe estimado / confirmado <input class="simple-input" name="amount" type="number" min="0" step="0.01" placeholder="Sin importe"></label>'+
+      '<label>Notas <input class="simple-input" name="notes" maxlength="500" placeholder="Necesidad del cliente"></label>'+
+      '</div><div class="crm-form-bottom"><p>El origen y campaña son datos registrados manualmente. No constituyen atribución automática ni una venta confirmada.</p><button class="button button-primary" type="submit" '+(state.leadsBusy?'disabled':'')+'>'+(state.leadsBusy?'Guardando…':'Añadir oportunidad')+'</button></div></form>';
+    const records=data.length?'<div class="table-scroll crm-leads-table"><table><thead><tr><th>Contacto</th><th>Origen</th><th>Campaña</th><th>Estado</th><th>Importe</th><th>Registro</th></tr></thead><tbody>'+data.map(l=>
+      '<tr><td><strong>'+clean(l.name)+'</strong><small>'+clean(l.email||l.phone||'Sin datos de contacto')+'</small></td><td>'+clean(leadSources[l.source]||l.source)+'</td><td>'+clean(l.campaign||'—')+'</td><td><select class="simple-input crm-stage-select" data-id="'+clean(l.id)+'" aria-label="Estado de '+clean(l.name)+'">'+Object.entries(leadStages).map(([k,v])=>'<option value="'+k+'" '+(l.stage===k?'selected':'')+'>'+v+'</option>').join('')+'</select></td><td>'+ (l.amount==null?'—':money(l.amount,l.currency||'PEN'))+'</td><td>'+clean(String(l.created_at||'').slice(0,10))+'</td></tr>'
+    ).join('')+'</tbody></table></div>':'<p class="crm-empty">Todavía no hay oportunidades registradas. Añade el primer contacto para empezar a medir el seguimiento comercial.</p>';
+    return heading('Ventas y contactos','Oportunidades comerciales','Registra contactos reales, su origen declarado y su avance hasta la venta.')+
+      (state.leadsError?alertBlock(state.leadsError):'')+(state.leadsNotice?alertBlock(state.leadsNotice,'info'):'')+
+      kpis+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+data.length+' registros en la empresa seleccionada</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
+  }
+
+
+function reportExtras(){
+ return '<div class="report-grid crm-report-additions">'+
+ '<div class="report-item"><div class="report-icon">'+icon('megaphone',22)+'</div><div><h3>Campañas Google Ads</h3><p>'+fmt(state.googleAdsReport?.rows?.length||0)+' campañas · '+clean(state.googleAdsReport?.currency||'Sin informe')+'</p></div><button class="button button-soft" data-act="download" data-report="google-ads" '+(!state.googleAdsReport?.rows?.length?'disabled':'')+'>'+icon('download',17)+' CSV</button></div>'+
+ '<div class="report-item"><div class="report-icon">'+icon('users',22)+'</div><div><h3>Oportunidades comerciales</h3><p>'+fmt(state.leads?.length||0)+' contactos de la empresa seleccionada</p></div><button class="button button-soft" data-act="download" data-report="crm-leads" '+(!state.leads?.length?'disabled':'')+'>'+icon('download',17)+' CSV</button></div></div>';
+}
   function reports(){
     const kinds=[['Resumen del sitio','overview','trend'],['Adquisición','acquisition','sources'],['Campañas UTM','campaigns','campaigns'],['Audiencia','audience','countries'],['Contenido','content','pages'],['Eventos y conversiones','events','events']];
-    return `${heading('Centro de reportes','Tus informes, listos para analizar','Descarga archivos CSV con las métricas que realmente devuelve tu propiedad.')}${statusStrip()}<div class="report-grid">${kinds.map(([name,page,key])=>`<div class="report-item"><div class="report-icon">${icon('file-bar-chart',22)}</div><div><h3>${name}</h3><p>${gaReady()?`${fmt(rows(key).length)} registros · ${periodLabel()}`:'Esperando conexión GA4'}</p></div><button class="button button-soft" data-act="download" data-report="${key}" ${!gaReady()||!rows(key).length?'disabled':''}>${icon('download',17)} CSV</button></div>`).join('')}${selectedBusinessIsHotmart()?`<div class="report-item"><div class="report-icon rose">${icon('shopping-bag',22)}</div><div><h3>Productos vendidos · Hotmart</h3><p>${state.hm?`${fmt(state.hm.products?.length)} productos`:state.hmLoading?'Consultando…':'Sin conexión'}</p></div><button class="button button-soft" data-act="download" data-report="hotmart-products" ${!state.hm?'disabled':''}>${icon('download',17)} CSV</button></div>`:''}</div>${alertBlock('Los CSV contienen las filas que entrega la API en el período seleccionado. El panel no genera cifras sintéticas, ni incluye el costo de las campañas publicitarias.','info')}`;
+    return `${heading('Centro de reportes','Tus informes, listos para analizar','Descarga archivos CSV con las métricas que realmente devuelve tu propiedad.')}${statusStrip()}<div class="report-grid">${kinds.map(([name,page,key])=>`<div class="report-item"><div class="report-icon">${icon('file-bar-chart',22)}</div><div><h3>${name}</h3><p>${gaReady()?`${fmt(rows(key).length)} registros · ${periodLabel()}`:'Esperando conexión GA4'}</p></div><button class="button button-soft" data-act="download" data-report="${key}" ${!gaReady()||!rows(key).length?'disabled':''}>${icon('download',17)} CSV</button></div>`).join('')}${selectedBusinessIsHotmart()?`<div class="report-item"><div class="report-icon rose">${icon('shopping-bag',22)}</div><div><h3>Productos vendidos · Hotmart</h3><p>${state.hm?`${fmt(state.hm.products?.length)} productos`:state.hmLoading?'Consultando…':'Sin conexión'}</p></div><button class="button button-soft" data-act="download" data-report="hotmart-products" ${!state.hm?'disabled':''}>${icon('download',17)} CSV</button></div>`:''}</div>${reportExtras()}${alertBlock('Los informes se generan a demanda con datos disponibles. Aún no hay envíos automáticos ni PDF programados. No se mezclan importes de diferentes monedas.','info')}`;
   }
   function company(){
  const b=business(),prefs=companyPrefs();
@@ -882,7 +960,7 @@ const businessFeatureKey=name=>({
  'Facebook / Instagram orgánico':'social_organic','Hotmart':'hotmart','Shopify':'shopify',
  'Meta Ads':'meta_ads','Google Ads':'google_ads','TikTok Ads':'tiktok_ads','LinkedIn Ads':'linkedin_ads'
 })[name]||'';
-const featureEnabled=key=>!state.clientEntitlements||state.clientEntitlements.features?.[key]!==false;
+const featureEnabled=key=>key==='google_ads'?state.clientEntitlements?.features?.google_ads===true:!state.clientEntitlements||state.clientEntitlements.features?.[key]!==false;
 
 async function saveAdminFeature(feature,enabled,plan){
  if(!isAdmin()||state.adminFeatureBusy||!state.adminFeatureBusiness||state.adminEntitlements?.configured!==true)return;
@@ -904,7 +982,7 @@ async function saveAdminFeature(feature,enabled,plan){
 async function loadClientEntitlements(id){
  try{
   const data=await api('/api/client/features?business_id='+encodeURIComponent(id));
-  if(state.businessId===id){state.clientEntitlements=data;render();}
+  if(state.businessId===id){state.clientEntitlements=data;render();if(data.features?.google_ads)loadGoogleAds();}
  }catch{if(state.businessId===id){state.clientEntitlements=null;render();}}
 }
 async function loadAdminPlans(){
@@ -935,7 +1013,7 @@ function adminPermissionsPanel(){
  const options=businesses.map(b=>'<option value="'+clean(b.id)+'" '+(id===b.id?' selected':'')+'>'+clean(b.name)+'</option>').join('');
  const controls=businessFeatureLabels.map(([key,name])=>{
    const on=premium?true:!!flags[key];
-   const unavailable=['search_console','social_organic','hotmart','shopify','google_ads','tiktok_ads','linkedin_ads'].includes(key);
+   const unavailable=['search_console','social_organic','hotmart','shopify','tiktok_ads','linkedin_ads'].includes(key);
    const editable=ready&&free&&!state.adminFeatureBusy;
    return '<div class="admin-feature-row">'+providerLogo(name)+
     '<div class="admin-feature-name"><strong>'+clean(name)+'</strong><small>'+
@@ -1161,7 +1239,82 @@ async function loadAccounts(){
     }catch(e) {if(state.businessId===current)state.metaError=e.message;}
     finally {if(state.businessId===current){state.metaLoading=false;render();}}
   }
-    function integrations(){
+    
+ 
+  // A child window keeps clients on the same dashboard during Google OAuth.
+  let googleAdsOAuthWindow=null,googleAdsOAuthMonitor=null;
+  function stopGoogleAdsPopup(){
+    if(googleAdsOAuthMonitor!==null)clearInterval(googleAdsOAuthMonitor);
+    googleAdsOAuthMonitor=null;googleAdsOAuthWindow=null;state.googleAdsPopupActive=false;
+  }
+  async function finishGoogleAdsPopup(businessId,outcome){
+    if(businessId!==state.businessId||isAdmin())return;
+    state.googleAdsReturnMessage=outcome==='connected'?'Autorización recibida. Comprobando tu cuenta…':outcome==='cancelled'?'Cancelaste la autorización; puedes volver a intentarlo.':outcome==='no_refresh_token'?'Google no permitió mantener el acceso. Vuelve a autorizar.':'La ventana se cerró. Verificando conexión…';
+    render();await loadGoogleAds();
+    if(businessId!==state.businessId)return;
+    if(state.googleAds?.connected)state.googleAdsReturnMessage='Google Ads conectado. Ahora elige tu cuenta publicitaria.';
+    else if(outcome==='connected')state.googleAdsReturnMessage='No se pudo confirmar la conexión. Inténtalo nuevamente.';
+    else if(!outcome)state.googleAdsReturnMessage='No se confirmó una conexión. Puedes volver a intentar el acceso.';
+    render();
+  }
+  function startGoogleAdsPopup(){
+    if(!state.businessId||isAdmin()||!featureEnabled('google_ads')||!state.googleAds?.configured)return;
+    if(googleAdsOAuthWindow&&!googleAdsOAuthWindow.closed){googleAdsOAuthWindow.focus();return;}
+    const businessId=state.businessId,path='/api/google-ads/connect?business_id='+encodeURIComponent(businessId);
+    const width=520,height=670,left=Math.max(0,Math.round(window.screenX+(window.outerWidth-width)/2)),top=Math.max(0,Math.round(window.screenY+(window.outerHeight-height)/2));
+    const popup=window.open(path+'&popup=1','edwinGoogleAdsOAuth','popup=yes,width='+width+',height='+height+',left='+left+',top='+top+',resizable=yes,scrollbars=yes');
+    if(!popup){window.location.assign(path);return;}
+    googleAdsOAuthWindow=popup;state.googleAdsPopupActive=true;state.googleAdsError='';state.googleAdsReturnMessage='Completa la autorización en la ventana de Google.';render();
+    try{popup.focus();}catch{}
+    if(googleAdsOAuthMonitor!==null)clearInterval(googleAdsOAuthMonitor);
+    googleAdsOAuthMonitor=setInterval(()=>{
+      if(googleAdsOAuthWindow===popup&&popup.closed){stopGoogleAdsPopup();finishGoogleAdsPopup(businessId,null);}
+    },650);
+  }
+  window.addEventListener('message',event=>{
+    const data=event.data;
+    if(event.origin!==location.origin||event.source!==googleAdsOAuthWindow||data?.type!=='edwin-google-ads-oauth')return;
+    if(data.business_id!==state.businessId||!['connected','cancelled','no_refresh_token'].includes(data.result))return;
+    const businessId=state.businessId;stopGoogleAdsPopup();finishGoogleAdsPopup(businessId,data.result);
+  });
+
+  async function loadGoogleAds(){
+  const id=state.businessId;
+  if(!id||isAdmin()||!featureEnabled('google_ads'))return;
+  state.googleAdsBusy=true;state.googleAdsError='';render();
+  try{
+   const info=await api('/api/google-ads/status?business_id='+encodeURIComponent(id));
+   if(id!==state.businessId)return;
+   state.googleAds=info;state.googleAdsAccounts=[];
+   if(info.connected){const a=await api('/api/google-ads/accounts?business_id='+encodeURIComponent(id));if(id===state.businessId)state.googleAdsAccounts=a.accounts||[];}
+  }catch(e){if(id===state.businessId)state.googleAdsError=e.message;}
+  finally{if(id===state.businessId){state.googleAdsBusy=false;render();}}
+ }
+ async function loadGoogleAdsReport(){
+    const id=state.businessId,days=[7,30,90].includes(Number(state.adsPeriod))?Number(state.adsPeriod):30;
+    if(!id||isAdmin()||!featureEnabled('google_ads')||!state.googleAds?.connected||!state.googleAds?.selected_customer_id)return;
+    state.googleAdsBusy=true;state.googleAdsError='';state.googleAdsReport=null;render();
+    try{
+      const report=await api('/api/google-ads/campaigns?business_id='+encodeURIComponent(id)+'&days='+days);
+      if(state.businessId===id)state.googleAdsReport=report;
+    }catch(e){if(state.businessId===id)state.googleAdsError=e.message;}
+    finally{if(state.businessId===id){state.googleAdsBusy=false;render();}}
+  }
+  
+  function googleAdsCard(){
+    const g=state.googleAds||{},on=!!g.connected,busy=!!state.googleAdsBusy,pending=!!state.googleAdsPopupActive,report=state.googleAdsReport,rows=report?.rows||[];
+    const accounts=(state.googleAdsAccounts||[]).filter(x=>!x.manager);
+    const options=accounts.map(x=>'<option value="'+clean(x.id)+'" '+(x.id===g.selected_customer_id?'selected':'')+'>'+clean(x.name||x.id)+' · '+clean(x.id)+'</option>').join('');
+    const caption=on?'Cuenta conectada · Consulta tus campañas desde Edwin CRM':g.configured?'Autoriza tu cuenta Google en una ventana pequeña, sin salir del dashboard.':'Esta conexión aún no está disponible para tu empresa.';
+    const controls=on?
+      '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('check',15)+' Acceso autorizado de solo lectura</span><label class="form-label">Cuenta publicitaria<select class="meta-select" id="google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label><div class="ga-buttons"><button class="button button-primary" data-act="google-ads-select" '+(busy||!accounts.length?'disabled':'')+'>Guardar cuenta</button><button class="button button-outline" data-act="google-ads-campaigns" '+(busy||!g.selected_customer_id?'disabled':'')+'>Ver campañas</button><button class="button button-soft" data-act="google-ads-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>'+(accounts.length?'':'<p class="ga-help">No se encontraron cuentas publicitarias autorizadas.</p>')+'</div>':
+      '<div class="ga-connect-panel"><div class="ga-steps"><span><b>1</b> Conectar</span><span><b>2</b> Autorizar</span><span><b>3</b> Ver resultados</span></div><button class="button button-primary ga-connect-button" data-act="google-ads-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+icon('plug',18)+(pending?'Esperando autorización…':'Conectar con Google Ads')+'</button><p class="ga-help">'+icon('lock',14)+' Acceso seguro y de solo lectura. No modificaremos tus anuncios.</p></div>';
+    const moneyAds=n=>report?.currency?money(n,report.currency):'—';
+    const num=n=>n==null?'—':clean(String(n));
+    const detail=report?(rows.length?'<div class="table-scroll ga-report-table"><table><thead><tr><th>Campaña</th><th>Inversión</th><th>Impresiones</th><th>Clics</th><th>CTR</th><th>CPC</th><th>Conversiones</th><th>Valor</th><th>ROAS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+moneyAds(r.spend)+'</td><td>'+fmt(r.impressions)+'</td><td>'+fmt(r.clicks)+'</td><td>'+num(r.ctr==null?null:r.ctr.toFixed(2)+'%')+'</td><td>'+num(r.cpc==null?null:moneyAds(r.cpc))+'</td><td>'+fmt1(r.conversions)+'</td><td>'+moneyAds(r.conversions_value)+'</td><td>'+num(r.roas==null?null:r.roas.toFixed(2)+'x')+'</td></tr>').join('')+'</tbody></table></div>':'<p class="ga-help">No hay campañas para el período elegido.</p>')+(report.partial?'<p class="fine-print">Informe parcial. Algunos resultados están pendientes.</p>':''):'';
+    return '<article class="integration-card provider-card ga-card" data-connected="'+on+'"><div class="ga-card-heading">'+providerLogo('Google Ads')+'<div class="ga-card-title"><small>PUBLICIDAD DIGITAL</small><h3>Google Ads</h3></div>'+tag(on?'Conectado':pending?'Autorizando':g.configured?'Disponible':'En preparación',on?'success':'neutral')+'</div><p class="ga-caption">'+clean(caption)+'</p>'+(state.googleAdsReturnMessage?alertBlock(state.googleAdsReturnMessage,'info'):'')+(state.googleAdsError?alertBlock(state.googleAdsError):'')+controls+(busy?'<p class="ga-help">Consultando Google Ads…</p>':'')+detail+'</article>';
+  }
+  function integrations(){
  const ga=gaReady(),lookup=[
   ['Analítica y contenidos',[
    {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Este sitio aún no tiene estadísticas disponibles de Analytics.'},
@@ -1169,7 +1322,7 @@ async function loadAccounts(){
    {name:'Facebook / Instagram orgánico',info:'Alcance y estadísticas de perfiles sociales.',status:'Próximamente',details:'Pendiente de permisos de páginas y perfiles.'}] ],
   ['Publicidad',[
    {name:'Meta Ads',info:'Facebook e Instagram Ads.'},
-   {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'Próximamente',details:'API oficial y OAuth pendientes.'},
+   {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'En desarrollo',details:'Autorización por empresa.'},
    {name:'TikTok Ads',info:'Anuncios y campañas en TikTok.',status:'Próximamente',details:'Permisos de TikTok Ads pendientes.'}] ],
   ['Ventas y e-commerce',[
    {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'},
@@ -1180,6 +1333,7 @@ async function loadAccounts(){
   const feature=businessFeatureKey(p.name);
   if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false"><div class="integration-head">${providerLogo(p.name)}${tag('No incluida','neutral')}</div><h3>${clean(p.name)}</h3><p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span></div></article>`;
   if(p.name==='Meta Ads')return metaCard();
+   if(p.name==='Google Ads')return googleAdsCard();
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
    <div class="integration-head">${providerLogo(p.name)}${tag(p.status,p.connected?'success':'neutral')}</div>
    <h3>${clean(p.name)}</h3><p>${clean(p.info)}</p>
@@ -1229,7 +1383,7 @@ async function loadAccounts(){
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}" title="${clean(pages[id][0])}" aria-label="${clean(pages[id][0])}" ${state.page===id?'aria-current="page"':''}>${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','accounts','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
- `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition'].map(navLink).join('')+adsNavigation()+['audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${salesNavigation()}${['reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
+ `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition'].map(navLink).join('')+adsNavigation()+['audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${salesNavigation()}${['leads','reports'].map(navLink).join('')}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
  return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('panel-left-close',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><button type="button" class="sidebar-workspace" data-act="nav" data-page="${isAdmin()?'adminHome':'company'}" title="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}" aria-label="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Panel administrador':'Editar datos de mi empresa'}</small></span>${icon('chevron',16)}</button>${menu}</div><div class="sidebar-bottom"><div class="avatar" title="${clean(state.user?.email||'Cuenta')}">${icon('user',20)}</div><div class="account"><b>${isAdmin()?'Superadministrador':clean(displayBusiness())}</b><span>${isAdmin()?'Cuenta de administración':'Cuenta de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('power',19)}</button></div></aside>`;
 }
     function topbar(){
@@ -1247,7 +1401,7 @@ function sidebar(){
     if(!state.user){login();return;}
     if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
     if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
-    const contents={overview,analytics,acquisition,campaigns,sales,utm,audience,content,events,hotmart,reports,clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
+    const contents={overview,analytics,acquisition,campaigns,sales,leads,utm,audience,content,events,hotmart,reports,clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
     let pageMarkup;
     try {pageMarkup=(contents[state.page]||overview)();}
     catch(error){
@@ -1292,10 +1446,10 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
-    if(!isAdmin()){await loadClientEntitlements(id);await refresh();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
+    if(!isAdmin()){await loadClientEntitlements(id);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
   }
   async function init(){
     state.loading=true;render();
@@ -1303,23 +1457,34 @@ function sidebar(){
       const status=await api('/api/status');if(!status.configured)throw new Error(`Configuración pendiente: ${(status.missing||[]).join(', ')}`);
       const user=await api('/api/me');const companies=await api('/api/businesses');
       const returnBusiness=new URLSearchParams(location.search).get('business_id');
+      const googleAuthOutcome=new URLSearchParams(location.search).get('google_ads');
       state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){
         const parameters=new URLSearchParams(location.search),campaignReturn=parameters.get('return_to')==='campaigns';
         state.page=campaignReturn?'campaigns':'integrations';
         if(campaignReturn)state.campaignConnectionOpen=true;
         if(parameters.get('meta')==='cancelled')state.metaError='Se canceló la autorización con Facebook.';
         history.replaceState({},'',location.pathname+location.hash);
-      }state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
+      }
+      if(!isAdmin()&&googleAuthOutcome){state.page='integrations';history.replaceState({},'',location.pathname+location.hash);}
+      state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
       if(isAdmin()){await loadAdminStats();await loadAdminPlans();await loadAdminDirectory();}
       else if(state.businesses.length){
         const targetBusiness=state.businesses.find(x=>x.id===returnBusiness)?.id||state.businesses[0].id;
-        await chooseBusiness(targetBusiness);if(state.page==='campaigns')await loadAds();
+        await chooseBusiness(targetBusiness);
+        if(googleAuthOutcome){state.googleAdsReturnMessage=googleAuthOutcome==='connected'?'Autorización recibida. Selecciona la cuenta publicitaria que deseas consultar.':googleAuthOutcome==='cancelled'?'Se canceló la autorización con Google.':googleAuthOutcome==='no_refresh_token'?'Google no devolvió acceso persistente. Desconecta el acceso anterior en tu cuenta de Google y vuelve a autorizar.':'No fue posible terminar la autorización con Google.';render();}
+        if(state.page==='campaigns')await loadAds();
       }
     }catch(e){state.loading=false;state.user=null;state.loginBusy=false;if(e.status!==401)state.startupError=e.message;render();}
   }
   function doCsv(dataset=''){
     let list=[];
-    if(dataset==='ads'){
+    if(dataset==='crm-leads'){
+      list=state.leads.map(x=>({Contacto:x.name,Correo:x.email||'',Telefono:x.phone||'',Origen:leadSources[x.source]||x.source,Campana:x.campaign||'',Estado:leadStages[x.stage]||x.stage,Importe:x.amount,Moneda:x.currency,Fecha:x.created_at,Notas:x.notes||''}));
+    }
+    else if(dataset==='google-ads'){
+      list=(state.googleAdsReport?.rows||[]).map(x=>({Cuenta:state.googleAdsReport?.customer_id,Campana:x.name,Moneda:state.googleAdsReport.currency,Inversion:x.spend,Impresiones:x.impressions,Clics:x.clicks,CTR:x.ctr,CPC:x.cpc,Conversiones:x.conversions,Valor:x.conversions_value,ROAS:x.roas,Periodo_dias:state.googleAdsReport.days}));
+    }
+    else if(dataset==='ads'){
       list=adsFilteredRows().map(x=>({
         Cuenta:x.account_name,Campaña:x.campaign_name||x.name,
         Detalle:x.name,Estado:metaStatusLabel(x.effective_status),Objetivo:metaObjectiveLabel(x.objective),
@@ -1417,11 +1582,11 @@ function sidebar(){
     else if(action==='sales-menu'){state.salesMenuOpen=!state.salesMenuOpen;render();}
     else if(action==='sales-select'){const source=b.dataset.source;if(!['overview','shopify','hotmart'].includes(source))return;state.salesSource=source;state.page='sales';state.mobileOpen=false;render();window.scrollTo(0,0);}
     else if(action==='campaign-menu'){state.campaignsMenuOpen=!state.campaignsMenuOpen;render();}
-    else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();}
+    else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
-    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
-    else if(action==='refresh')await (isAdmin()?loadAdminStats():refresh({force:true}));
+    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='refresh'){if(state.page==='leads'&&!isAdmin())await loadLeads();else await (isAdmin()?loadAdminStats():refresh({force:true}));}
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
     else if(action==='copy-meta-redirect'&&isAdmin()){
@@ -1507,9 +1672,26 @@ function sidebar(){
       }catch(error){if(state.businessId===current){state.metaError=error.message;state.campaignConnectionOpen=true;state.campaignWizardStage='confirm';render();}}
       finally{state.campaignAccountSaving=false;if(state.businessId===current)render();}
     }
+    else if(action==='google-ads-connect'&&!isAdmin()&&featureEnabled('google_ads')&&state.googleAds?.configured)startGoogleAdsPopup();
+    else if(action==='google-ads-select'&&!isAdmin()&&featureEnabled('google_ads')){
+      const id=state.businessId,customerId=document.getElementById('google-ads-account')?.value||'';
+      if(!customerId){state.googleAdsError='Selecciona una cuenta publicitaria.';render();return;}
+      state.googleAdsBusy=true;state.googleAdsError='';render();
+      try{await api('/api/google-ads/select?business_id='+encodeURIComponent(id),{method:'POST',body:JSON.stringify({customer_id:customerId})});if(id===state.businessId){state.googleAdsReport=null;await loadGoogleAds();}}
+      catch(error){if(id===state.businessId)state.googleAdsError=error.message;}
+      finally{if(id===state.businessId){state.googleAdsBusy=false;render();}}
+    }
+    else if(action==='google-ads-campaigns'&&!isAdmin()&&featureEnabled('google_ads'))await loadGoogleAdsReport();
+    else if(action==='google-ads-disconnect'&&!isAdmin()&&featureEnabled('google_ads')){
+      if(!confirm('¿Desconectar Google Ads de esta empresa? Tus campañas no se borrarán.'))return;
+      const id=state.businessId;state.googleAdsBusy=true;state.googleAdsError='';render();
+      try{await api('/api/google-ads/disconnect?business_id='+encodeURIComponent(id),{method:'POST',body:'{}'});if(id===state.businessId){state.googleAdsReport=null;await loadGoogleAds();}}
+      catch(error){if(id===state.businessId)state.googleAdsError=error.message;}
+      finally{if(id===state.businessId){state.googleAdsBusy=false;render();}}
+    }
     else if(action==='meta-refresh')await loadMeta();
     else if(action==='ads-best'){state.adsBestOnly=!state.adsBestOnly;state.adsLevel='campaign';if(!state.metaCampaigns||state.metaCampaigns.level!=='campaign'){state.metaCampaigns=null;render();await loadAds();}else render();}
-    else if(action==='ads-refresh'){await loadMeta();await loadAds();}
+    else if(action==='ads-refresh'){if(state.adsPlatform==='google')await loadGoogleAdsReport();else{await loadMeta();await loadAds();}}
     else if(action==='ads-apply-dates'){
       const start=document.getElementById('ads-start-date')?.value||'';
       const end=document.getElementById('ads-end-date')?.value||'';
@@ -1523,7 +1705,7 @@ function sidebar(){
       state.adsFilterError='';state.adsCustomStart=start;state.adsCustomEnd=end;state.metaCampaigns=null;
       await loadMeta();await loadAds();
     }
-    else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
+    else if(action==='ads-platform'){state.adsPlatform=b.dataset.platform;if(state.adsPlatform==='google'){state.adsLevel='campaign';if(![7,30,90].includes(Number(state.adsPeriod)))state.adsPeriod='30';}state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns'){if(state.adsPlatform==='google'){await loadGoogleAds();if(state.googleAds?.connected&&state.googleAds?.selected_customer_id)await loadGoogleAdsReport();}else await loadAds();}}
     else if(action==='meta-disconnect'){
       if(!confirm('¿Desconectar Meta Ads de este navegador? Se dejarán de mostrar sus anuncios y métricas en eDigital. Tus campañas en Meta no se borrarán.'))return;
       const current=state.businessId;
@@ -1604,6 +1786,13 @@ function sidebar(){
       return;
     }
     if(e.target.id==='integration-only-connected'){filterIntegrations();return;}
+    if(e.target.classList?.contains('crm-stage-select')){
+      const businessId=state.businessId,leadId=e.target.dataset.id,stage=e.target.value;
+      if(!['new','contacted','qualified','won','lost'].includes(stage)||isAdmin())return;
+      try{await api('/api/crm/leads?business_id='+encodeURIComponent(businessId)+'&lead_id='+encodeURIComponent(leadId),{method:'PATCH',body:JSON.stringify({stage})});if(state.businessId===businessId){state.leadsNotice='Estado actualizado correctamente.';await loadLeads();}}
+      catch(err){if(state.businessId===businessId){state.leadsError=err.message;render();}}
+      return;
+    }
     if(e.target.id==='business-selector')await chooseBusiness(e.target.value);
     else if(e.target.id==='site-selector'){state.siteId=e.target.value;await refresh();}
     else if(e.target.classList?.contains('meta-account-check')){
@@ -1613,11 +1802,12 @@ function sidebar(){
       catch(error){state.metaError=error.message;render();}
     }
     else if(e.target.id==='ads-platform'){state.adsPlatform=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
-    else if(e.target.id==='ads-level'){state.adsLevel=e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns')await loadAds();}
+    else if(e.target.id==='ads-level'){state.adsLevel=state.adsPlatform==='google'?'campaign':e.target.value;state.metaCampaigns=null;state.adsError='';render();if(state.page==='campaigns'&&state.adsPlatform==='meta')await loadAds();}
+    else if(e.target.id==='google-ads-period'){state.adsPeriod=e.target.value;state.googleAdsReport=null;render();}
     else if(e.target.id==='ads-period'){
       state.adsPeriod=e.target.value;state.adsFilterError='';state.metaCampaigns=null;
       render();
-      if(state.page==='campaigns'&&state.adsPeriod!=='custom'){await loadMeta();await loadAds();}
+      if(state.page==='campaigns'&&state.adsPeriod!=='custom'){if(state.adsPlatform==='google')await loadGoogleAdsReport();else{await loadMeta();await loadAds();}}
     }
     else if(e.target.id==='ads-account'){state.adsAccount=e.target.value;render();}
     else if(e.target.id==='ads-status'){state.adsStatus=e.target.value;render();}
@@ -1667,6 +1857,18 @@ function sidebar(){
     state.search=q;render();const input=document.getElementById('global-search');if(input){input.focus();input.setSelectionRange(selStart,selEnd);}
   });
   document.addEventListener('submit',async e=>{
+    if(e.target.id==='crm-lead-form'){
+      e.preventDefault();if(isAdmin()||state.leadsBusy||!state.businessId)return;
+      const businessId=state.businessId,data=Object.fromEntries(new FormData(e.target));
+      data.amount=data.amount===''?null:Number(data.amount);
+      state.leadsBusy=true;state.leadsError='';state.leadsNotice='';render();
+      try{
+        await api('/api/crm/leads?business_id='+encodeURIComponent(businessId),{method:'POST',body:JSON.stringify(data)});
+        if(state.businessId===businessId){state.leadsNotice='Oportunidad registrada correctamente.';await loadLeads();}
+      }catch(err){if(state.businessId===businessId)state.leadsError=err.message;}
+      finally{state.leadsBusy=false;if(state.businessId===businessId)render();}
+      return;
+    }
     if(e.target.id==='user-profile-form'){
       e.preventDefault();if(!state.user?.id)return;
       const fullName=String(new FormData(e.target).get('fullName')||'').trim().replace(/\s+/g,' ');
