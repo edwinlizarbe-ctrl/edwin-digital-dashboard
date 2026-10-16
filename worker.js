@@ -1,6 +1,8 @@
 import { handleMetaApi } from './meta.js';
 import { handleGoogleAdsApi } from './google-ads.js';
 import { handleLeadsApi } from './leads.js';
+import { handleEmailMarketingApi } from './email-marketing.js';
+import { publicMailRoute,processEmailQueue } from './email-delivery.js';
 import { handleAssistantApi } from './assistant-api.js';
 import { handleFeaturesApi, ensureBusinessFeature } from './feature-access.js';
 /**
@@ -157,6 +159,7 @@ async function handleApi(req, env) {
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
   if (path.startsWith('/api/google-ads/')) return handleGoogleAdsApi(req, env, s);
   if (path === '/api/crm/leads') return handleLeadsApi(req, env, s);
+  if (path === '/api/email-marketing') return handleEmailMarketingApi(req, env, s);
   if (path.startsWith('/api/assistant/')) return handleAssistantApi(req, env, s);
   if (path === '/api/me' && method === 'GET') return json({ user: s.user }, 200, s.cookies);
   if (path === '/api/auth/change-password' && method === 'POST') {
@@ -576,6 +579,9 @@ async function hotmartRecentSales(token, period = '30') {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/email-marketing/unsubscribe') || url.pathname==='/api/email-marketing/webhook') {
+      try { return await publicMailRoute(request,env); } catch(e) { console.error('Email public route failed',String(e?.message||e));return json({error:'No se pudo completar la solicitud.'},503); }
+    }
     if (url.pathname.startsWith('/api/')) {
       try { return await handleApi(request, env); }
       catch (err) {
@@ -585,4 +591,5 @@ export default {
     }
     return env.ASSETS.fetch(request);
   },
+  async scheduled(controller,env,ctx){ctx.waitUntil(processEmailQueue(env,'https://edwin-digital-dashboard.edwinlizarbe.workers.dev'));}
 };
