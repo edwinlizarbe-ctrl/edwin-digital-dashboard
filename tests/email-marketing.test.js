@@ -13,7 +13,7 @@ async function mock(fn){
  const old=globalThis.fetch,calls=[],rows={ed_email_campaigns:[],ed_email_contacts:[],ed_email_assets:[]};
  globalThis.fetch=async(url,options={})=>{
   const u=String(url);calls.push({u,options});
-  if(u.includes('/rest/v1/businesses?'))return simple(u.includes(id)?[{id}]:[]);
+  if(u.includes('/rest/v1/businesses?'))return simple(u.includes(id)?[{id,slug:'brasper'}]:[]);
   const table=Object.keys(rows).find(t=>u.includes('/rest/v1/'+t));
   if(table){
    const method=options.method||'GET';
@@ -48,10 +48,11 @@ test('cannot access other business or admin session',async()=>{
   assert.equal(calls.length,0);
  });
 });
-test('cannot access mailing before BrasPer is configured',async()=>{
+test('Brásper membership stays restricted by RLS even without optional fixed UUID',async()=>{
  await mock(async({calls})=>{
   const r=await handleEmailMarketingApi(request('GET'),{...env,BRASPER_BUSINESS_ID:''},s);
-  assert.equal(r.status,403);assert.equal(calls.length,0);
+  assert.equal(r.status,200);
+  assert(calls.some(x=>x.u.includes('/rest/v1/businesses')));
  });
 });
 test('preserves drafted campaigns and never provides mass sending',async()=>{
