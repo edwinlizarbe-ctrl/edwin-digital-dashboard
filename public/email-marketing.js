@@ -199,5 +199,5 @@ document.addEventListener('drop',ev=>{
  const to=Number(block.dataset.block),[moved]=st.draft.blocks.splice(dragFrom,1);st.draft.blocks.splice(to,0,moved);dragFrom=null;show();
 });
 document.addEventListener('dragend',()=>{dragFrom=null;});
-window.brasperEmailMarketing={page(bid){if(st.businessId!==bid){st.businessId=bid;st.loaded=false;st.campaigns=[];st.contacts=[];st.assets=[];st.screen='list';st.draft=fresh();}return markup();},load};
+window.brasperEmailMarketing={reset(){Object.assign(st,{businessId:'',loaded:false,busy:false,error:'',notice:'',campaigns:[],contacts:[],assets:[],screen:'list',draft:fresh(),testEmail:''});},page(bid){if(st.businessId!==bid){st.businessId=bid;st.loaded=false;st.campaigns=[];st.contacts=[];st.assets=[];st.screen='list';st.draft=fresh();}return markup();},load};
 })();
