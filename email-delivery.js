@@ -24,7 +24,7 @@ async function rpc(env,name,data){
  if(!r.ok){const info=await r.json().catch(()=>({}));throw Error(info.message||'No se pudo preparar la campaña.');}
  return r.json();
 }
-const operational=env=>env.EMAIL_SENDING_ENABLED==='true'&&!!env.BRASPER_BUSINESS_ID&&!!env.RESEND_API_KEY&&!!env.EMAIL_FROM&&!!env.EMAIL_UNSUBSCRIBE_KEY&&!!env.RESEND_WEBHOOK_SECRET;
+const operational=env=>env.EMAIL_SENDING_ENABLED==='true'&&uuid(env.BRASPER_BUSINESS_ID)&&!!env.RESEND_API_KEY&&!!env.EMAIL_FROM&&/^[a-f0-9]{64}$/i.test(env.EMAIL_UNSUBSCRIBE_KEY||'')&&String(env.RESEND_WEBHOOK_SECRET||'').startsWith('whsec_');
 const now=()=>new Date().toISOString();
 function hmacKey(env){const s=String(env.EMAIL_UNSUBSCRIBE_KEY||'');if(!/^[a-f0-9]{64}$/i.test(s))throw Error('Clave de bajas no configurada');return Uint8Array.from(s.match(/../g).map(x=>parseInt(x,16)));}
 async function sign(secret,payload){
