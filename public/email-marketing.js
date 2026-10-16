@@ -13,7 +13,7 @@ const defaultBlocks=(lang='es')=>lang==='pt'?[
  {type:'button',text:'Conoce brasper',url:'https://brasper.com'}
 ];
 const fresh=()=>({title:'Newsletter brasper',subject:'Novedades de brasper para {{nombre}}',preheader:'Perú y Brasil más cerca',language:'es',blocks:defaultBlocks()});
-const st={businessId:'',loaded:false,busy:false,error:'',notice:'',campaigns:[],contacts:[],assets:[],configured:false,screen:'list',draft:fresh(),mobile:false,importSummary:'',template:defaultBlocks()};
+const st={businessId:'',loaded:false,busy:false,error:'',notice:'',campaigns:[],contacts:[],assets:[],stats:{},configured:false,sendingReady:false,screen:'list',draft:fresh(),mobile:false,importSummary:'',template:defaultBlocks()};
 const base=()=>'/api/email-marketing?business_id='+encodeURIComponent(st.businessId);
 async function api(method='GET',body){
  const r=await fetch(base(),{method,credentials:'same-origin',headers:body?{'Content-Type':'application/json'}:{},
@@ -52,25 +52,29 @@ function editor(){
  '<label>Idioma<select id="em-language" class="simple-input">'+opts([['es','Español'],['pt','Português (Brasil)']],d.language)+'</select></label></div>'+
  '<div class="em-block-header"><h3>Contenido del mensaje</h3><span>Usa {{nombre}} para personalizar el saludo</span></div>'+
  '<div class="em-blocks">'+d.blocks.map(blockRow).join('')+'</div><div class="em-add-blocks">'+[['heading','Título'],['text','Texto'],['image','Imagen'],['button','Botón']].map(([k,v])=>'<button type="button" class="button button-outline" data-em="block-add" data-type="'+k+'">+ '+v+'</button>').join('')+'</div></div>'+
- '<div class="em-card"><h3>Envío seguro de prueba</h3><p>El sistema permite un único destinatario autorizado por prueba, no una campaña masiva.</p>'+
+ '<div class="em-card"><h3>Envío seguro de prueba</h3><p>Para probar el diseño, introduce un correo autorizado en Cloudflare.</p>'+
  '<label>Correo de prueba<input id="em-test-to" class="simple-input" type="email" placeholder="correo-autorizado@empresa.com"></label>'+
- '<div class="em-editor-actions"><button class="button button-primary" data-em="save" '+(st.busy?'disabled':'')+'>Guardar borrador</button><button class="button button-outline" data-em="test" '+(st.busy?'disabled':'')+'>Enviar prueba</button></div></div></section>'+
+ '<div class="em-editor-actions"><button class="button button-primary" data-em="save" '+(st.busy||d.status!=='draft'&&d.status?'disabled':'')+'>Guardar borrador</button><button class="button button-outline" data-em="test" '+(st.busy?'disabled':'')+'>Enviar prueba</button></div></div></section>'+
  '<section class="em-card em-preview"><div class="em-preview-top"><b>Vista previa</b><button class="button button-outline" data-em="viewport">'+(st.mobile?'Vista computadora':'Vista celular')+'</button></div><iframe title="Vista previa de newsletter" sandbox="" class="'+(st.mobile?'em-phone':'')+'" srcdoc="'+htmlEscape(previewHtml(d))+'"></iframe><p>Ejemplo de saludo: Camila. Los datos reales se sustituyen cuando se habiliten envíos autorizados.</p></section></div>';
 }
+function campaignStats(c){
+ const m=st.stats[c.id];if(!m)return '';
+ return '<div class="em-campaign-stats">Destinatarios: '+m.total+' · Enviados: '+m.sent+' · Entregados: '+m.delivered+' · Aperturas: '+m.opened+' · Clics: '+m.clicked+' · Rebotes: '+m.bounced+' · Fallos: '+m.failed+'</div>';
+}
 function campaigns(){
- return '<div class="em-dashboard-grid"><section class="em-card"><h2>Campañas</h2><p>Crea newsletters en español y portugués. No se enviarán campañas reales.</p><button class="button button-primary" data-em="new">+ Crear newsletter</button>'+
- (st.campaigns.length?'<div class="em-campaign-list">'+st.campaigns.map(c=>'<div class="em-list-entry"><div><strong>'+htmlEscape(c.title)+'</strong><span>'+htmlEscape(c.subject)+' · '+(c.language==='pt'?'Português':'Español')+' · Borrador</span></div><div><button class="button button-outline" data-em="edit" data-id="'+c.id+'">Editar</button><button class="button button-outline" data-em="duplicate" data-id="'+c.id+'">Duplicar</button></div></div>').join('')+'</div>':'<p class="em-empty">Aún no tienes campañas. Crea tu primer newsletter de brasper.</p>')+'</section>'+
- '<section class="em-card"><h2>Contactos autorizados</h2><p>Importa CSV con columnas <code>nombre,email,idioma,empresa,consentimiento</code>. El consentimiento debe decir «sí», «true» o «1». Un contacto dado de baja no se reactiva al importar otra vez.</p><input id="em-csv" aria-label="Subir CSV" type="file" accept=".csv,text/csv"><p class="em-fine">Solo contactos con permiso explícito. No se enviarán correos automáticamente. Máximo 300 contactos por lote.</p>'+
+ return '<div class="em-dashboard-grid"><section class="em-card"><h2>Campañas</h2><p>Gestiona borradores, programación, estados y métricas reales de tus newsletters.</p><button class="button button-primary" data-em="new">+ Crear newsletter</button>'+
+ (st.campaigns.length?'<div class="em-campaign-list">'+st.campaigns.map(c=>'<div class="em-list-entry"><div><strong>'+htmlEscape(c.title)+'</strong><span>'+htmlEscape(c.subject)+' · '+(c.language==='pt'?'Português':'Español')+' · '+htmlEscape(c.status||'draft')+'</span>'+campaignStats(c)+'</div><div><button class="button button-outline" data-em="edit" data-id="'+c.id+'">Ver</button><button class="button button-outline" data-em="duplicate" data-id="'+c.id+'">Duplicar</button>'+(c.status==='draft'&&st.sendingReady?'<button class="button button-primary" data-em="schedule" data-id="'+c.id+'">Programar</button>':'')+(['scheduled','sending','paused'].includes(c.status)?'<button class="button button-outline" data-em="'+(c.status==='paused'?'resume':'stop')+'" data-id="'+c.id+'">'+(c.status==='paused'?'Reanudar':'Pausar')+'</button>':'')+'</div></div>').join('')+'</div>':'<p class="em-empty">Aún no tienes campañas. Crea tu primer newsletter de brasper.</p>')+'</section>'+
+ '<section class="em-card"><h2>Contactos autorizados</h2><p>Sube Excel (.xlsx) o CSV con columnas <code>nombre,email,idioma,empresa,consentimiento</code>. Solo se incorporan contactos con consentimiento explícito. Las bajas no se reactivan.</p><input id="em-csv" aria-label="Subir Excel o CSV" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><p class="em-fine">Hasta 2.000 contactos por campaña, divididos en lotes seguros de importación.</p>'+
  '<div class="em-contact-count"><b>'+st.contacts.filter(c=>!c.unsubscribed_at).length+'</b> contactos autorizados · <b>'+st.contacts.filter(c=>c.unsubscribed_at).length+'</b> bajas</div>'+
  (st.contacts.length?'<div class="em-contacts"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Estado</th></tr></thead><tbody>'+st.contacts.slice(0,60).map(c=>'<tr><td>'+htmlEscape(c.name)+'</td><td>'+htmlEscape(c.email)+'</td><td>'+(c.unsubscribed_at?'Baja':'Autorizado'+(c.language==='pt'?' · PT':''))+'</td></tr>').join('')+'</tbody></table></div>':'<p class="em-empty">Todavía no has importado contactos.</p>')+'</section></div>'+
  '<section class="em-card em-library"><div><h2>Biblioteca multimedia</h2><p>Guarda banners y fotografías para reutilizarlos en tus newsletters. Los recursos publicados serán accesibles públicamente por URL.</p></div><label class="button button-outline em-upload">+ Subir imagen<input id="em-upload" type="file" accept="image/jpeg,image/png,image/webp" hidden></label><div class="em-images">'+st.assets.map(x=>'<button type="button" data-em="copy-image" data-url="'+htmlEscape(x.url)+'" title="Copiar URL de imagen"><img src="'+htmlEscape(x.url)+'" alt="Recurso de brasper" loading="lazy"></button>').join('')+'</div></section>';
 }
 function markup(){
  return '<div id="em-root" class="em-screen"><div class="page-title"><div><div class="eyebrow">MARKETING Y COMUNICACIÓN</div><h1>Email Marketing · brasper</h1><p>Diseña newsletters personalizados y organiza contactos autorizados.</p></div></div>'+
- '<div class="em-status"><span>Primera versión · Solo brasper</span><span>No hay envíos masivos habilitados</span></div>'+
+ '<div class="em-status"><span>Email Marketing · Brásper</span><span>'+(st.sendingReady?'Proveedor listo para programar':'Envío bloqueado hasta configurar proveedor y dominio')+'</span></div>'+
  (st.error?message(st.error,'error'):'')+(st.notice?message(st.notice):'')+
  (st.busy?'<p class="em-busy" role="status">Procesando…</p>':'')+
- (st.loaded?(st.screen==='editor'?editor():campaigns()):'<div class="em-card"><h2>Configuración inicial</h2><p>El módulo se ha preparado para brasper y solo se habilita cuando se vincula su empresa mediante <code>BRASPER_BUSINESS_ID</code> en Cloudflare. Las cuentas de otras empresas no pueden ver ni enviar su información.</p></div>')+'</div>';
+ (st.loaded?(st.screen==='editor'?editor():campaigns()):'<div class="em-card"><h2>Preparando Email Marketing</h2><p>Selecciona la empresa Brásper y vuelve a cargar la sección para consultar las campañas.</p></div>')+'</div>';
 }
 function show(){const node=document.getElementById('em-root');if(node){const root=document.createElement('div');root.innerHTML=markup();node.replaceWith(root.firstElementChild);}}
 function readForm(){
@@ -115,6 +119,30 @@ async function run(action,button){
    show();return;
   }
   if(action==='viewport'){st.mobile=!st.mobile;show();return;}
+   if(action==='schedule'){
+    if(!st.sendingReady)throw Error('Configura primero el proveedor de envío y el dominio.');
+    const c=st.campaigns.find(x=>x.id===button.dataset.id);
+    if(!c||c.status!=='draft')throw Error('Solo puedes programar un borrador.');
+    const date=prompt('Fecha y hora de envío (hora local, formato AAAA-MM-DD HH:MM):',new Date(Date.now()+3600000).toLocaleString('sv-SE').slice(0,16));
+    if(!date)return;
+    const d=new Date(date.replace(' ','T'));
+    if(!Number.isFinite(d.getTime())||d.getTime()<Date.now())throw Error('Fecha inválida o anterior a la actual.');
+    const typed=prompt('Escribe exactamente CONFIRMO ENVÍO A CONTACTOS AUTORIZADOS para autorizar el envío a los contactos suscritos de este idioma.');
+    if(typed!=='CONFIRMO ENVÍO A CONTACTOS AUTORIZADOS')return;
+    st.busy=true;show();
+    const result=await api('POST',{action:'schedule_campaign',campaign_id:c.id,scheduled_at:d.toISOString(),confirmation:typed});
+    st.notice='Campaña programada con '+result.queued+' destinatarios.';
+    await load(st.businessId,false);return;
+   }
+   if(action==='stop'||action==='resume'){
+    const c=st.campaigns.find(x=>x.id===button.dataset.id);
+    if(!c)return;
+    if(action==='stop'&&!confirm('¿Pausar esta campaña? Los correos ya enviados no pueden retirarse.'))return;
+    st.busy=true;show();
+    await api('POST',{action:action==='resume'?'resume_campaign':'stop_campaign',campaign_id:c.id});
+    st.notice=action==='stop'?'Campaña pausada.':'Campaña reanudada.';
+    await load(st.businessId,false);return;
+   }
   if(action==='copy-image'){await navigator.clipboard.writeText(button.dataset.url);st.notice='Enlace de imagen copiado. Agrégalo al bloque Imagen.';show();return;}
   st.busy=true;st.error='';st.notice='';show();
   if(action==='save'){
@@ -139,7 +167,7 @@ async function load(businessId,clear=true){
  }
  try{
   const d=await api('GET');
-  st.campaigns=d.campaigns||[];st.contacts=d.contacts||[];st.assets=d.assets||[];st.loaded=true;st.configured=d.configured;
+  st.campaigns=d.campaigns||[];st.contacts=d.contacts||[];st.assets=d.assets||[];st.stats=d.stats||{};st.loaded=true;st.configured=d.configured;st.sendingReady=!!d.sending_ready;
   if(clear){st.error='';st.notice='';}
  }catch(e){st.loaded=false;st.error=e.message;}
  show();
@@ -158,20 +186,20 @@ document.addEventListener('change',async ev=>{
  if(ev.target.id==='em-csv'){
   const file=ev.target.files?.[0];if(!file)return;
   try{
-   if(file.size>1_000_000)throw Error('CSV demasiado grande (máximo 1 MB).');
-   const csv=(await file.text()).replace(/^\uFEFF/,'');
-   const rows=parseCsv(csv);if(rows.length<2)throw Error('El CSV está vacío.');
+   if(file.size>3_000_000)throw Error('Archivo demasiado grande (máximo 3 MB).');
+   const csv=file.name.toLowerCase().endsWith('.xlsx')?'':(await file.text()).replace(/^\uFEFF/,'');
+   const rows=file.name.toLowerCase().endsWith('.xlsx')?await window.brasperReadXlsx(file):parseCsv(csv);if(rows.length<2)throw Error('El archivo está vacío.');
    const headers=rows.shift().map(x=>x.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
    const col=(names)=>names.map(x=>headers.indexOf(x)).find(x=>x>=0);
    const ci={name:col(['nombre','name','nome']),email:col(['email','correo','e-mail']),language:col(['idioma','language']),company:col(['empresa','company']),consent:col(['consentimiento','consent','consentimento'])};
    if(ci.name===undefined||ci.email===undefined||ci.consent===undefined)throw Error('Faltan columnas: nombre, email y consentimiento.');
    const contacts=rows.map(row=>({name:(row[ci.name]||'').trim(),email:(row[ci.email]||'').trim(),language:ci.language===undefined?'es':(row[ci.language]||'es').toLowerCase().startsWith('pt')?'pt':'es',company:ci.company===undefined?'':row[ci.company]||'',consent:/^(si|sí|true|1|yes|sim|acepto)$/i.test((row[ci.consent]||'').trim())})).filter(x=>x.name&&x.email);
-   if(contacts.length>300)throw Error('Importa hasta 300 contactos por archivo en esta primera versión.');
+   if(contacts.length>3000)throw Error('Importa como máximo 3.000 contactos por archivo.');
    if(!contacts.length)throw Error('No hay contactos válidos.');
    if(!confirm('¿Confirmas que los contactos marcados sí otorgaron su consentimiento para recibir newsletters de brasper?'))return;
    st.busy=true;st.error='';show();
-   const r=await api('POST',{action:'import_contacts',contacts});
-   st.notice=r.added+' contactos importados. '+r.skipped+' omitidos o duplicados.';
+   let added=0,skipped=0;for(let i=0;i<contacts.length;i+=300){const r=await api('POST',{action:'import_contacts',contacts:contacts.slice(i,i+300)});added+=r.added;skipped+=r.skipped;}
+   st.notice=added+' contactos importados. '+skipped+' omitidos o duplicados.';
    await load(st.businessId,false);
   }catch(e){st.error=e.message;}
   finally{st.busy=false;show();}
