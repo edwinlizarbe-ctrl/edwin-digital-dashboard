@@ -106,12 +106,12 @@ export async function handleEmailMarketingApi(req,env,s){
   try{
    if(view==='overview'){
     const [campaigns,contacts,assets,deliveries]=await Promise.all([
-     db(env,'ed_email_campaigns','select=id,title,subject,preheader,language,blocks,status,created_at,updated_at&'+filter+'&order=updated_at.desc&limit=40'),
+     db(env,'ed_email_campaigns','select=id,title,subject,preheader,language,blocks,status,scheduled_at,approved_at,created_at,updated_at&'+filter+'&order=updated_at.desc&limit=40'),
      db(env,'ed_email_contacts','select=id,name,email,language,company,consented_at,unsubscribed_at,created_at&'+filter+'&order=created_at.desc&limit=300'),
      db(env,'ed_email_assets','select=id,url,mime,created_at&'+filter+'&order=created_at.desc&limit=50'),
      db(env,'ed_email_deliveries','select=campaign_id,status&'+filter+'&order=created_at.desc&limit=2000')
     ]);
-    const stats={};for(const d of deliveries){const x=stats[d.campaign_id]||(stats[d.campaign_id]={total:0,sent:0,delivered:0,opened:0,clicked:0,bounced:0,failed:0,suppressed:0,pending:0});x.total++;if(x[d.status]!==undefined)x[d.status]++;}return send({campaigns,contacts,assets,stats,configured:!!env.RESEND_API_KEY,template:TEMPLATE,mass_sending_enabled:env.EMAIL_SENDING_ENABLED==='true',sending_ready:env.EMAIL_SENDING_ENABLED==='true'&&!!env.RESEND_API_KEY&&!!env.EMAIL_FROM&&!!env.EMAIL_UNSUBSCRIBE_KEY&&!!env.RESEND_WEBHOOK_SECRET,stats_partial:deliveries.length===2000});
+    const stats={};for(const d of deliveries){const x=stats[d.campaign_id]||(stats[d.campaign_id]={total:0,sent:0,delivered:0,opened:0,clicked:0,bounced:0,failed:0,suppressed:0,pending:0});x.total++;if(['sent','delivered','opened','clicked'].includes(d.status))x.sent++;if(['delivered','opened','clicked'].includes(d.status))x.delivered++;if(['opened','clicked'].includes(d.status))x.opened++;if(d.status==='clicked')x.clicked++;if(['failed','bounced','suppressed','pending'].includes(d.status))x[d.status]++;}return send({campaigns,contacts,assets,stats,configured:!!env.RESEND_API_KEY,template:TEMPLATE,mass_sending_enabled:env.EMAIL_SENDING_ENABLED==='true',sending_ready:env.EMAIL_SENDING_ENABLED==='true'&&!!env.RESEND_API_KEY&&!!env.EMAIL_FROM&&!!env.EMAIL_UNSUBSCRIBE_KEY&&!!env.RESEND_WEBHOOK_SECRET,stats_partial:deliveries.length===2000});
    }
    return send({error:'Vista inexistente.'},404);
   }catch(e){return send({error:e.message},503);}
