@@ -1,0 +1,28 @@
+name: BrasPer Email Marketing MVP checks
+on:
+  push:
+    branches:
+      - feature/brasper-email-marketing
+  pull_request:
+    paths:
+      - 'email-marketing.js'
+      - 'public/email-marketing.js'
+      - 'public/email-marketing.css'
+      - 'tests/email-marketing.test.js'
+      - 'worker.js'
+      - 'public/app.js'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify syntax and security regression tests
+        run: |
+          node --check email-marketing.js
+          node --check public/email-marketing.js
+          node --check public/app.js
+          node --check worker.js
+          node --test tests/email-marketing.test.js tests/google-ads.test.js tests/leads.test.js
