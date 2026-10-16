@@ -10,7 +10,7 @@ const simple=(data,status=200)=>new Response(JSON.stringify(data),{status,header
 const draft={title:'Newsletter Brásper',subject:'Hola, {{nombre}}',preheader:'Novedades',language:'es',blocks:[{type:'heading',text:'Hola, {{nombre}}'},{type:'text',text:'Estamos <a> & contigo'},{type:'button',text:'Conoce Brásper',url:'https://brasper.com'}]};
 const request=(method='GET',business=id,body=null,originHeader=origin)=>new Request(origin+'/api/email-marketing?business_id='+business,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(originHeader?{Origin:originHeader}:{})},...(body?{body:JSON.stringify(body)}:{})});
 async function mock(fn){
- const old=globalThis.fetch,calls=[],rows={ed_email_campaigns:[],ed_email_contacts:[],ed_email_assets:[]};
+ const old=globalThis.fetch,calls=[],rows={ed_email_campaigns:[],ed_email_contacts:[],ed_email_assets:[],ed_email_deliveries:[]};
  globalThis.fetch=async(url,options={})=>{
   const u=String(url);calls.push({u,options});
   if(u.includes('/rest/v1/businesses?'))return simple(u.includes(id)?[{id,slug:'brasper'}]:[]);
