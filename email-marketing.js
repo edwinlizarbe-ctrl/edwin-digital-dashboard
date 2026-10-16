@@ -1,3 +1,4 @@
+import {broadcastAction} from './email-delivery.js';
 /**
  * Brásper Email Marketing MVP.
  * Tenant-locked, consent-only contact import, structured newsletter drafts,
@@ -16,13 +17,13 @@ function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function https(x){try{const u=new URL(String(x));return u.protocol==='https:'&&!!u.hostname?u.toString():'';}catch{return '';}}
 function escapeAttr(x){return esc(x);}
 async function allowed(env,s,id){
- if(!UUID.test(id)||s.user?.role==='admin'||!env.BRASPER_BUSINESS_ID||id!==env.BRASPER_BUSINESS_ID)return false;
- const r=await fetch(base(env)+'/rest/v1/businesses?select=id&id=eq.'+encodeURIComponent(id)+'&limit=1',{
+ if(!UUID.test(id)||s.user?.role==='admin'||(env.BRASPER_BUSINESS_ID&&id!==env.BRASPER_BUSINESS_ID))return false;
+ const r=await fetch(base(env)+'/rest/v1/businesses?select=id,slug&id=eq.'+encodeURIComponent(id)+'&limit=1',{
   headers:{apikey:env.SUPABASE_ANON_KEY,Authorization:'Bearer '+s.access,Accept:'application/json'}
  });
  if(!r.ok)return false;
  const rows=await r.json().catch(()=>[]);
- return Array.isArray(rows)&&rows.some(x=>x.id===id);
+ return Array.isArray(rows)&&rows.some(x=>x.id===id&&x.slug==='brasper');
 }
 async function db(env,table,query='',method='GET',body,prefer='return=representation'){
  if(!env.SUPABASE_SERVICE_ROLE_KEY)throw Error('Falta conexión segura de Supabase.');
@@ -58,7 +59,7 @@ export function renderNewsletter(campaign,person={name:'Amiga/o',company:'Brásp
  '<body style="margin:0;background:#f2f6fc;font-family:Arial,Helvetica,sans-serif;color:#142b49"><div style="display:none;max-height:0;overflow:hidden;opacity:0">'+esc(personalized(campaign.preheader||'',person))+'</div>'+
  '<main style="max-width:600px;margin:30px auto;background:#fff;border-radius:20px;overflow:hidden;border:1px solid #dce7f8"><div style="background:'+brand+';color:#fff;padding:27px 32px;font-size:25px;font-weight:800">brasper<span style="font-size:12px;font-weight:400;float:right">Perú ↔ Brasil</span></div>'+
  '<div style="padding:22px 32px">'+inner+'</div><footer style="background:#f8fbff;border-top:1px solid #e4edfa;color:#6b7e91;font-size:12px;line-height:1.6;padding:20px 32px">'+
- 'Brásper · Comunicación informativa. Este es un newsletter en preparación. Los envíos masivos están deshabilitados hasta tener consentimiento verificable, proveedor y enlace de baja funcional.</footer></main></body></html>';
+ 'Brásper · Recibes este mensaje porque te suscribiste a nuestras comunicaciones. Puedes darte de baja desde el enlace incluido en el correo.</footer></main></body></html>';
 }
 const TEMPLATE=[
  {type:'heading',text:'Olá, {{nombre}}! 🇧🇷🇵🇪'},
@@ -104,12 +105,13 @@ export async function handleEmailMarketingApi(req,env,s){
   const view=url.searchParams.get('view')||'overview',filter='business_id=eq.'+encodeURIComponent(id);
   try{
    if(view==='overview'){
-    const [campaigns,contacts,assets]=await Promise.all([
+    const [campaigns,contacts,assets,deliveries]=await Promise.all([
      db(env,'ed_email_campaigns','select=id,title,subject,preheader,language,blocks,status,created_at,updated_at&'+filter+'&order=updated_at.desc&limit=40'),
      db(env,'ed_email_contacts','select=id,name,email,language,company,consented_at,unsubscribed_at,created_at&'+filter+'&order=created_at.desc&limit=300'),
-     db(env,'ed_email_assets','select=id,url,mime,created_at&'+filter+'&order=created_at.desc&limit=50')
+     db(env,'ed_email_assets','select=id,url,mime,created_at&'+filter+'&order=created_at.desc&limit=50'),
+     db(env,'ed_email_deliveries','select=campaign_id,status&'+filter+'&order=created_at.desc&limit=2000')
     ]);
-    return send({campaigns,contacts,assets,configured:!!env.RESEND_API_KEY,template:TEMPLATE,mass_sending_enabled:false});
+    const stats={};for(const d of deliveries){const x=stats[d.campaign_id]||(stats[d.campaign_id]={total:0,sent:0,delivered:0,opened:0,clicked:0,bounced:0,failed:0,suppressed:0,pending:0});x.total++;if(x[d.status]!==undefined)x[d.status]++;}return send({campaigns,contacts,assets,stats,configured:!!env.RESEND_API_KEY,template:TEMPLATE,mass_sending_enabled:env.EMAIL_SENDING_ENABLED==='true',sending_ready:env.EMAIL_SENDING_ENABLED==='true'&&!!env.RESEND_API_KEY&&!!env.EMAIL_FROM&&!!env.EMAIL_UNSUBSCRIBE_KEY&&!!env.RESEND_WEBHOOK_SECRET,stats_partial:deliveries.length===2000});
    }
    return send({error:'Vista inexistente.'},404);
   }catch(e){return send({error:e.message},503);}
@@ -121,12 +123,13 @@ export async function handleEmailMarketingApi(req,env,s){
  let body;try{body=JSON.parse(raw)}catch{return send({error:'JSON inválido.'},400);}
  const action=body?.action;
  try{
+  if(['schedule_campaign','stop_campaign','resume_campaign'].includes(action))return broadcastAction(req,env,s,id,action,body);
   if(action==='save_campaign'){
    const values=campaignValues(body.campaign,id);
    const cid=body.campaign?.id;
    if(cid){
     if(!UUID.test(cid))return send({error:'ID inválido.'},400);
-    const rows=await db(env,'ed_email_campaigns','business_id=eq.'+id+'&id=eq.'+cid,'PATCH',values);
+    const rows=await db(env,'ed_email_campaigns','business_id=eq.'+id+'&id=eq.'+cid+'&status=eq.draft','PATCH',values);
     return rows.length?send({campaign:rows[0]}):send({error:'Campaña inexistente.'},404);
    }
    const rows=await db(env,'ed_email_campaigns','','POST',values);return send({campaign:rows[0]},201);
