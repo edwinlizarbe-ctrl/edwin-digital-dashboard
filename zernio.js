@@ -32,18 +32,22 @@ async function authorisedBusiness(env,session,businessId) {
 export async function handleZernioApi(request,env,session) {
   const url=new URL(request.url);
   const cookies=session?.cookies||[];
-  if(url.pathname!=='/api/zernio/connect'||request.method!=='POST')
-    return json({error:'Ruta no disponible.'},404,cookies);
+  const connect=url.pathname==='/api/zernio/connect'&&request.method==='POST';
+  const inbox=url.pathname==='/api/zernio/inbox'&&request.method==='GET';
+  const messages=url.pathname==='/api/zernio/messages'&&request.method==='GET';
+  const send=url.pathname==='/api/zernio/messages'&&request.method==='POST';
+  if(!connect&&!inbox&&!messages&&!send)return json({error:'Ruta no disponible.'},404,cookies);
   const origin=request.headers.get('Origin');
   if(origin&&origin!==url.origin)return json({error:'Origen no autorizado.'},403,cookies);
-  if(!(request.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
+  if((connect||send)&&!(request.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
     return json({error:'Se requiere JSON.'},415,cookies);
-  if(Number(request.headers.get('Content-Length')||0)>2048)return json({error:'Solicitud demasiado grande.'},413,cookies);
-  let body;
-  try {body=await request.json();} catch {return json({error:'Datos no válidos.'},400,cookies);}
-  if(!UUID.test(String(body?.business_id||'')))return json({error:'Selecciona una empresa válida.'},400,cookies);
+  if(Number(request.headers.get('Content-Length')||0)>8192)return json({error:'Solicitud demasiado grande.'},413,cookies);
+  let body={};
+  if(connect||send){try {body=await request.json();} catch {return json({error:'Datos no válidos.'},400,cookies);}}
+  const businessId=connect||send?body?.business_id:url.searchParams.get('business_id');
+  if(!UUID.test(String(businessId||'')))return json({error:'Selecciona una empresa válida.'},400,cookies);
   if(!env.ZERNIO_API_KEY)return json({error:'Falta configurar ZERNIO_API_KEY como secreto en Cloudflare.'},503,cookies);
-  const business=await authorisedBusiness(env,session,body.business_id);
+  const business=await authorisedBusiness(env,session,businessId);
   if(!business)return json({error:'No tienes acceso a esta empresa.'},403,cookies);
   try {
     const id=business.id;
@@ -57,6 +61,33 @@ export async function handleZernioApi(request,env,session) {
       (created.status===409?profileResponse?.details?.existingProfileId:null);
     if(!profileId||!(created.ok||created.status===409)){
       return json({error:created.status===402?'Zernio solicita activar la facturación antes de conectar WhatsApp.':'Zernio no permitió crear el perfil. Revisa la clave API, el plan y los permisos.'},502,cookies);
+    }
+
+    if(inbox||messages||send){
+      const query=new URLSearchParams({profileId,platform:'whatsapp',limit:'100'});
+      const {response:listResponse,data:listData}=await zernioRequest(env,'/inbox/conversations?'+query.toString());
+      if(!listResponse.ok)return json({error:'No se pudieron consultar las conversaciones. Comprueba la conexión de WhatsApp.'},502,cookies);
+      const conversations=Array.isArray(listData.data)?listData.data.filter(c=>c.platform==='whatsapp'&&c.accountId):[];
+      if(inbox)return json({conversations,hasMore:!!listData.pagination?.hasMore},200,cookies);
+      const conversationId=String(send?body.conversation_id:url.searchParams.get('conversation_id')||'');
+      const selected=conversations.find(c=>c.id===conversationId);
+      if(!selected)return json({error:'Conversación no disponible para esta empresa.'},404,cookies);
+      if(messages){
+        const q=new URLSearchParams({accountId:selected.accountId,sortOrder:'desc',limit:'70'});
+        const {response:mr,data:md}=await zernioRequest(env,'/inbox/conversations/'+encodeURIComponent(selected.id)+'/messages?'+q);
+        if(!mr.ok)return json({error:'No se pudieron consultar los mensajes.'},502,cookies);
+        return json({messages:Array.isArray(md.data)?md.data:[],pagination:md.pagination||null},200,cookies);
+      }
+      const message=String(body.message||'').trim();
+      if(!message||message.length>4096)return json({error:'El mensaje debe tener entre 1 y 4096 caracteres.'},400,cookies);
+      const idempotencyKey=String(body.idempotency_key||'');
+      if(!UUID.test(idempotencyKey))return json({error:'Identificador de envío inválido.'},400,cookies);
+      const {response:sr,data:sd}=await zernioRequest(env,'/inbox/conversations/'+encodeURIComponent(selected.id)+'/messages',{
+        method:'POST',headers:{'Idempotency-Key':idempotencyKey},
+        body:JSON.stringify({accountId:selected.accountId,message})
+      });
+      if(!sr.ok)return json({error:sr.status===400?'WhatsApp no admitió el mensaje. Fuera de las 24 horas necesitas una plantilla aprobada.':sr.status===429?'Límite de envíos alcanzado. Espera antes de intentar de nuevo.':'Zernio no pudo entregar el mensaje (HTTP '+sr.status+').'},sr.status===429?429:502,cookies);
+      return json({success:true,reference:sd.data?.messageId||null},200,cookies);
     }
     const callback=new URL('/',url.origin);
     callback.searchParams.set('zernio','return');
