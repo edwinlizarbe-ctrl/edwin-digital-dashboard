@@ -327,21 +327,31 @@ async function handleApi(req, env) {
     if(!key)return json({configured:false,accounts:[],reason:'Falta SUPABASE_SERVICE_ROLE_KEY en Cloudflare para listar las cuentas.'},200,s.cookies);
     const base=String(env.SUPABASE_URL).replace(/\/$/,'');
     const headers={apikey:key,Authorization:'Bearer '+key,Accept:'application/json'};
-    const [pResponse,uResponse]=await Promise.all([
+    const [pResponse,uResponse,mResponse,bResponse]=await Promise.all([
       fetch(base+'/rest/v1/profiles?select=id,role,email&limit=1000',{headers}),
-      fetch(base+'/auth/v1/admin/users?per_page=200&page=1',{headers})
+      fetch(base+'/auth/v1/admin/users?per_page=200&page=1',{headers}),
+      fetch(base+'/rest/v1/business_members?select=user_id,business_id&limit=2000',{headers}),
+      fetch(base+'/rest/v1/businesses?select=id,name&limit=1000',{headers})
     ]);
-    if(!pResponse.ok||!uResponse.ok){
-      const failed=!pResponse.ok?'perfiles':'Supabase Auth';
-      const status=!pResponse.ok?pResponse.status:uResponse.status;
+    if(!pResponse.ok||!uResponse.ok||!mResponse.ok||!bResponse.ok){
+      const failed=!pResponse.ok?'perfiles':!uResponse.ok?'Supabase Auth':!mResponse.ok?'vínculos de empresas':'nombres de empresas';
+      const status=!pResponse.ok?pResponse.status:!uResponse.ok?uResponse.status:!mResponse.ok?mResponse.status:bResponse.status;
       console.error('Admin accounts upstream failed:',failed,status);
       return json({error:'No se pudo consultar '+failed+' (HTTP '+status+'). Verifica la clave administrativa y los permisos de Supabase.',source:failed},502,s.cookies);
     }
-    const profiles=await pResponse.json(),auth=await uResponse.json();
+    const [profiles,auth,members,businesses]=await Promise.all([pResponse.json(),uResponse.json(),mResponse.json(),bResponse.json()]);
+    const businessNames=new Map((Array.isArray(businesses)?businesses:[]).map(b=>[b.id,b.name]));
+    const memberships=new Map();
+    for(const m of Array.isArray(members)?members:[]){
+      if(!memberships.has(m.user_id))memberships.set(m.user_id,[]);
+      const name=businessNames.get(m.business_id);
+      if(name)memberships.get(m.user_id).push(name);
+    }
     const known=new Map((Array.isArray(profiles)?profiles:[]).map(p=>[p.id,p]));
     const users=Array.isArray(auth.users)?auth.users:[];
     const accounts=users.filter(u=>known.has(u.id)&&known.get(u.id).role!=='admin').map(u=>({
       id:u.id,email:u.email||known.get(u.id).email||'',role:known.get(u.id).role,
+      business_names:memberships.get(u.id)||[],
       created_at:u.created_at||null,last_sign_in_at:u.last_sign_in_at||null,banned_until:u.banned_until||null
     }));
     return json({configured:true,accounts,truncated:users.length>=200},200,s.cookies);
