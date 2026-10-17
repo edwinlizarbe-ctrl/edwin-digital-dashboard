@@ -76,7 +76,7 @@ export async function handleZernioApi(request,env,session) {
         const q=new URLSearchParams({accountId:selected.accountId,sortOrder:'desc',limit:'70'});
         const {response:mr,data:md}=await zernioRequest(env,'/inbox/conversations/'+encodeURIComponent(selected.id)+'/messages?'+q);
         if(!mr.ok)return json({error:'No se pudieron consultar los mensajes.'},502,cookies);
-        return json({messages:Array.isArray(md.data)?md.data:[],pagination:md.pagination||null},200,cookies);
+        return json({messages:Array.isArray(md.messages)?md.messages:[],pagination:md.pagination||null},200,cookies);
       }
       const message=String(body.message||'').trim();
       if(!message||message.length>4096)return json({error:'El mensaje debe tener entre 1 y 4096 caracteres.'},400,cookies);
