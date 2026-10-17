@@ -94,8 +94,7 @@ export async function handleZernioApi(request,env,session) {
     callback.searchParams.set('business_id',id);
     const params=new URLSearchParams({
       profileId, redirect_url:callback.toString(),
-      onboarding:'api',signup:'hosted',
-      brandName:'Edwin Digital',primaryColor:'#2563EB',language:'es'
+      onboarding:'api'
     });
     const {response:linked,data:linkResponse}=await zernioRequest(env,'/connect/whatsapp?'+params.toString());
     const authUrl=linkResponse?.authUrl;
