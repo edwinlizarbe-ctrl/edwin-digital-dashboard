@@ -1186,7 +1186,7 @@ async function loadAccounts(){
     const sites=state.sites.map(site=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(site.name)}</strong><small>${clean(site.url||'URL no registrada')}</small></div><span class="client-site-badge">${site.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
     const accounts=users.map(u=>`<div class="admin-linked-user"><div class="client-avatar compact">${icon('user',18)}</div><div><strong>${clean(u.email||'Correo no registrado')}</strong><small>Rol: ${clean(u.role)} · Alta: ${clean(adminDate(u.created_at))}</small><small>Último acceso: ${clean(adminDate(u.last_sign_in_at))} · Email verificado: ${u.confirmed_at?'Sí':'No confirmado / sin datos'}</small></div></div>`).join('');
     return `${heading('Ficha del cliente',b.name,'Información administrativa real, relaciones autorizadas y datos disponibles de la empresa.')}
-      <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">Volver a mis clientes</button><button class="button button-primary" data-act="admin-manage-features" data-id="${clean(b.id)}">Configurar plan y permisos</button><button class="button button-outline" data-act="business-lifecycle" data-id="${clean(b.id)}" data-name="${clean(b.name)}" data-status="${state.adminLifecycle.businesses[b.id]?.suspended_at?'suspended':'active'}">${state.adminLifecycle.businesses[b.id]?.suspended_at?'Reactivar empresa':'Suspender empresa'}</button><button class="button button-outline" data-act="directory-refresh">${icon('refresh',15)} Actualizar datos</button></div>
+      <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">Volver a mis clientes</button><button class="button button-primary" data-act="admin-manage-features" data-id="${clean(b.id)}">Configurar plan y permisos</button><button class="button button-outline" data-act="admin-rename-business" data-id="${clean(b.id)}" data-name="${clean(b.name)}">Cambiar nombre (administrador)</button><button class="button button-outline" data-act="business-lifecycle" data-id="${clean(b.id)}" data-name="${clean(b.name)}" data-status="${state.adminLifecycle.businesses[b.id]?.suspended_at?'suspended':'active'}">${state.adminLifecycle.businesses[b.id]?.suspended_at?'Reactivar empresa':'Suspender empresa'}</button><button class="button button-outline" data-act="directory-refresh">${icon('refresh',15)} Actualizar datos</button></div>
       ${state.directoryError?alertBlock(state.directoryError,'info'):''}
       <div class="content-grid"><div class="col-6">${card('Identidad de la empresa','Información registrada en la plataforma',
         '<div class="admin-detail-line"><span>Nombre comercial</span><strong>'+clean(b.name)+'</strong></div>'+
@@ -1683,6 +1683,20 @@ function sidebar(){
       try{await navigator.clipboard.writeText(state.temporaryAccess.password);state.accountNotice='Clave copiada al portapapeles. Compártela por un canal privado.';}
       catch{state.accountNotice='Selecciona y copia la clave de forma manual.';}render();
     }
+    else if(action==='admin-rename-business'&&isAdmin()){
+      const id=b.dataset.id||'',previous=b.dataset.name||'';
+      const proposed=prompt('Nuevo nombre oficial de la empresa (solo administrador):',previous);
+      if(proposed===null)return;
+      const name=proposed.trim().replace(/\s+/g,' ');
+      if(name.length<2||name.length>80||name===previous){if(name!==previous)alert('Nombre inválido (2 a 80 caracteres).');return;}
+      if(!confirm('¿Cambiar el nombre de '+previous+' a '+name+'? Este cambio será visible para el cliente.'))return;
+      try{
+        const updated=await api('/api/admin/business-name',{method:'PATCH',body:JSON.stringify({business_id:id,name})});
+        const found=state.businesses.find(x=>x.id===id);if(found)found.name=updated.name;
+        state.accountNotice='Nombre de empresa actualizado por el administrador.';
+        await loadAdminDirectory();
+      }catch(error){state.directoryError=error.message;render();}
+    }
     else if(action==='business-lifecycle'&&isAdmin()){
       const id=b.dataset.id||'',name=b.dataset.name||'',suspended=b.dataset.status==='suspended';
       if(!confirm((suspended?'¿Reactivar':'¿Suspender')+' la empresa '+name+'? '+(suspended?'Sus usuarios autorizados podrán acceder otra vez.':'Sus clientes perderán acceso temporalmente; los datos se conservan.')))return;
@@ -1973,7 +1987,8 @@ function sidebar(){
         const result=await api('/api/admin/accounts/create-client',{method:'POST',body:JSON.stringify({email,company_name})});
         if(!result.ok||!result.temporary_password)throw new Error('No se pudo confirmar la creación.');
         state.temporaryAccess={email:result.email,password:result.temporary_password};
-        await loadAccounts();await loadAdminDirectory();
+        try{const companies=await api('/api/businesses');state.businesses=companies.businesses||state.businesses;}catch{}
+        try{await loadAccounts();await loadAdminDirectory();}catch{}
         state.accountNotice='Cliente creado: '+result.business_name+'. Copia sus datos de acceso y entrégalos personalmente.';
       }catch(error){state.accountsError=error.message;}
       finally{state.inviteBusy=false;render();}
