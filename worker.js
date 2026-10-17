@@ -331,6 +331,46 @@ async function handleApi(req, env) {
     return json({configured:true,accounts,truncated:users.length>=200},200,s.cookies);
   }
 
+  if(path==='/api/admin/accounts/create-client' && method==='POST') {
+    if(s.user.role!=='admin')return json({error:'Solo el administrador puede crear clientes.'},403,s.cookies);
+    if(!companyJsonRequest(req,1500))return json({error:'Solicitud no autorizada.'},403,s.cookies);
+    let input;try{input=await companyParse(req,1500);}catch{return json({error:'Solicitud inválida.'},400,s.cookies);}
+    const email=String(input?.email||'').trim().toLowerCase();
+    if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json({error:'Correo inválido.'},400,s.cookies);
+    const key=env.SUPABASE_SERVICE_ROLE_KEY;
+    if(!key)return json({error:'No está configurada la conexión administrativa.'},503,s.cookies);
+    const base=String(env.SUPABASE_URL||'').replace(/\/$/,'');
+    const headers={apikey:key,Authorization:'Bearer '+key,Accept:'application/json'};
+    const br=await fetch(base+'/rest/v1/businesses?select=id,name&slug=eq.edwin-digital&limit=2',{headers});
+    if(!br.ok)return json({error:'No se pudo comprobar Edwin Digital.'},502,s.cookies);
+    const businesses=await br.json();
+    if(businesses.length!==1||businesses[0].name!=='Edwin Digital')return json({error:'Empresa Edwin Digital no disponible.'},409,s.cookies);
+    const businessId=businesses[0].id;
+    const sr=await fetch(base+'/rest/v1/ed_business_lifecycle?select=suspended_at&business_id=eq.'+businessId+'&limit=1',{headers});
+    if(!sr.ok)return json({error:'No se pudo comprobar el estado de Edwin Digital.'},502,s.cookies);
+    if((await sr.json())[0]?.suspended_at)return json({error:'Edwin Digital está suspendida.'},409,s.cookies);
+    const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+    const bytes=crypto.getRandomValues(new Uint8Array(32));
+    const temporaryPassword=Array.from(bytes,b=>alphabet[b%alphabet.length]).join('');
+    const made=await fetch(base+'/auth/v1/admin/users',{
+      method:'POST',headers:{...headers,'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:temporaryPassword,email_confirm:true})
+    });
+    const user=await made.json().catch(()=>({}));
+    if(!made.ok)return json({error:made.status===422||made.status===409?'Ese correo ya tiene una cuenta.':'No se pudo crear el usuario.'},made.status===422||made.status===409?409:502,s.cookies);
+    const id=user.id||user.user?.id;
+    if(!isUuid(id))return json({error:'No se pudo confirmar el usuario creado. Revisa Supabase.'},502,s.cookies);
+    const attached=await fetch(base+'/rest/v1/business_members',{
+      method:'POST',headers:{...headers,'Content-Type':'application/json',Prefer:'return=representation'},
+      body:JSON.stringify({business_id:businessId,user_id:id})
+    });
+    if(!attached.ok){
+      const rollback=await fetch(base+'/auth/v1/admin/users/'+id,{method:'DELETE',headers});
+      if(!rollback.ok)console.error('Could not roll back new account with failed membership');
+      return json({error:'No se pudo asignar Edwin Digital. No entregues credenciales; verifica el directorio.'},502,s.cookies);
+    }
+    return json({ok:true,email,temporary_password:temporaryPassword,business_name:'Edwin Digital'},200,s.cookies);
+  }
   if(path==='/api/admin/accounts/temporary-password' && method==='POST') {
     if(s.user.role!=='admin')return json({error:'Acceso exclusivo del superadministrador.'},403,s.cookies);
     if(!companyJsonRequest(req,1500))return json({error:'Solicitud no autorizada.'},403,s.cookies);
