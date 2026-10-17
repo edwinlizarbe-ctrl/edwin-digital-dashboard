@@ -17,7 +17,7 @@
     accent: (localStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(localStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: localStorage.getItem('ed-sidebar-v7')==='white' ? 'white' : 'navy',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
-    adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
+    adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -1103,14 +1103,14 @@ async function loadAccounts(){
   const results=list.map(u=>{const archived=!!state.adminLifecycle.accounts[u.id]?.archived_at;return `<div class="client-site-row account-access-row">
     <div class="client-avatar compact">${icon('users',19)}</div>
     <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Empresa: ${clean(Array.isArray(u.business_names)?(u.business_names.join(', ')||'Sin empresa vinculada'):'Actualiza usuarios para ver su empresa')}</small><small>${archived?'Cuenta eliminada (recuperable) · ':''}Rol: ${clean(u.role||'Cliente')} · Alta: ${clean(date(u.created_at))} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
-    <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button>${archived?'':`<button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button><button class="button button-outline" data-act="account-suspension" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-status="${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'suspended':'active'}">${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'Reactivar':'Suspender'}</button>`}<button class="button button-outline" data-act="account-archive" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-archived="${archived}">${archived?'Restaurar cuenta':'Eliminar cuenta'}</button></div>
+    <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button>${archived?'':`<button class="button button-outline" type="button" data-act="account-password-eye" data-id="${clean(u.id)}" data-email="${clean(u.email)}" title="Ver solo una clave temporal recién generada; no revela contraseñas actuales" aria-label="Contraseña de ${clean(u.email)}">${icon('eye',16)} Contraseña</button><button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button><button class="button button-outline" data-act="account-suspension" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-status="${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'suspended':'active'}">${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'Reactivar':'Suspender'}</button>`}<button class="button button-outline" data-act="account-archive" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-archived="${archived}">${archived?'Restaurar cuenta':'Eliminar cuenta'}</button></div>
   </div>`}).join('');
   return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
     <div class="account-access-toolbar"><button class="button button-outline" data-act="accounts-refresh" ${state.accountsLoading?'disabled':''}>${icon('refresh',16)} ${state.accountsLoading?'Consultando…':'Actualizar usuarios'}</button><span>${fmt(list.length)} cuentas visibles</span></div>
     ${state.accountsError?alertBlock(state.accountsError,'info'):''}
     ${state.accountsConfigured===false?`<div class="admin-setup-guide"><strong>Activa la gestión de accesos</strong><p>En Supabase abre la configuración del proyecto → API Keys y obtén la clave de servidor <code>service_role</code>. Agrégala en Cloudflare → Worker → Variables and Secrets como secreto cifrado con el nombre <code>SUPABASE_SERVICE_ROLE_KEY</code>.</p><p>No publiques ni pegues esa clave en el chat, en GitHub ni en código del navegador. Después pulsa «Actualizar usuarios».</p></div>`:''}
     ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
-    ${state.temporaryAccess?`<div class="temporary-credential" role="status"><strong>Clave temporal de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code>${clean(state.temporaryAccess.password)}</code><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar</button></div><p>Se muestra solo ahora. Envíala de forma privada y pide al cliente que la cambie en Mi cuenta.</p></div>`:''}
+    ${state.temporaryAccess?`<div class="temporary-credential" role="status"><strong>Contraseña nueva de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code aria-label="${state.temporaryPasswordVisible?'Contraseña temporal visible':'Contraseña temporal oculta'}">${state.temporaryPasswordVisible?clean(state.temporaryAccess.password):'••••••••••••••••'}</code><button type="button" class="button button-outline" data-act="account-toggle-temp" aria-label="${state.temporaryPasswordVisible?'Ocultar':'Mostrar'} contraseña temporal">${icon('eye',17)} ${state.temporaryPasswordVisible?'Ocultar':'Mostrar'}</button><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar clave</button></div><p>Solo puedes consultar esta clave recién generada, no la contraseña anterior. Entrégala en privado y pide al cliente que la cambie en Mi cuenta. Se perderá al recargar la página.</p></div>`:''}
     ${card('Crear cliente','Crear usuario y contraseña de inmediato',`<form id="admin-invite-form" class="security-form" autocomplete="off" style="display:grid;gap:12px;max-width:650px">
 <label class="form-label">Correo electrónico<input class="simple-input" name="email" type="email" required maxlength="254" placeholder="cliente@empresa.com" style="display:block;width:100%;margin-top:6px"></label>
 <label class="form-label">Nombre de la empresa<input class="simple-input" name="company_name" type="text" required minlength="2" maxlength="80" placeholder="Nombre comercial" style="display:block;width:100%;margin-top:6px"></label>
@@ -1679,6 +1679,9 @@ function sidebar(){
     else if(action==='account-email-hide'){state.emailHistoryUserId='';state.emailHistoryData=[];render();}
     else if(action==='directory-refresh'&&isAdmin())await loadAdminDirectory();
     else if(action==='accounts-refresh'&&isAdmin()){state.temporaryAccess=null;await loadAccounts();}
+    else if(action==='account-toggle-temp'&&isAdmin()&&state.temporaryAccess){
+      state.temporaryPasswordVisible=!state.temporaryPasswordVisible;render();
+    }
     else if(action==='account-copy-temp'&&isAdmin()&&state.temporaryAccess){
       try{await navigator.clipboard.writeText(state.temporaryAccess.password);state.accountNotice='Clave copiada al portapapeles. Compártela por un canal privado.';}
       catch{state.accountNotice='Selecciona y copia la clave de forma manual.';}render();
@@ -1735,12 +1738,32 @@ function sidebar(){
         await loadAccounts();
       }catch(e){state.accountsError=e.message;render();}
     }
+    else if(action==='account-password-eye'&&isAdmin()){
+      const email=b.dataset.email||'',id=b.dataset.id||'';
+      if(state.temporaryAccess?.id===id){
+        state.temporaryPasswordVisible=!state.temporaryPasswordVisible;
+        render();
+      }else{
+        if(!confirm('La contraseña actual de '+email+' no se puede ver por seguridad. ¿Generar una NUEVA clave temporal para mostrarla? La anterior dejará de funcionar.'))return;
+        state.temporaryAccess=null;state.temporaryPasswordVisible=false;state.accountNotice='';state.accountsError='';
+        try{
+          const out=await api('/api/admin/accounts/temporary-password',{method:'POST',body:JSON.stringify({user_id:id})});
+          state.temporaryAccess={id,email:out.email,password:out.temporary_password};
+          state.accountNotice='Clave temporal nueva generada. Pulsa Mostrar para verla o Copiar clave para entregarla.';
+        }catch(e){state.accountsError=e.message;}
+        render();
+      }
+    }
     else if(action==='account-temp'&&isAdmin()){
       const email=b.dataset.email||'',id=b.dataset.id||'';
       if(!confirm('¿Generar una contraseña temporal nueva para '+email+'? La contraseña anterior dejará de funcionar.'))return;
-      state.temporaryAccess=null;state.accountNotice='';state.accountsError='';
-      try{const out=await api('/api/admin/accounts/temporary-password',{method:'POST',body:JSON.stringify({user_id:id})});state.temporaryAccess={email:out.email,password:out.temporary_password};state.accountNotice=out.message||'Clave temporal creada.';}
-      catch(e){state.accountsError=e.message;}render();
+      state.temporaryAccess=null;state.temporaryPasswordVisible=false;state.accountNotice='';state.accountsError='';
+      try{
+        const out=await api('/api/admin/accounts/temporary-password',{method:'POST',body:JSON.stringify({user_id:id})});
+        state.temporaryAccess={id,email:out.email,password:out.temporary_password};
+        state.accountNotice=out.message||'Clave temporal creada. Pulsa Mostrar para verla.';
+      }catch(e){state.accountsError=e.message;}
+      render();
     }
     else if(action==='meta-connect'){
       if(state.meta?.configured && metaPilotEligible()){
@@ -1986,7 +2009,7 @@ function sidebar(){
       try{
         const result=await api('/api/admin/accounts/create-client',{method:'POST',body:JSON.stringify({email,company_name})});
         if(!result.ok||!result.temporary_password)throw new Error('No se pudo confirmar la creación.');
-        state.temporaryAccess={email:result.email,password:result.temporary_password};
+        state.temporaryAccess={email:result.email,password:result.temporary_password};state.temporaryPasswordVisible=false;
         try{const companies=await api('/api/businesses');state.businesses=companies.businesses||state.businesses;}catch{}
         try{await loadAccounts();await loadAdminDirectory();}catch{}
         state.accountNotice='Cliente creado: '+result.business_name+'. Copia sus datos de acceso y entrégalos personalmente.';
