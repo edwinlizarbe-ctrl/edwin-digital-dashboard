@@ -890,19 +890,24 @@ function reportExtras(){
  <div class="col-12">${card('Mis sitios web',`${fmt(state.sites.length)} sitios visibles para tu usuario`,`${state.siteNotice?`<div class="company-message">${icon('check',15)} ${clean(state.siteNotice)}</div>`:''}${sites||empty('No hay sitios web registrados para este negocio.')}<p class="fine-print">Aquí puedes modificar el nombre y la URL de un sitio autorizado. La creación de nuevos sitios requiere permisos y configuración de propiedad GA4.</p>`)}</div>
  </div>`;
 }
+  // Customer-only admin listings; internal Brásper remains stored and available elsewhere.
+  const adminClientBusinesses=()=>state.businesses.filter(b=>
+    String(b.slug||'').toLowerCase()!=='brasper' &&
+    String(b.name||'').trim().toLocaleLowerCase('es-PE')!=='brásper'
+  );
   function adminStatusFor(b){
  const x=state.adminSiteStats[b.id];
  return x?.error?'Sin acceso':x?x.count+' sitios visibles':state.adminStatsLoading?'Consultando…':'No comprobado';
 }
   function adminOperations(){
- const records=state.businesses.map(b=>{const x=state.adminSiteStats[b.id];return {
+ const records=adminClientBusinesses().map(b=>{const x=state.adminSiteStats[b.id];return {
   name:b.name,sites:x?.error?'Sin acceso':x?x.count:'—',
   ga4:x?.error?'Sin acceso':x?x.ga4:'—',
   status:x?.error?'Revisar permisos':x?'Consultado':'Pendiente'};
  });
  const columns=[{key:'name',label:'Empresa'},{key:'sites',label:'Sitios visibles'},{key:'ga4',label:'Propiedades GA4'},{key:'status',label:'Estado'}];
  return `${heading('Administración','Supervisión de clientes','Consulta los sitios visibles por empresa sin usar las contraseñas ni las sesiones de tus clientes.')}
- <div class="admin-toolbar"><span>${fmt(records.length)} empresas autorizadas</span>
+ <div class="admin-toolbar"><span>${fmt(records.length)} clientes visibles</span>
  <button class="button button-outline" data-act="admin-check" ${state.adminStatsLoading?'disabled':''}>${icon('refresh',16)} Actualizar inventario</button></div>
  ${state.adminStatsError?alertBlock(state.adminStatsError):''}
  ${card('Inventario de empresas','Cero sitios visibles no significa que la empresa no tenga sitios registrados.',records.length?dataTable(records,columns,100):empty('No hay empresas asignadas.'))}
@@ -929,14 +934,14 @@ function reportExtras(){
  }
 }
     function adminHome(){
- const items=state.businesses||[];
+ const items=adminClientBusinesses();
  const rows=items.map(b=>`<div class="client-site-row"><div class="client-avatar compact">${icon('building',19)}</div><div><strong>${clean(b.name)}</strong><small>${clean(b.slug)} · ${clean(state.adminPlans[b.id]||'Plan sin asignar')} · ${clean(adminStatusFor(b))}</small></div><button class="button button-soft" data-act="client-detail" data-id="${clean(b.id)}">Ver ficha</button></div>`).join('');
  return `${heading('Superadministrador','Centro de administración','Gestiona las empresas autorizadas y revisa las conexiones de la plataforma sin acceder a las credenciales de los clientes.')}
  <div class="small-kpis admin-overview-kpis">
  <div class="small-kpi"><span>Empresas visibles</span><strong>${fmt(items.length)}</strong><small>Según permisos de Supabase</small></div>
- <div class="small-kpi"><span>Sitios visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(Object.values(state.adminSiteStats).reduce((t,x)=>t+(x.count||0),0)):'—'}</strong><small>Según tus permisos</small></div>
- <div class="small-kpi"><span>Propiedades GA4 visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(Object.values(state.adminSiteStats).reduce((t,x)=>t+(x.ga4||0),0)):'—'}</strong><small>Con propiedad asignada</small></div>
- <div class="small-kpi"><span>Planes asignados</span><strong>${state.adminPlansLoaded?fmt(Object.values(state.adminPlans).filter(x=>x==='premium'||x==='free').length):'—'}</strong><small>${state.adminPlansLoaded?'Premium: '+fmt(Object.values(state.adminPlans).filter(x=>x==='premium').length)+' · Free: '+fmt(Object.values(state.adminPlans).filter(x=>x==='free').length):'Según permisos de Supabase'}</small></div><div class="small-kpi"><span>Verificación</span><strong>${fmt(Object.values(state.adminSiteStats).filter(x=>!x.error).length)} / ${fmt(items.length)}</strong><small>Empresas revisadas</small></div></div>
+ <div class="small-kpi"><span>Sitios visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(items.reduce((t,b)=>t+(state.adminSiteStats[b.id]?.count||0),0)):'—'}</strong><small>Según tus permisos</small></div>
+ <div class="small-kpi"><span>Propiedades GA4 visibles</span><strong>${Object.values(state.adminSiteStats).length?fmt(items.reduce((t,b)=>t+(state.adminSiteStats[b.id]?.ga4||0),0)):'—'}</strong><small>Con propiedad asignada</small></div>
+ <div class="small-kpi"><span>Planes asignados</span><strong>${state.adminPlansLoaded?fmt(Object.values(state.adminPlans).filter(x=>x==='premium'||x==='free').length):'—'}</strong><small>${state.adminPlansLoaded?'Premium: '+fmt(Object.values(state.adminPlans).filter(x=>x==='premium').length)+' · Free: '+fmt(Object.values(state.adminPlans).filter(x=>x==='free').length):'Según permisos de Supabase'}</small></div><div class="small-kpi"><span>Verificación</span><strong>${fmt(items.filter(b=>state.adminSiteStats[b.id]&&!state.adminSiteStats[b.id]?.error).length)} / ${fmt(items.length)}</strong><small>Empresas revisadas</small></div></div>
  <div class="content-grid">
  <div class="col-8">${card('Cartera de empresas','Abre una ficha para consultar sus propiedades autorizadas',rows||empty('No hay empresas visibles para esta cuenta.'))}</div>
  <div class="col-4">${card('Gestión rápida','Acciones disponibles para tu rol',`<div class="admin-quick-actions">
@@ -1152,7 +1157,7 @@ async function loadAccounts(){
     if(!isAdmin())return overview();
     const query=state.adminQuery.trim().toLowerCase();
     // Brásper is an internal company, not a client account. Keep its data and access intact.
-    const clientBusinesses=state.businesses.filter(b=>String(b.slug||'').toLowerCase()!=='brasper'&&String(b.name||'').trim().toLowerCase()!=='brásper');
+    const clientBusinesses=adminClientBusinesses();
     const filtered=clientBusinesses.filter(b=>[b.name,b.slug,linkedEmail(b.id),...directoryUsersFor(b.id).map(u=>u.email)].join(' ').toLowerCase().includes(query));
     const cards=filtered.map(b=>{
       const users=directoryUsersFor(b.id);
