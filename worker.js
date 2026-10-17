@@ -1,3 +1,4 @@
+import { manageSuspension, isSuspendedUser } from './admin-suspension.js';
 import { handleMetaApi } from './meta.js';
 import { handleGoogleAdsApi } from './google-ads.js';
 import { handleLeadsApi } from './leads.js';
@@ -85,6 +86,7 @@ async function session(req, env) {
   if (!user) return { invalid: true, cookies: clearCookies() };
   const profile = await supaRest(env, `profiles?select=id,email,role&id=eq.${encodeURIComponent(user.id)}&limit=1`, access);
   if (!profile.length) return { invalid: true, cookies: clearCookies() };
+  if(profile[0].role!=='admin' && await isSuspendedUser(env,user.id))return {invalid:true,cookies:clearCookies()};
   return { user: { id: user.id, email: user.email, role: profile[0].role, business_preferences: user.user_metadata?.ed_business_preferences_v1||{} }, metadata: user.user_metadata||{}, access, cookies };
 }
 
@@ -156,6 +158,7 @@ async function handleApi(req, env) {
   }
   const s = await session(req, env);
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
+  if(path==='/api/admin/accounts/suspension')return manageSuspension(req,env,s);
   if(path==='/api/client/features'||path.startsWith('/api/admin/business-features'))return handleFeaturesApi(req,env,s);
   if (path.startsWith('/api/zernio/')) return handleZernioApi(req, env, s);
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
@@ -318,7 +321,7 @@ async function handleApi(req, env) {
     const users=Array.isArray(auth.users)?auth.users:[];
     const accounts=users.filter(u=>known.has(u.id)&&known.get(u.id).role!=='admin').map(u=>({
       id:u.id,email:u.email||known.get(u.id).email||'',role:known.get(u.id).role,
-      created_at:u.created_at||null,last_sign_in_at:u.last_sign_in_at||null
+      created_at:u.created_at||null,last_sign_in_at:u.last_sign_in_at||null,banned_until:u.banned_until||null
     }));
     return json({configured:true,accounts,truncated:users.length>=200},200,s.cookies);
   }
