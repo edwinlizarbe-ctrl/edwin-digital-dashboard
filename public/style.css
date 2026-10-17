@@ -1214,3 +1214,68 @@ input,select,textarea{max-width:100%}
 
 /* Modal guiado de conexión de WhatsApp */
 .wa-connect-dialog{width:min(560px,calc(100vw - 28px));max-height:90vh;overflow-y:auto;border:1px solid #e2e8f0;border-radius:22px;padding:26px;background:var(--card-bg,#fff);color:var(--text,#0f172a);box-shadow:0 28px 90px #0004}.wa-connect-dialog::backdrop{background:rgba(15,23,42,.6);backdrop-filter:blur(3px)}.wa-connect-modal-header{display:flex;justify-content:space-between;gap:18px;align-items:start}.wa-connect-modal-header h2{font-size:24px;margin:4px 0 12px}.wa-connect-kicker{font-size:11px;letter-spacing:.1em;color:#16a34a;font-weight:800}.wa-connect-x{border:0;border-radius:10px;background:#f1f5f9;color:#334155;cursor:pointer;font-size:24px;width:36px;height:36px}.wa-connect-dialog>p{line-height:1.5;color:var(--text-muted,#64748b)}.wa-connect-modal-steps{display:grid;gap:12px;margin:22px 0}.wa-connect-modal-steps>div{display:grid;grid-template-columns:38px 1fr;column-gap:12px;align-items:center;padding:13px;border:1px solid #e2e8f0;border-radius:12px}.wa-connect-modal-steps span{grid-row:span 2;background:#dcfce7;color:#166534;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800}.wa-connect-modal-steps strong{font-size:15px}.wa-connect-modal-steps small{color:var(--text-muted,#64748b);line-height:1.5}.wa-connect-modal-warning{padding:12px;border-radius:10px;background:#fffbeb;color:#92400e!important;font-size:13px}.wa-connect-modal-actions{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:20px}
+
+
+/* Edwin CRM — universal integration cards (2026-10-17).
+   Keep the brand icon first, followed by its name and live connection status. */
+.integration-section .integration-card.provider-card{
+  display:flex;flex-direction:column;min-width:0;gap:0;
+  border:1px solid var(--border);border-radius:18px;padding:20px;
+  background:var(--surface);box-shadow:0 6px 26px rgba(22,39,71,.045);
+}
+.integration-section .integration-brand-head{
+  display:flex;align-items:center;gap:13px;min-width:0;margin:0 0 15px;
+}
+.integration-section .integration-brand-head>.provider-logo{
+  width:56px;height:56px;flex:0 0 56px;display:grid;place-items:center;
+  border-radius:14px;background:var(--surface2);border:1px solid var(--border);
+}
+.integration-section .integration-brand-head>.provider-logo img{width:35px;height:35px;object-fit:contain}
+.integration-section .integration-brand-head>.provider-logo-duo{width:68px;flex-basis:68px;gap:3px}
+.integration-section .integration-brand-head>.provider-logo-duo img{width:27px!important;height:27px!important}
+.integration-section .integration-brand-text{min-width:0;flex:1 1 auto}
+.integration-section .integration-brand-text h3{
+  margin:0;color:var(--text);font-size:15px;font-weight:800;line-height:1.35;overflow-wrap:anywhere
+}
+.integration-section .integration-brand-text small{
+  display:block;margin-top:4px;color:var(--muted2);font-size:11px;line-height:1.35
+}
+.integration-section .integration-brand-head>.tag{
+  flex:0 0 auto;margin-left:auto;font-size:10px;max-width:100%;align-self:flex-start
+}
+.integration-section .integration-card.provider-card>p{
+  font-size:12px;line-height:1.65;color:var(--muted2);margin:0 0 14px;
+}
+.integration-section .integration-card.provider-card>.integration-status{
+  display:flex;flex-direction:column;align-items:stretch;gap:12px;
+  border-top:1px solid var(--border);padding-top:15px;margin-top:auto;
+}
+.integration-section .integration-status>span{
+  margin:0;color:var(--muted2);line-height:1.6;font-size:11.5px
+}
+.integration-section .integration-plug-action{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  min-height:42px;width:100%;border-radius:11px;white-space:normal;
+  font-size:12px;line-height:1.3;text-align:center
+}
+.integration-section .integration-plug-action svg{flex:0 0 auto}
+.integration-section .integration-plug-action:disabled{
+  color:var(--muted2);background:var(--surface2);border:1px solid var(--border);
+  opacity:.8;box-shadow:none
+}
+.integration-section .ga-card{max-width:none}
+.integration-section .ga-card .ga-connect-panel{margin-top:0}
+.integration-section .ga-card .ga-connect-button{width:100%;display:flex;gap:9px;align-items:center;justify-content:center;min-height:42px}
+.integration-section .ga-card .ga-caption{margin:0 0 14px;line-height:1.6}
+.integration-section .integration-card.provider-card .ga-buttons{display:flex;gap:9px;flex-wrap:wrap}
+.integration-section .integration-card.provider-card .ga-buttons .button{flex:1 1 auto}
+.integration-section .provider-logo-whatsapp{color:#25D366}
+@media(max-width:620px){
+ .integration-section .integration-card.provider-card{padding:16px}
+ .integration-section .integration-brand-head{flex-wrap:wrap;gap:10px}
+ .integration-section .integration-brand-head>.tag{margin-left:0}
+ .integration-section .integration-brand-text h3{font-size:14px}
+ .integration-section .ga-card .ga-buttons{flex-direction:column}
+ .integration-section .ga-card .ga-buttons>.button{width:100%}
+}
+
