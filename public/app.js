@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const root = document.getElementById('app');
+  let pendingInvite = null;
   const state = {
     user: null, businesses: [], sites: [], businessId: '', siteId: '',
     page: 'overview', analyticMetric: 'totalUsers', period: '7', theme: localStorage.getItem('ed-theme-v3') === 'dark' ? 'dark' : 'light',
@@ -16,7 +17,7 @@
     accent: (localStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(localStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: localStorage.getItem('ed-sidebar-v7')==='white' ? 'white' : 'navy',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
-    adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
+    adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -1106,6 +1107,19 @@ async function loadAccounts(){
     ${state.accountsConfigured===false?`<div class="admin-setup-guide"><strong>Activa la gestión de accesos</strong><p>En Supabase abre la configuración del proyecto → API Keys y obtén la clave de servidor <code>service_role</code>. Agrégala en Cloudflare → Worker → Variables and Secrets como secreto cifrado con el nombre <code>SUPABASE_SERVICE_ROLE_KEY</code>.</p><p>No publiques ni pegues esa clave en el chat, en GitHub ni en código del navegador. Después pulsa «Actualizar usuarios».</p></div>`:''}
     ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
     ${state.temporaryAccess?`<div class="temporary-credential" role="status"><strong>Clave temporal de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code>${clean(state.temporaryAccess.password)}</code><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar</button></div><p>Se muestra solo ahora. Envíala de forma privada y pide al cliente que la cambie en Mi cuenta.</p></div>`:''}
+    ${card('Crear acceso de cliente','Invita por correo y asigna una empresa',`<form id="admin-invite-form" class="security-form" autocomplete="off" style="display:grid;gap:12px;max-width:650px">
+  <label class="form-label">Correo electrónico del nuevo cliente
+    <input class="simple-input" type="email" name="email" maxlength="254" placeholder="cliente@empresa.com" required autocomplete="off" style="width:100%;display:block;margin-top:6px">
+  </label>
+  <label class="form-label">Empresa a la que tendrá acceso
+    <select class="simple-input" name="business_id" required style="width:100%;display:block;margin-top:6px">
+      <option value="">Seleccionar empresa</option>
+      ${state.businesses.map(b=>`<option value="${clean(b.id)}" ${state.adminLifecycle.businesses[b.id]?.suspended_at?'disabled':''}>${clean(b.name)}${state.adminLifecycle.businesses[b.id]?.suspended_at?' (suspendida)':''}</option>`).join('')}
+    </select>
+  </label>
+  <p class="fine-print" style="margin:0">La persona recibirá un enlace privado para crear su propia contraseña. No se enviará ninguna contraseña por correo. Solo accederá a la empresa que selecciones.</p>
+  <button type="submit" class="button button-primary" ${state.inviteBusy||!state.businesses.length?'disabled':''}>${state.inviteBusy?'Enviando invitación…':'Enviar invitación de acceso'}</button>
+</form>`)}
     ${card('Usuarios de clientes','Correos registrados en Supabase Auth',results||(state.accountsError?empty('No se pudo cargar el directorio. Revisa el aviso y vuelve a intentarlo.'):empty(state.accountsLoading?'Consultando cuentas…':state.accountsLoaded?'No hay cuentas de clientes disponibles.':'Pulsa Actualizar usuarios para consultar las cuentas.')))}
     ${state.emailHistoryUserId?card('Historial de cambios de correo','Solo registra cambios realizados después de activar la auditoría de Supabase',
       (state.emailHistoryLoading?'<p>Cargando historial…</p>':'')+
@@ -1957,6 +1971,41 @@ function sidebar(){
     state.search=q;render();const input=document.getElementById('global-search');if(input){input.focus();input.setSelectionRange(selStart,selEnd);}
   });
   document.addEventListener('submit',async e=>{
+    if(e.target.id==='admin-invite-form'){
+      e.preventDefault();if(!isAdmin()||state.inviteBusy)return;
+      const values=new FormData(e.target);
+      const email=String(values.get('email')||'').trim();
+      const business_id=String(values.get('business_id')||'');
+      if(!email||!business_id)return;
+      state.inviteBusy=true;state.accountNotice='';state.accountsError='';
+      const submit=e.target.querySelector('[type="submit"]');
+      if(submit){submit.disabled=true;submit.textContent='Enviando invitación…';}
+      try{
+        const result=await api('/api/admin/invite',{method:'POST',body:JSON.stringify({email,business_id})});
+        await loadAccounts();await loadAdminDirectory();
+        state.accountNotice=result.message||'Invitación solicitada. Revisa la configuración de correo y la bandeja del cliente.';
+      }catch(error){state.accountsError=error.message;}
+      finally{state.inviteBusy=false;render();}
+      return;
+    }
+    if(e.target.id==='accept-invite-form'){
+      e.preventDefault();
+      if(!pendingInvite)return;
+      const data=new FormData(e.target);
+      const password=String(data.get('password')||''),confirm=String(data.get('confirm')||'');
+      if(password.length<10||password.length>128||password!==confirm){
+        showInvitePasswordPage('La contraseña debe tener entre 10 y 128 caracteres y coincidir con la confirmación.');
+        return;
+      }
+      const button=e.target.querySelector('[type="submit"]');
+      if(button){button.disabled=true;button.textContent='Configurando acceso…';}
+      try{
+        await api('/api/auth/accept-invite',{method:'POST',body:JSON.stringify({...pendingInvite,password})});
+        pendingInvite=null;
+        await init();
+      }catch(error){showInvitePasswordPage(error.message);}
+      return;
+    }
     if(e.target.id==='crm-lead-form'){
       e.preventDefault();if(isAdmin()||state.leadsBusy||!state.businessId)return;
       const businessId=state.businessId,data=Object.fromEntries(new FormData(e.target));
@@ -2005,5 +2054,31 @@ function sidebar(){
     try{await api('/api/auth/login',{method:'POST',body:JSON.stringify({email,password})});await init();}
     catch(err){state.loginBusy=false;state.loginError=err.message;render();}
   });
-  init();
+  function showInvitePasswordPage(message=''){
+    root.innerHTML=`<div class="login-page"><main class="login-form-side" style="width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px">
+      <div class="login-panel" style="width:100%;max-width:490px">
+        <div class="login-badge">INVITACIÓN EDWIN CRM</div>
+        <h2>Crea tu contraseña de acceso</h2>
+        <p class="login-sub">Tu correo ya fue invitado. Elige una contraseña privada para ingresar al CRM de la empresa que te asignaron.</p>
+        ${message?alertBlock(message):''}
+        <form id="accept-invite-form" style="display:grid;gap:14px">
+          <label class="form-label">Nueva contraseña (mínimo 10 caracteres)
+            <input class="simple-input" type="password" name="password" required minlength="10" maxlength="128" autocomplete="new-password" style="display:block;width:100%;margin-top:6px">
+          </label>
+          <label class="form-label">Confirmar contraseña
+            <input class="simple-input" type="password" name="confirm" required minlength="10" maxlength="128" autocomplete="new-password" style="display:block;width:100%;margin-top:6px">
+          </label>
+          <button class="button button-primary sign-in" type="submit">Crear contraseña y entrar</button>
+        </form>
+        <p class="fine-print" style="margin-top:16px">Nunca compartas tu contraseña. Si el enlace caducó, solicita una nueva invitación al administrador.</p>
+      </div></main></div>`;
+  }
+  const inviteParams=new URLSearchParams(location.hash.replace(/^#/,''));
+  const inviteQuery=new URLSearchParams(location.search);
+  if(inviteQuery.get('invite')==='1'&&inviteParams.get('type')==='invite'&&
+      inviteParams.get('access_token')&&inviteParams.get('refresh_token')){
+    pendingInvite={access_token:inviteParams.get('access_token'),refresh_token:inviteParams.get('refresh_token')};
+    history.replaceState({},'',location.pathname);
+    showInvitePasswordPage();
+  }else{init();}
 })();
