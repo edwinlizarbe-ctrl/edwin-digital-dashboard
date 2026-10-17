@@ -75,6 +75,7 @@
     campaigns: ['Campañas Ads', 'megaphone'],
     sales: ['Ventas', 'shopping-bag'],
     leads: ['Oportunidades', 'users'],
+    whatsapp: ['WhatsApp', 'message-circle'],
     utm: ['Fuentes UTM de GA4', 'mouse-pointer'],
     adminHome: ['Panel administrador', 'layout-dashboard'],
     adminIntegrations: ['Integraciones', 'plug'],
@@ -100,6 +101,7 @@
     user:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
     power:'<path d="M12 2v10"/><path d="M6.2 5.7a9 9 0 1 0 11.6 0"/>',
     'panel-left-close':'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18m8-12-3 3 3 3"/>',
+    'message-circle':'<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/>',
     users:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m1 4a5 5 0 0 1 3 5"/>',
     camera:'<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1-3h6l1 3"/>',
     'file-text':'<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7"/>',
@@ -1386,7 +1388,7 @@ async function loadAccounts(){
   const navLink = id => `<button class="nav-link ${state.page===id?'active':''}" data-act="nav" data-page="${id}" title="${clean(pages[id][0])}" aria-label="${clean(pages[id][0])}" ${state.page===id?'aria-current="page"':''}>${icon(pages[id][1],19)}<span>${pages[id][0]}</span>${state.page===id?`<span class="active-indicator"></span>`:''}</button>`;
 function sidebar(){
  const menu=isAdmin()?`${groupTitle('PLATAFORMA')}${['adminHome','clients','accounts','adminOperations','adminIntegrations','settings'].map(navLink).join('')}`:
- `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition'].map(navLink).join('')+adsNavigation()+['audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${salesNavigation()}${['leads','reports'].map(navLink).join('')}${/^brasper$|^bras-per$/.test(String(business()?.slug||'').toLowerCase())?navLink('mailing'):''}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
+ `${groupTitle('PANEL DE MI EMPRESA')}${['overview','analytics','acquisition'].map(navLink).join('')+adsNavigation()+['audience','content','events'].map(navLink).join('')}${groupTitle('VENTAS Y REPORTES')}${salesNavigation()}${['leads','whatsapp','reports'].map(navLink).join('')}${/^brasper$|^bras-per$/.test(String(business()?.slug||'').toLowerCase())?navLink('mailing'):''}${groupTitle('CONEXIONES Y CUENTA')}${['integrations','company','settings'].map(navLink).join('')}`;
  return `<aside class="sidebar ${state.mobileOpen?'opened':''}"><div class="sidebar-head">${brand(false)}<button class="sidebar-collapse-btn" data-act="collapse-sidebar" title="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-label="${state.sidebarCollapsed?'Expandir menú':'Contraer menú'}" aria-expanded="${!state.sidebarCollapsed}">${icon('panel-left-close',18)}</button><button class="mobile-close icon-button" data-act="menu">${icon('close')}</button></div><div class="nav-wrapper"><button type="button" class="sidebar-workspace" data-act="nav" data-page="${isAdmin()?'adminHome':'company'}" title="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}" aria-label="${isAdmin()?'Ir al panel de administración':'Abrir perfil de mi empresa'}"><span class="workspace-symbol">${isAdmin()?icon('building',20):companyImage(30)}</span><span><b>${isAdmin()?'Administración de plataforma':clean(displayBusiness())}</b><small>${isAdmin()?'Panel administrador':'Editar datos de mi empresa'}</small></span>${icon('chevron',16)}</button>${menu}</div><div class="sidebar-bottom"><div class="avatar" title="${clean(state.user?.email||'Cuenta')}">${icon('user',20)}</div><div class="account"><b>${isAdmin()?'Superadministrador':clean(displayBusiness())}</b><span>${isAdmin()?'Cuenta de administración':'Cuenta de empresa'}</span></div><button class="icon-button logout" data-act="logout" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('power',19)}</button></div></aside>`;
 }
     function topbar(){
@@ -1405,7 +1407,7 @@ function sidebar(){
     if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
     if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
     if(state.page==='mailing'&&!/^brasper$|^bras-per$/.test(String(business()?.slug||'').toLowerCase()))state.page='overview';
-    const contents={overview,analytics,acquisition,campaigns,sales,leads,utm,audience,content,events,hotmart,reports,mailing:()=>window.brasperEmailMarketing?.page(state.businessId)||'<p>Preparando Email Marketing…</p>',clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
+    const contents={whatsapp:()=>window.edwinWhatsAppInbox?.page(state.businessId)||'<p>Preparando WhatsApp…</p>',overview,analytics,acquisition,campaigns,sales,leads,utm,audience,content,events,hotmart,reports,mailing:()=>window.brasperEmailMarketing?.page(state.businessId)||'<p>Preparando Email Marketing…</p>',clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
     let pageMarkup;
     try {pageMarkup=(contents[state.page]||overview)();}
     catch(error){
@@ -1596,7 +1598,7 @@ function sidebar(){
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
-    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='whatsapp'&&!isAdmin())await window.edwinWhatsAppInbox?.load(state.businessId);if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='zernio-connect'&&!isAdmin()){
       if(!state.businessId||state.zernioBusy)return;
       state.zernioBusy=true;state.zernioNotice='';render();
@@ -1750,7 +1752,7 @@ function sidebar(){
     else if(action==='show-password'){const input=document.getElementById('password');if(input)input.type=input.type==='password'?'text':'password';}
     else if(action==='logout'){
       ++state.requestId;await api('/api/auth/logout',{method:'POST',body:'{}'}).catch(()=>{});
-      window.brasperEmailMarketing?.reset?.();Object.assign(state,{user:null,temporaryAccess:null,businesses:[],sites:[],businessId:'',siteId:'',ga:null,hm:null,gaError:'',hmError:'',meta:null,metaReport:null,metaError:'',page:'overview',mobileOpen:false,search:''});render();
+      window.edwinWhatsAppInbox?.reset?.();window.brasperEmailMarketing?.reset?.();Object.assign(state,{user:null,temporaryAccess:null,businesses:[],sites:[],businessId:'',siteId:'',ga:null,hm:null,gaError:'',hmError:'',meta:null,metaReport:null,metaError:'',page:'overview',mobileOpen:false,search:''});render();
     }
   });
   window.addEventListener('message',async event=>{
