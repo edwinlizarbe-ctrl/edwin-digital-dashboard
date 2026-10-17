@@ -213,7 +213,7 @@ async function handleApi(req, env) {
     if(s.user.role==='admin'||!isUuid(id))return json({error:'Empresa no autorizada.'},403,s.cookies);
     const businesses=await supaRest(env,'businesses?select=id&id=eq.'+id+'&limit=1',s.access);
     if(!businesses.length)return json({error:'No tienes acceso a esta empresa.'},403,s.cookies);
-    const display_name=String(input.display_name||'').trim(),
+    const display_name=businesses[0].name,
       category=String(input.category||'').trim(),country=String(input.country||'').trim();
     if(display_name.length<2||display_name.length>80||category.length>80||country.length>80)
       return json({error:'El nombre, sector o país tienen un formato incorrecto.'},400,s.cookies);
@@ -227,17 +227,33 @@ async function handleApi(req, env) {
     if(!changed.ok)return json({error:'No se pudo guardar el perfil de esta cuenta.'},502,s.cookies);
     return json({ok:true,profile:preferences[id],scope:'user'},200,s.cookies);
   }
-  if(path==='/api/company/name' && method==='PATCH') {
-    if(!companyJsonRequest(req,3000))return json({error:'Solicitud no permitida.'},403,s.cookies);
-    let x;try{x=await companyParse(req,3000);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
-    const id=x.business_id,name=String(x.name||'').trim();
-    if(s.user.role==='admin'||!isUuid(id)||name.length<2||name.length>80)
+  // Customer-facing names are fixed; only the superadmin can authorize a correction.
+  if(path==='/api/company/name' && method==='PATCH')
+    return json({error:'El nombre de la empresa solo lo modifica el administrador.'},403,s.cookies);
+
+  if(path==='/api/admin/business-name' && method==='PATCH') {
+    if(s.user.role!=='admin')return json({error:'Acceso exclusivo del administrador.'},403,s.cookies);
+    if(!companyJsonRequest(req,1200))return json({error:'Solicitud no permitida.'},403,s.cookies);
+    let input;try{input=await companyParse(req,1200);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
+    const id=String(input?.business_id||''),name=String(input?.name||'').trim().replace(/\s+/g,' ');
+    if(!isUuid(id)||name.length<2||name.length>80||/[<>\x00-\x1f]/.test(name))
       return json({error:'Nombre de empresa inválido.'},400,s.cookies);
-    const valid=await supaRest(env,'businesses?select=id&id=eq.'+id+'&limit=1',s.access);
-    if(!valid.length)return json({error:'No tienes acceso a este negocio.'},403,s.cookies);
-    try{const row=await companyPatch(env,s,'businesses','id=eq.'+id,{name});
-      return json({ok:true,name:row.name},200,s.cookies);
-    }catch(e){return json({error:e.message},403,s.cookies);}
+    const key=env.SUPABASE_SERVICE_ROLE_KEY;
+    if(!key)return json({error:'Falta conexión administrativa.'},503,s.cookies);
+    const base=String(env.SUPABASE_URL||'').replace(/\/$/,'');
+    const headers={apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'};
+    const checked=await fetch(base+'/rest/v1/businesses?select=id,slug&id=eq.'+id+'&limit=1',{headers});
+    if(!checked.ok)return json({error:'No se pudo verificar la empresa.'},502,s.cookies);
+    const current=(await checked.json())[0];
+    if(!current)return json({error:'Empresa inexistente.'},404,s.cookies);
+    if(['edwin-digital','brasper'].includes(current.slug))return json({error:'Las empresas internas están protegidas.'},403,s.cookies);
+    const updated=await fetch(base+'/rest/v1/businesses?id=eq.'+id,{
+      method:'PATCH',headers:{...headers,Prefer:'return=representation'},body:JSON.stringify({name})
+    });
+    if(!updated.ok)return json({error:'No se pudo cambiar el nombre.'},502,s.cookies);
+    const rows=await updated.json();
+    if(rows.length!==1)return json({error:'Supabase no confirmó el cambio.'},502,s.cookies);
+    return json({ok:true,name:rows[0].name},200,s.cookies);
   }
   if(path==='/api/sites/edit' && method==='PATCH') {
     if(!companyJsonRequest(req,3000))return json({error:'Solicitud no permitida.'},403,s.cookies);
