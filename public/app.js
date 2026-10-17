@@ -16,7 +16,7 @@
     accent: (localStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(localStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: localStorage.getItem('ed-sidebar-v7')==='white' ? 'white' : 'navy',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
-    adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
+    adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
     adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -1084,6 +1084,8 @@ async function loadAccounts(){
     const data=await api('/api/admin/accounts');
     state.accountsLoaded=true;state.accountsConfigured=data.configured!==false;
     state.adminAccounts=Array.isArray(data.accounts)?data.accounts:[];
+    const lifecycle=await api('/api/admin/lifecycle');
+    state.adminLifecycle={businesses:Object.fromEntries((lifecycle.businesses||[]).map(x=>[x.business_id,x])),accounts:Object.fromEntries((lifecycle.accounts||[]).map(x=>[x.user_id,x]))};
     state.accountsError=data.configured===false?(data.reason||'Configuración administrativa pendiente.'):'';
     if(data.truncated)state.accountsError='El directorio muestra como máximo 200 usuarios en esta fase de prueba.';
   }catch(e){state.accountsLoaded=true;state.accountsConfigured=null;state.adminAccounts=[];state.accountsError=e.message;}
@@ -1093,11 +1095,11 @@ async function loadAccounts(){
   if(!isAdmin())return overview();
   const list=state.adminAccounts||[];
   const date=v=>{if(!v)return 'Sin registro';const d=new Date(v);return Number.isNaN(d.valueOf())?'Sin registro':d.toLocaleDateString('es-PE',{year:'numeric',month:'short',day:'numeric'});};
-  const results=list.map(u=>`<div class="client-site-row account-access-row">
+  const results=list.map(u=>{const archived=!!state.adminLifecycle.accounts[u.id]?.archived_at;return `<div class="client-site-row account-access-row">
     <div class="client-avatar compact">${icon('users',19)}</div>
-    <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Empresa: ${clean((state.adminDirectory?.memberships||[]).filter(m=>m.user_id===u.id).map(m=>state.businesses.find(b=>b.id===m.business_id)?.name).filter(Boolean).join(', ')||'Sin empresa vinculada')}</small><small>Rol: ${clean(u.role||'Cliente')} · Alta: ${clean(date(u.created_at))} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
-    <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button><button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button><button class="button button-outline" data-act="account-suspension" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-status="${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'suspended':'active'}">${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'Reactivar':'Suspender'}</button></div>
-  </div>`).join('');
+    <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Empresa: ${clean((state.adminDirectory?.memberships||[]).filter(m=>m.user_id===u.id).map(m=>state.businesses.find(b=>b.id===m.business_id)?.name).filter(Boolean).join(', ')||'Sin empresa vinculada')}</small><small>${archived?'Cuenta eliminada (recuperable) · ':''}Rol: ${clean(u.role||'Cliente')} · Alta: ${clean(date(u.created_at))} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
+    <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button>${archived?'':`<button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button><button class="button button-outline" data-act="account-suspension" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-status="${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'suspended':'active'}">${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'Reactivar':'Suspender'}</button>`}<button class="button button-outline" data-act="account-archive" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-archived="${archived}">${archived?'Restaurar cuenta':'Eliminar cuenta'}</button></div>
+  </div>`}).join('');
   return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
     <div class="account-access-toolbar"><button class="button button-outline" data-act="accounts-refresh" ${state.accountsLoading?'disabled':''}>${icon('refresh',16)} ${state.accountsLoading?'Consultando…':'Actualizar usuarios'}</button><span>${fmt(list.length)} cuentas visibles</span></div>
     ${state.accountsError?alertBlock(state.accountsError,'info'):''}
@@ -1136,6 +1138,8 @@ async function loadAccounts(){
       const result=await api('/api/admin/directory');
       if(!isAdmin())return;
       state.adminDirectory=result;
+      const lifecycle=await api('/api/admin/lifecycle');
+      state.adminLifecycle={businesses:Object.fromEntries((lifecycle.businesses||[]).map(x=>[x.business_id,x])),accounts:Object.fromEntries((lifecycle.accounts||[]).map(x=>[x.user_id,x]))};
     }catch(e){state.directoryError=e.message||'No se pudo consultar el directorio.';}
     finally{state.directoryLoading=false;render();}
   }
@@ -1145,14 +1149,15 @@ async function loadAccounts(){
     const filtered=state.businesses.filter(b=>[b.name,b.slug,linkedEmail(b.id),...directoryUsersFor(b.id).map(u=>u.email)].join(' ').toLowerCase().includes(query));
     const cards=filtered.map(b=>{
       const users=directoryUsersFor(b.id);
+      const suspended=!!state.adminLifecycle.businesses[b.id]?.suspended_at;
       return `<article class="client-card admin-rich-client">
-        <div class="admin-rich-header"><div class="client-avatar">${icon('building',25)}</div><div><h3>${clean(b.name)}</h3><p>${clean(b.slug||'Empresa')}</p></div><span class="client-plan-tag">${clean(state.adminPlans[b.id]||'Sin plan registrado')}</span></div>
+        <div class="admin-rich-header"><div class="client-avatar">${icon('building',25)}</div><div><h3>${clean(b.name)}</h3><p>${clean(b.slug||'Empresa')} · ${suspended?'Suspendida':'Activa'}</p></div><span class="client-plan-tag">${clean(state.adminPlans[b.id]||'Sin plan registrado')}</span></div>
         <div class="admin-detail-line"><span>Correo de usuario vinculado</span><strong>${clean(linkedEmail(b.id))}</strong></div>
         <div class="admin-detail-line"><span>Registrada</span><strong>${clean(adminDate(b.created_at))}</strong></div>
         <div class="admin-detail-line"><span>Usuarios vinculados</span><strong>${state.adminDirectory?fmt(users.length):'Por consultar'}</strong></div>
         <div class="admin-detail-line"><span>Último acceso registrado</span><strong>${clean(adminDate(users.map(u=>u.last_sign_in_at).filter(Boolean).sort().at(-1)))}</strong></div>
         <p class="fine-print">El correo corresponde a un usuario vinculado; no necesariamente al correo comercial de la empresa.</p>
-        <button class="button button-primary admin-card-open" type="button" data-act="client-detail" data-id="${clean(b.id)}">Ver ficha completa ${icon('chevron',16)}</button>
+        <button class="button button-outline" type="button" data-act="business-lifecycle" data-id="${clean(b.id)}" data-name="${clean(b.name)}" data-status="${suspended?'suspended':'active'}">${suspended?'Reactivar empresa':'Suspender empresa'}</button><button class="button button-primary admin-card-open" type="button" data-act="client-detail" data-id="${clean(b.id)}">Ver ficha completa ${icon('chevron',16)}</button>
       </article>`;
     }).join('');
     return `${heading('Administración','Mis clientes','Identidad, correos vinculados, fechas y accesos de cada empresa autorizada.')}
@@ -1169,7 +1174,7 @@ async function loadAccounts(){
     const sites=state.sites.map(site=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(site.name)}</strong><small>${clean(site.url||'URL no registrada')}</small></div><span class="client-site-badge">${site.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
     const accounts=users.map(u=>`<div class="admin-linked-user"><div class="client-avatar compact">${icon('user',18)}</div><div><strong>${clean(u.email||'Correo no registrado')}</strong><small>Rol: ${clean(u.role)} · Alta: ${clean(adminDate(u.created_at))}</small><small>Último acceso: ${clean(adminDate(u.last_sign_in_at))} · Email verificado: ${u.confirmed_at?'Sí':'No confirmado / sin datos'}</small></div></div>`).join('');
     return `${heading('Ficha del cliente',b.name,'Información administrativa real, relaciones autorizadas y datos disponibles de la empresa.')}
-      <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">Volver a mis clientes</button><button class="button button-primary" data-act="admin-manage-features" data-id="${clean(b.id)}">Configurar plan y permisos</button><button class="button button-outline" data-act="directory-refresh">${icon('refresh',15)} Actualizar datos</button></div>
+      <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">Volver a mis clientes</button><button class="button button-primary" data-act="admin-manage-features" data-id="${clean(b.id)}">Configurar plan y permisos</button><button class="button button-outline" data-act="business-lifecycle" data-id="${clean(b.id)}" data-name="${clean(b.name)}" data-status="${state.adminLifecycle.businesses[b.id]?.suspended_at?'suspended':'active'}">${state.adminLifecycle.businesses[b.id]?.suspended_at?'Reactivar empresa':'Suspender empresa'}</button><button class="button button-outline" data-act="directory-refresh">${icon('refresh',15)} Actualizar datos</button></div>
       ${state.directoryError?alertBlock(state.directoryError,'info'):''}
       <div class="content-grid"><div class="col-6">${card('Identidad de la empresa','Información registrada en la plataforma',
         '<div class="admin-detail-line"><span>Nombre comercial</span><strong>'+clean(b.name)+'</strong></div>'+
@@ -1674,6 +1679,33 @@ function sidebar(){
     else if(action==='account-copy-temp'&&isAdmin()&&state.temporaryAccess){
       try{await navigator.clipboard.writeText(state.temporaryAccess.password);state.accountNotice='Clave copiada al portapapeles. Compártela por un canal privado.';}
       catch{state.accountNotice='Selecciona y copia la clave de forma manual.';}render();
+    }
+    else if(action==='business-lifecycle'&&isAdmin()){
+      const id=b.dataset.id||'',name=b.dataset.name||'',suspended=b.dataset.status==='suspended';
+      if(!confirm((suspended?'¿Reactivar':'¿Suspender')+' la empresa '+name+'? '+(suspended?'Sus usuarios autorizados podrán acceder otra vez.':'Sus clientes perderán acceso temporalmente; los datos se conservan.')))return;
+      try{
+        await api('/api/admin/lifecycle',{method:'POST',body:JSON.stringify({entity:'business',id,action:suspended?'reactivate':'suspend'})});
+        state.accountNotice=suspended?'Empresa reactivada.':'Empresa suspendida.';
+        await loadAdminDirectory();
+      }catch(e){state.directoryError=e.message;render();}
+    }
+    else if(action==='account-archive'&&isAdmin()){
+      const id=b.dataset.id||'',email=b.dataset.email||'',archived=b.dataset.archived==='true';
+      if(archived){
+        if(!confirm('¿Restaurar la cuenta '+email+'? Se recuperará el acceso anterior.'))return;
+      }else{
+        if(!confirm('¿Eliminar la cuenta '+email+'? Se bloqueará su acceso, pero conservaremos los datos para poder restaurarla.'))return;
+        const typed=prompt('SEGUNDA CONFIRMACIÓN: escribe exactamente el correo de la cuenta a eliminar:');
+        if(typed===null)return;
+        if(typed.trim().toLowerCase()!==email.toLowerCase()){alert('El correo no coincide. No se ha eliminado la cuenta.');return;}
+      }
+      state.accountsError='';state.accountNotice='';
+      try{
+        const result=await api('/api/admin/lifecycle',{method:'POST',body:JSON.stringify({entity:'account',id,action:archived?'restore':'archive',...(!archived?{confirm_email:email}:{})})});
+        await loadAccounts();
+        state.accountNotice=result.message||(archived?'Cuenta restaurada.':'Cuenta eliminada lógicamente; datos conservados.');
+        render();
+      }catch(e){state.accountsError=e.message;render();}
     }
     else if(action==='account-suspension'&&isAdmin()){
       const id=b.dataset.id||'',email=b.dataset.email||'',suspended=b.dataset.status==='suspended';
