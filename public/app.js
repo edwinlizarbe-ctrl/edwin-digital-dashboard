@@ -18,7 +18,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -1337,6 +1337,72 @@ async function loadAccounts(){
     const detail=report?(rows.length?'<div class="table-scroll ga-report-table"><table><thead><tr><th>Campaña</th><th>Inversión</th><th>Impresiones</th><th>Clics</th><th>CTR</th><th>CPC</th><th>Conversiones</th><th>Valor</th><th>ROAS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+moneyAds(r.spend)+'</td><td>'+fmt(r.impressions)+'</td><td>'+fmt(r.clicks)+'</td><td>'+num(r.ctr==null?null:r.ctr.toFixed(2)+'%')+'</td><td>'+num(r.cpc==null?null:moneyAds(r.cpc))+'</td><td>'+fmt1(r.conversions)+'</td><td>'+moneyAds(r.conversions_value)+'</td><td>'+num(r.roas==null?null:r.roas.toFixed(2)+'x')+'</td></tr>').join('')+'</tbody></table></div>':'<p class="ga-help">No hay campañas para el período elegido.</p>')+(report.partial?'<p class="fine-print">Informe parcial. Algunos resultados están pendientes.</p>':''):'';
     return '<article class="integration-card provider-card ga-card" data-connected="'+on+'"><div class="ga-card-heading">'+providerLogo('Google Ads')+'<div class="ga-card-title"><small>PUBLICIDAD DIGITAL</small><h3>Google Ads</h3></div>'+tag(on?'Conectado':pending?'Autorizando':g.configured?'Disponible':'En preparación',on?'success':'neutral')+'</div><p class="ga-caption">'+clean(caption)+'</p>'+(state.googleAdsReturnMessage?alertBlock(state.googleAdsReturnMessage,'info'):'')+(state.googleAdsError?alertBlock(state.googleAdsError):'')+controls+(busy?'<p class="ga-help">Consultando Google Ads…</p>':'')+detail+'</article>';
   }
+
+  // Google Analytics 4 — per-business OAuth and property selection.
+  let ga4OAuthWindow=null,ga4OAuthMonitor=null;
+  function stopGa4Popup(){
+    if(ga4OAuthMonitor!==null)clearInterval(ga4OAuthMonitor);
+    ga4OAuthMonitor=null;ga4OAuthWindow=null;state.ga4PopupActive=false;
+  }
+  async function loadGa4Connection(){
+    const id=state.businessId;if(!id||isAdmin()||!featureEnabled('ga4'))return;
+    state.ga4ConnectionBusy=true;state.ga4ConnectionError='';render();
+    try{
+      const info=await api('/api/ga4/status?business_id='+encodeURIComponent(id));
+      if(id!==state.businessId)return;
+      state.ga4Connection=info;state.ga4Properties=[];
+      if(info.connected){
+        const list=await api('/api/ga4/properties?business_id='+encodeURIComponent(id));
+        if(id!==state.businessId)return;
+        state.ga4Properties=list.properties||[];
+        if(state.ga4Properties.length===1&&!info.selected_property_id){
+          const only=state.ga4Properties[0];
+          await api('/api/ga4/select?business_id='+encodeURIComponent(id),{method:'POST',body:JSON.stringify({property_id:only.id})});
+          if(id!==state.businessId)return;
+          state.ga4Connection={...info,selected_property_id:only.id,selected_property_name:only.name};
+          state.ga4Notice='Propiedad de Analytics vinculada automáticamente.';
+        }
+      }
+    }catch(e){if(id===state.businessId)state.ga4ConnectionError=e.message;}
+    finally{if(id===state.businessId){state.ga4ConnectionBusy=false;render();}}
+  }
+  async function finishGa4Authorization(id,status){
+    if(id!==state.businessId)return;
+    state.ga4Notice=status==='connected'?'Cuenta autorizada. Comprobando tus propiedades de Analytics…':status==='cancelled'?'Se canceló la autorización con Google.':status==='no_refresh_token'?'Google no entregó acceso permanente. Revoca el permiso previo de la aplicación y vuelve a conectar.':'No se completó la autorización de Analytics.';
+    await loadGa4Connection();
+    gaReportCache.clear();await refresh({force:true});
+  }
+  function startGa4Popup(){
+    if(isAdmin()||!state.businessId||!featureEnabled('ga4')||!state.ga4Connection?.configured)return;
+    if(ga4OAuthWindow&&!ga4OAuthWindow.closed){ga4OAuthWindow.focus();return;}
+    const id=state.businessId;
+    const link='/api/ga4/connect?business_id='+encodeURIComponent(id);
+    const popup=window.open(link+'&popup=1','edwinGa4OAuth','popup=yes,width=580,height=720,resizable=yes,scrollbars=yes');
+    if(!popup){window.location.assign(link);return;}
+    ga4OAuthWindow=popup;state.ga4PopupActive=true;state.ga4Notice='Completa la autorización en la ventana de Google.';render();
+    popup.focus();
+    if(ga4OAuthMonitor!==null)clearInterval(ga4OAuthMonitor);
+    ga4OAuthMonitor=setInterval(()=>{
+      if(ga4OAuthWindow===popup&&popup.closed){stopGa4Popup();finishGa4Authorization(id,'closed');}
+    },600);
+  }
+  window.addEventListener('message',event=>{
+    const payload=event.data;
+    if(event.origin!==location.origin||!ga4OAuthWindow||event.source!==ga4OAuthWindow||payload?.type!=='edwin-ga4-oauth')return;
+    if(payload.business_id!==state.businessId||!['connected','cancelled','no_refresh_token','failed'].includes(payload.result))return;
+    const id=state.businessId;stopGa4Popup();finishGa4Authorization(id,payload.result);
+  });
+  function ga4Card(){
+    const g=state.ga4Connection||{},on=!!g.connected,busy=state.ga4ConnectionBusy,pending=state.ga4PopupActive,hasProperty=!!g.selected_property_id;
+    const list=state.ga4Properties||[];
+    const options=list.map(x=>'<option value="'+clean(x.id)+'" '+(x.id===g.selected_property_id?'selected':'')+'>'+clean(x.name)+' · '+clean(x.account||'Google Analytics')+'</option>').join('');
+    const status=hasProperty?'Conectado':on?'Elige propiedad':g.configured?'Disponible':'Por configurar';
+    const detail=hasProperty?'Propiedad vinculada: '+clean(g.selected_property_name||g.selected_property_id):'Autoriza tu cuenta de Google para importar estadísticas reales de tu sitio web.';
+    const panel=on?
+      '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('check',15)+' Cuenta Google autorizada (solo lectura)</span><label class="form-label">Propiedad de Analytics<select id="ga4-property" class="meta-select"><option value="">Selecciona tu web</option>'+options+'</select></label><div class="ga-buttons"><button type="button" class="button button-primary" data-act="ga4-select" '+(busy||!list.length?'disabled':'')+'>Guardar propiedad</button><button type="button" class="button button-outline" data-act="nav" data-page="analytics" '+(!hasProperty?'disabled':'')+'>Ver analítica</button><button type="button" class="button button-soft" data-act="ga4-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>'+(list.length?'':'<p class="ga-help">No encontramos propiedades. Comprueba que tu cuenta de Google tenga acceso a una propiedad GA4.</p>')+'</div>':
+      '<div class="ga-connect-panel"><div class="ga-steps"><span><b>1</b> Conectar</span><span><b>2</b> Autorizar Google</span><span><b>3</b> Ver estadísticas</span></div><button type="button" class="button button-primary ga-connect-button" data-act="ga4-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+icon('plug',18)+(pending?'Esperando Google…':'Conectar Google Analytics')+'</button><p class="ga-help">'+icon('lock',14)+' Permiso de lectura, independiente para cada empresa.</p>'+(g.configured?'':'<p class="ga-help">El administrador debe configurar OAuth de Google Analytics en Cloudflare y habilitar las API Data y Admin.</p>')+'</div>';
+    return '<article class="integration-card provider-card ga-card" data-connected="'+hasProperty+'"><div class="ga-card-heading">'+providerLogo('Google Analytics 4')+'<div class="ga-card-title"><small>ANALÍTICA WEB</small><h3>Google Analytics 4</h3></div>'+tag(status,hasProperty?'success':'neutral')+'</div><p class="ga-caption">'+detail+'</p>'+(state.ga4Notice?alertBlock(state.ga4Notice,'info'):'')+(state.ga4ConnectionError?alertBlock(state.ga4ConnectionError):'')+panel+'</article>';
+  }
   function integrations(){
  const ga=gaReady(),lookup=[
   ['Analítica y contenidos',[
@@ -1356,6 +1422,7 @@ async function loadAccounts(){
  const cardFor=(p)=>{
   const feature=businessFeatureKey(p.name);
   if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false"><div class="integration-head">${providerLogo(p.name)}${tag('No incluida','neutral')}</div><h3>${clean(p.name)}</h3><p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span></div></article>`;
+  if(p.name==='Google Analytics 4')return ga4Card();
   if(p.name==='Meta Ads')return metaCard();
    if(p.name==='Google Ads')return googleAdsCard();
    if(p.name==='Zernio')return '<article class="integration-card provider-card wa-onboard"><div class="integration-head">'+"<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" aria-label=\"WhatsApp\" role=\"img\" style=\"fill:#25D366;flex-shrink:0\"><path d=\"M17.472 14.382c-.297-.149-1.758-.867-2.03-.966-.273-.099-.471-.148-.67.15-.198.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.058-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.297-.496.1-.198.05-.372-.025-.521-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.372-.01-.57-.01s-.52.074-.792.372c-.273.297-1.04 1.016-1.04 2.479s1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.077 4.487.709.306 1.262.489 1.693.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.999-3.648-.235-.374a9.86 9.86 0 0 1-1.516-5.275c.002-5.45 4.437-9.885 9.892-9.885a9.83 9.83 0 0 1 6.995 2.9 9.83 9.83 0 0 1 2.896 7.003c-.003 5.45-4.438 9.889-9.894 9.889m8.413-18.297A11.82 11.82 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892a11.85 11.85 0 0 0 1.587 5.94L.057 24l6.314-1.656a11.9 11.9 0 0 0 5.674 1.446h.005c6.556 0 11.893-5.336 11.896-11.893a11.82 11.82 0 0 0-3.482-8.409Z\"/></svg>"+'<span class="wa-onboard-label">WhatsApp Business</span></div><div class="wa-onboard-header"><div><h3>Conecta WhatsApp en 3 pasos</h3><p>Configura tu cuenta para atender a tus clientes desde Edwin CRM.</p></div><details class="wa-onboard-help"><summary title="Ver ayuda para conectar WhatsApp" aria-label="Ayuda para conectar WhatsApp">?</summary><div class="wa-onboard-help-pop"><strong>¿Qué necesito?</strong><p>Acceso a tu empresa en Meta y autorización para conectar WhatsApp Business. Si tu número ya está con otro proveedor, confirma primero la migración.</p></div></details></div><div class="wa-onboard-steps"><div class="wa-onboard-step"><div class="wa-onboard-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></div><span class="wa-onboard-num">Paso 1</span><strong>Conecta tu número</strong><p>Inicia la conexión segura con tu cuenta empresarial.</p></div><div class="wa-onboard-step"><div class="wa-onboard-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 .2l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7-.2l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></div><span class="wa-onboard-num">Paso 2</span><strong>Autoriza en Meta</strong><p>Selecciona la empresa y confirma los permisos solicitados.</p></div><div class="wa-onboard-step"><div class="wa-onboard-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5A9 9 0 1 1 21 11.5Z"/><path d="M8 11h8M8 15h5"/></svg></div><span class="wa-onboard-num">Paso 3</span><strong>Empieza a conversar</strong><p>Cuando termine la conexión, abre la bandeja WhatsApp.</p></div></div>'+(state.zernioNotice?alertBlock(state.zernioNotice,'info'):'')+'<div class="wa-onboard-actions"><button type="button" class="button button-primary" data-act="wa-connect-guide" '+(state.zernioBusy?'disabled':'')+'>'+(state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp →')+'</button><p>La autorización se completa con Meta. No compartas claves por chat.</p></div><p class="fine-print">¿Ya utilizas WhatsApp API con otro proveedor? Es posible que necesites migrar tu número antes de vincularlo. No elimines el número existente sin confirmar el procedimiento.</p></article>';
@@ -1486,9 +1553,9 @@ function sidebar(){
     const cached=gaReportCache.get(cacheKey);
     const useCache=!force&&cached&&Date.now()-cached.at<GA_REPORT_TTL;
     state.ga=useCache?cached.value:null;state.hm=null;state.gaError='';state.hmError='';
-    state.gaLoading=!!s&&featureEnabled('ga4')&&!useCache;state.hmLoading=selectedBusinessIsHotmart();render();
+    state.gaLoading=!!(s||state.ga4Connection?.selected_property_id)&&featureEnabled('ga4')&&!useCache;state.hmLoading=selectedBusinessIsHotmart();render();
     const jobs=[];
-    if(s&&featureEnabled('ga4')&&!useCache)jobs.push(api(`/api/ga4/report?business_id=${encodeURIComponent(b)}&site_id=${encodeURIComponent(s)}&period=${encodeURIComponent(p)}`).then(x=>({type:'ga',value:x})).catch(e=>({type:'ga',error:e.message})));
+    if((s||state.ga4Connection?.selected_property_id)&&featureEnabled('ga4')&&!useCache)jobs.push(api(`/api/ga4/report?business_id=${encodeURIComponent(b)}&site_id=${encodeURIComponent(s)}&period=${encodeURIComponent(p)}`).then(x=>({type:'ga',value:x})).catch(e=>({type:'ga',error:e.message})));
     if(selectedBusinessIsHotmart())jobs.push(api(`/api/hotmart/summary?business_id=${encodeURIComponent(b)}&period=${encodeURIComponent(p)}`).then(x=>({type:'hm',value:x})).catch(e=>({type:'hm',error:e.message})));
     const results=await Promise.all(jobs);if(state.requestId!==generation)return;
     for(const result of results){ if(result.type==='ga'){
@@ -1502,10 +1569,10 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
-    if(!isAdmin()){await loadClientEntitlements(id);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
+    if(!isAdmin()){await loadClientEntitlements(id);await loadGa4Connection();await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
   }
   async function init(){
     state.loading=true;render();
@@ -1514,6 +1581,7 @@ function sidebar(){
       const user=await api('/api/me');const companies=await api('/api/businesses');
       const returnBusiness=new URLSearchParams(location.search).get('business_id');
       const googleAuthOutcome=new URLSearchParams(location.search).get('google_ads');
+      const ga4AuthOutcome=new URLSearchParams(location.search).get('ga4');
       const zernioReturn=new URLSearchParams(location.search).get('zernio');
       state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){
         const parameters=new URLSearchParams(location.search),campaignReturn=parameters.get('return_to')==='campaigns';
@@ -1522,7 +1590,7 @@ function sidebar(){
         if(parameters.get('meta')==='cancelled')state.metaError='Se canceló la autorización con Facebook.';
         history.replaceState({},'',location.pathname+location.hash);
       }
-      if(!isAdmin()&&googleAuthOutcome){state.page='integrations';history.replaceState({},'',location.pathname+location.hash);}
+      if(!isAdmin()&&(googleAuthOutcome||ga4AuthOutcome)){state.page='integrations';history.replaceState({},'',location.pathname+location.hash);}
       if(!isAdmin()&&zernioReturn==='return'){
         const params=new URLSearchParams(location.search);
         state.page='integrations';
@@ -1534,6 +1602,7 @@ function sidebar(){
       else if(state.businesses.length){
         const targetBusiness=state.businesses.find(x=>x.id===returnBusiness)?.id||state.businesses[0].id;
         await chooseBusiness(targetBusiness);
+        if(ga4AuthOutcome){state.ga4Notice=ga4AuthOutcome==='connected'?'Cuenta autorizada. Comprueba la propiedad de Analytics.':ga4AuthOutcome==='cancelled'?'Autorización cancelada.':'No se completó la autorización de Analytics.';render();}
         if(googleAuthOutcome){state.googleAdsReturnMessage=googleAuthOutcome==='connected'?'Autorización recibida. Selecciona la cuenta publicitaria que deseas consultar.':googleAuthOutcome==='cancelled'?'Se canceló la autorización con Google.':googleAuthOutcome==='no_refresh_token'?'Google no devolvió acceso persistente. Desconecta el acceso anterior en tu cuenta de Google y vuelve a autorizar.':'No fue posible terminar la autorización con Google.';render();}
         if(state.page==='campaigns')await loadAds();
       }
@@ -1639,7 +1708,7 @@ function sidebar(){
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
-    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='whatsapp'&&!isAdmin())await window.edwinWhatsAppInbox?.load(state.businessId);if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin()){await loadGa4Connection();await loadMeta();}if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='whatsapp'&&!isAdmin())await window.edwinWhatsAppInbox?.load(state.businessId);if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='wa-connect-guide'&&!isAdmin()){
       const dialog=document.getElementById('wa-connect-dialog');
       if(dialog && !dialog.open) dialog.showModal();
@@ -1816,6 +1885,26 @@ function sidebar(){
         state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';render();
       }catch(error){if(state.businessId===current){state.metaError=error.message;state.campaignConnectionOpen=true;state.campaignWizardStage='confirm';render();}}
       finally{state.campaignAccountSaving=false;if(state.businessId===current)render();}
+    }
+    else if(action==='ga4-connect'&&!isAdmin()&&featureEnabled('ga4'))startGa4Popup();
+    else if(action==='ga4-select'&&!isAdmin()&&featureEnabled('ga4')){
+      const id=state.businessId,propertyId=document.getElementById('ga4-property')?.value||'';
+      if(!propertyId){state.ga4ConnectionError='Selecciona una propiedad.';render();return;}
+      state.ga4ConnectionBusy=true;state.ga4ConnectionError='';render();
+      try{
+        await api('/api/ga4/select?business_id='+encodeURIComponent(id),{method:'POST',body:JSON.stringify({property_id:propertyId})});
+        if(id===state.businessId){state.ga4Notice='Propiedad guardada correctamente.';gaReportCache.clear();await loadGa4Connection();await refresh({force:true});}
+      }catch(e){if(id===state.businessId)state.ga4ConnectionError=e.message;}
+      finally{if(id===state.businessId){state.ga4ConnectionBusy=false;render();}}
+    }
+    else if(action==='ga4-disconnect'&&!isAdmin()&&featureEnabled('ga4')){
+      if(!confirm('¿Desconectar Analytics de esta empresa? No se eliminarán tus datos de Google Analytics.'))return;
+      const id=state.businessId;state.ga4ConnectionBusy=true;state.ga4ConnectionError='';render();
+      try{
+        await api('/api/ga4/disconnect?business_id='+encodeURIComponent(id),{method:'POST',body:'{}'});
+        if(id===state.businessId){state.ga4Notice='Se desconectó la cuenta de Google Analytics.';gaReportCache.clear();await loadGa4Connection();await refresh({force:true});}
+      }catch(e){if(id===state.businessId)state.ga4ConnectionError=e.message;}
+      finally{if(id===state.businessId){state.ga4ConnectionBusy=false;render();}}
     }
     else if(action==='google-ads-connect'&&!isAdmin()&&featureEnabled('google_ads')&&state.googleAds?.configured)startGoogleAdsPopup();
     else if(action==='google-ads-select'&&!isAdmin()&&featureEnabled('google_ads')){
