@@ -1113,6 +1113,7 @@ async function loadAccounts(){
     ${state.accountsError?alertBlock(state.accountsError,'info'):''}
     ${state.accountsConfigured===false?`<div class="admin-setup-guide"><strong>Activa la gestión de accesos</strong><p>En Supabase abre la configuración del proyecto → API Keys y obtén la clave de servidor <code>service_role</code>. Agrégala en Cloudflare → Worker → Variables and Secrets como secreto cifrado con el nombre <code>SUPABASE_SERVICE_ROLE_KEY</code>.</p><p>No publiques ni pegues esa clave en el chat, en GitHub ni en código del navegador. Después pulsa «Actualizar usuarios».</p></div>`:''}
     ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
+    ${state.temporaryAccess&&!list.some(u=>u.id===state.temporaryAccess?.id||u.email?.toLowerCase()===state.temporaryAccess?.email?.toLowerCase())?`<div class="temporary-credential" role="status" style="margin:10px 0 16px"><strong>Clave nueva de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code>${state.temporaryPasswordVisible?clean(state.temporaryAccess.password):'••••••••••••••••'}</code><button type="button" class="button button-outline" data-act="account-toggle-temp">${icon('eye',16)} ${state.temporaryPasswordVisible?'Ocultar':'Mostrar'}</button><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar clave</button></div><small>El usuario aún no aparece en la lista. Actualiza usuarios para verificar la vinculación.</small></div>`:''}
     ${card('Crear cliente','Crear usuario y contraseña de inmediato',`<form id="admin-invite-form" class="security-form" autocomplete="off" style="display:grid;gap:12px;max-width:650px">
 <label class="form-label">Correo electrónico<input class="simple-input" name="email" type="email" required maxlength="254" placeholder="cliente@empresa.com" style="display:block;width:100%;margin-top:6px"></label>
 <label class="form-label">Nombre de la empresa<input class="simple-input" name="company_name" type="text" required minlength="2" maxlength="80" placeholder="Nombre comercial" style="display:block;width:100%;margin-top:6px"></label>
@@ -1742,7 +1743,7 @@ function sidebar(){
     }
     else if(action==='account-password-eye'&&isAdmin()){
       const email=b.dataset.email||'',id=b.dataset.id||'';
-      if(state.temporaryAccess?.id===id){
+      if(state.temporaryAccess&&(state.temporaryAccess.id===id||(!state.temporaryAccess.id&&state.temporaryAccess.email?.toLowerCase()===email.toLowerCase()))){
         state.temporaryPasswordVisible=!state.temporaryPasswordVisible;
         render();
       }else{
@@ -1751,7 +1752,8 @@ function sidebar(){
         try{
           const out=await api('/api/admin/accounts/temporary-password',{method:'POST',body:JSON.stringify({user_id:id})});
           state.temporaryAccess={id,email:out.email,password:out.temporary_password};
-          state.accountNotice='Clave temporal nueva generada. Pulsa Mostrar para verla o Copiar clave para entregarla.';
+          state.temporaryPasswordVisible=true;
+          state.accountNotice='Contraseña temporal nueva generada para este usuario.';
         }catch(e){state.accountsError=e.message;}
         render();
       }
@@ -1763,7 +1765,8 @@ function sidebar(){
       try{
         const out=await api('/api/admin/accounts/temporary-password',{method:'POST',body:JSON.stringify({user_id:id})});
         state.temporaryAccess={id,email:out.email,password:out.temporary_password};
-        state.accountNotice=out.message||'Clave temporal creada. Pulsa Mostrar para verla.';
+        state.temporaryPasswordVisible=true;
+        state.accountNotice=out.message||'Clave temporal creada.';
       }catch(e){state.accountsError=e.message;}
       render();
     }
@@ -2011,7 +2014,7 @@ function sidebar(){
       try{
         const result=await api('/api/admin/accounts/create-client',{method:'POST',body:JSON.stringify({email,company_name})});
         if(!result.ok||!result.temporary_password)throw new Error('No se pudo confirmar la creación.');
-        state.temporaryAccess={email:result.email,password:result.temporary_password};state.temporaryPasswordVisible=false;
+        state.temporaryAccess={email:result.email,password:result.temporary_password};state.temporaryPasswordVisible=true;
         try{const companies=await api('/api/businesses');state.businesses=companies.businesses||state.businesses;}catch{}
         try{await loadAccounts();await loadAdminDirectory();}catch{}
         state.accountNotice='Cliente creado: '+result.business_name+'. Copia sus datos de acceso y entrégalos personalmente.';
