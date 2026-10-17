@@ -1279,3 +1279,60 @@ input,select,textarea{max-width:100%}
  .integration-section .ga-card .ga-buttons>.button{width:100%}
 }
 
+/* Correction: horizontal brand identity exactly as the original Google Ads card. */
+.integration-section .integration-brand-head{
+  display:grid;
+  grid-template-columns:56px minmax(0,1fr) auto;
+  grid-template-areas:"brand-icon brand-title brand-status";
+  align-items:center;
+  justify-content:stretch;
+  gap:12px;
+  flex-wrap:nowrap;
+}
+.integration-section .integration-brand-head>.provider-logo{
+  grid-area:brand-icon;
+  width:56px;
+  height:56px;
+  min-width:56px;
+  margin:0;
+}
+.integration-section .integration-brand-head>.integration-brand-text{
+  grid-area:brand-title;
+  min-width:0;
+  width:100%;
+  text-align:left;
+  justify-self:start;
+}
+.integration-section .integration-brand-head>.integration-brand-text h3{
+  display:block;
+  margin:0;
+  line-height:1.3;
+}
+.integration-section .integration-brand-head>.tag{
+  grid-area:brand-status;
+  margin:0;
+  justify-self:end;
+}
+@media(max-width:1300px){
+  .integration-section .integration-brand-head{
+    grid-template-columns:56px minmax(0,1fr);
+    grid-template-rows:auto auto;
+    grid-template-areas:"brand-icon brand-title" "brand-icon brand-status";
+    gap:5px 12px;
+  }
+  .integration-section .integration-brand-head>.tag{
+    justify-self:start;
+    align-self:start;
+  }
+}
+@media(max-width:620px){
+  .integration-section .integration-brand-head{
+    display:grid;
+    grid-template-columns:50px minmax(0,1fr);
+    grid-template-areas:"brand-icon brand-title" "brand-icon brand-status";
+    gap:4px 11px;
+  }
+  .integration-section .integration-brand-head>.provider-logo{
+    width:50px;height:50px;min-width:50px;
+  }
+}
