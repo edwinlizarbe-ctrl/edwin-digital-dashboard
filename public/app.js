@@ -1219,7 +1219,7 @@ async function loadAccounts(){
  'Google Analytics 4':['googleanalytics','E37400'],'Google Search Console':['googlesearchconsole','4285F4'],
  'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
  };
- if(name==='Zernio')return '<div class="provider-logo provider-logo-whatsapp" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5A9 9 0 1 1 21 11.5Z"/><path d="M8 11h8m-8 4h5"/></svg></div>';
+ if(name==='WhatsApp')return '<div class="provider-logo provider-logo-whatsapp" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5A9 9 0 1 1 21 11.5Z"/><path d="M8 11h8m-8 4h5"/></svg></div>';
  if(name==='WooCommerce')return '<div class="provider-logo" aria-hidden="true">'+icon('shopping-bag',28)+'</div>';
  if(name==='Facebook / Instagram orgánico')
    return '<div class="provider-logo provider-logo-duo" aria-hidden="true"><img src="/logos/facebook.svg" width="26" height="26" alt=""/><img src="/logos/instagram.svg" width="26" height="26" alt=""/></div>';
@@ -1425,7 +1425,7 @@ async function loadAccounts(){
    {name:'Meta Ads',info:'Facebook e Instagram Ads.'},
    {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'En desarrollo',details:'Autorización por empresa.'},
    {name:'TikTok Ads',info:'Anuncios y campañas en TikTok.',status:'Próximamente',details:'Permisos de TikTok Ads pendientes.'}] ],
-  ['Mensajería',[{name:'Zernio',info:'Conecta tu WhatsApp Business desde Edwin CRM.'}]],
+  ['Mensajería',[{name:'WhatsApp',info:'Conecta tu WhatsApp Business desde Edwin CRM.'}]],
   ['Ventas y e-commerce',[
    {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'},
    {name:'Shopify',info:'Pedidos, catálogo y ventas de tienda.',status:'Próximamente',details:'Pendiente de conexión individual por tienda.'},
@@ -1437,8 +1437,8 @@ async function loadAccounts(){
   if(p.name==='Google Analytics 4')return ga4Card();
   if(p.name==='Meta Ads')return metaCard();
    if(p.name==='Google Ads')return googleAdsCard();
-   if(p.name==='Zernio')return '<article class="integration-card provider-card" data-connected="false">'+
-     integrationHeader('Zernio','Disponible','neutral','WhatsApp Business')+
+   if(p.name==='WhatsApp')return '<article class="integration-card provider-card" data-connected="false">'+
+     integrationHeader('WhatsApp','Disponible','neutral','WhatsApp Business')+
      '<p>Conecta WhatsApp Business con la autorización segura de Meta.</p>'+
      (state.zernioNotice?alertBlock(state.zernioNotice,'info'):'')+
      '<div class="integration-status">'+plugButton(state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp','wa-connect-guide',state.zernioBusy)+
