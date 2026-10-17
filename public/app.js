@@ -31,7 +31,7 @@
   const companyPrefs = () => state.user?.business_preferences?.[state.businessId] || {};
   const logoStoreKey = () => 'ed-company-logo-v7:'+state.user?.id+':'+state.businessId;
   const getCompanyLogo = () => {try{return localStorage.getItem(logoStoreKey())||'';}catch{return '';}};
-  const displayBusiness = () => !isAdmin() && companyPrefs().display_name || business()?.name || 'Mi empresa';
+  const displayBusiness = () => business()?.name || 'Mi empresa';
   const companyImage = (size=34) => {
     const logo=getCompanyLogo();
     return logo.startsWith('data:image/')?`<img class="company-logo-image" src="${clean(logo)}" alt="Logotipo de la empresa" width="${size}" height="${size}" />`:icon('building',Math.round(size*.59));
@@ -865,9 +865,8 @@ function reportExtras(){
  <div class="content-grid">
  <div class="col-7">${card('Identidad de tu empresa','Nombre, sector, país y logotipo',`
  <form id="company-profile-form" class="company-profile-form">
- <label class="form-label">Nombre comercial
-  <input class="simple-input" name="displayName" type="text" maxlength="80" required minlength="2" value="${clean(prefs.display_name||b?.name||'')}" placeholder="Ej. Mi Agencia Creativa" />
- </label>
+ <div class="admin-detail-line"><span>Nombre registrado de la empresa</span><strong>${clean(b?.name||'Sin registrar')}</strong></div>
+ <p class="fine-print">El nombre es único para esta cuenta y solo el administrador puede autorizar cambios.</p>
  <div class="company-form-grid">
   <label class="form-label">Sector o categoría
    <input class="simple-input" name="category" list="business-categories" maxlength="80" value="${clean(prefs.category||'')}" placeholder="Selecciona o escribe tu sector"/>
@@ -881,10 +880,10 @@ function reportExtras(){
  <input id="company-logo-file" class="company-file-input accessible-file" type="file" name="logo" accept="image/png,image/jpeg,image/webp" aria-label="Seleccionar logotipo de empresa" />
  ${getCompanyLogo()?`<button class="button button-outline" type="button" data-act="company-logo-clear">${icon('close',14)} Quitar mi logotipo</button>`:''}
  ${state.companyLogoClear?'<p class="fine-print">El logotipo se quitará al guardar.</p>':''}
- <label class="company-checkbox"><input type="checkbox" name="sharedName" checked/> Intentar actualizar también el nombre oficial de la empresa para todos (según permisos)</label>
+
  ${state.companyError?alertBlock(state.companyError):''}
  <button type="submit" class="button button-primary" ${state.companyBusy?'disabled':''}>${icon('check',17)} ${state.companyBusy?'Guardando…':'Guardar cambios'}</button>
- <p class="fine-print">Sector, país y nombre visual se guardan en tu usuario de acceso; el logotipo se guarda solo en este navegador. Un logotipo compartido con el equipo necesita almacenamiento privado por empresa. El nombre oficial requiere permisos de edición.</p>
+ <p class="fine-print">Sector y país se guardan en tu cuenta. El nombre registrado de la empresa no puede cambiarse desde este panel.</p>
  </form>`)}</div>
  <div class="col-5">${card('Conexiones de mi empresa','Al conectar una fuente, aparecerá en sus reportes',connectionOverview())}</div>
  <div class="col-12">${card('Mis sitios web',`${fmt(state.sites.length)} sitios visibles para tu usuario`,`${state.siteNotice?`<div class="company-message">${icon('check',15)} ${clean(state.siteNotice)}</div>`:''}${sites||empty('No hay sitios web registrados para este negocio.')}<p class="fine-print">Aquí puedes modificar el nombre y la URL de un sitio autorizado. La creación de nuevos sitios requiere permisos y configuración de propiedad GA4.</p>`)}</div>
@@ -1584,9 +1583,8 @@ function sidebar(){
   async function saveCompany(form){
  if(!state.businessId||state.companyBusy)return;
  const input=new FormData(form),id=state.businessId;
- const display_name=String(input.get('displayName')||'').trim(),
+ const display_name=business()?.name||'',
  category=String(input.get('category')||'').trim(),country=String(input.get('country')||'').trim();
- if(display_name.length<2||display_name.length>80){state.companyError='Ingresa un nombre comercial de 2 a 80 caracteres.';render();return;}
  const selected=input.get('logo');
  state.companyBusy=true;state.companyError='';state.companyNotice='';
  try{
@@ -1599,16 +1597,8 @@ function sidebar(){
   state.user.business_preferences={...(state.user.business_preferences||{}),[id]:result.profile};
   try{if(logo_data)localStorage.setItem(logoStoreKey(),logo_data);else localStorage.removeItem(logoStoreKey());}
   catch{throw Error('El perfil se guardó, pero el navegador no pudo conservar el logotipo.');}
-  let shared=false,message='';
-  if(input.get('sharedName')){
-   try{
-    const changed=await api('/api/company/name',{method:'PATCH',body:JSON.stringify({business_id:id,name:display_name})});
-    const target=state.businesses.find(b=>b.id===id);if(target)target.name=changed.name;
-    shared=true;
-   }catch(e){message=' El nombre oficial no se pudo modificar para todo el equipo porque faltan permisos de edición.';}
-  }
   state.companyLogoClear=false;state.companyLogoDraft=null;
-  state.companyNotice=(shared?'Nombre oficial actualizado.':'Nombre visual, sector y país guardados en tu cuenta.')+(logo_data?' El logotipo se guardó solo en este navegador.':'')+message;
+  state.companyNotice='Categoría y país guardados.'+(logo_data?' El logotipo se guardó en este navegador.':'');
  }catch(e){state.companyError=e.message||'No se pudieron guardar los cambios.';}
  finally{state.companyBusy=false;render();}
 }
