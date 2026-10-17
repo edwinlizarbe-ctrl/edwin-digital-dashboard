@@ -5,6 +5,7 @@ import { handleEmailMarketingApi } from './email-marketing.js';
 import { publicMailRoute,processEmailQueue } from './email-delivery.js';
 import { handleAssistantApi } from './assistant-api.js';
 import { handleFeaturesApi, ensureBusinessFeature } from './feature-access.js';
+import { handleZernioApi } from './zernio.js';
 /**
  * Edwin Digital Dashboard · Cloudflare Workers
  * Credentials stay in Cloudflare runtime secrets; browser never gets these values.
@@ -156,6 +157,7 @@ async function handleApi(req, env) {
   const s = await session(req, env);
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
   if(path==='/api/client/features'||path.startsWith('/api/admin/business-features'))return handleFeaturesApi(req,env,s);
+  if (path.startsWith('/api/zernio/')) return handleZernioApi(req, env, s);
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
   if (path.startsWith('/api/google-ads/')) return handleGoogleAdsApi(req, env, s);
   if (path === '/api/crm/leads') return handleLeadsApi(req, env, s);
