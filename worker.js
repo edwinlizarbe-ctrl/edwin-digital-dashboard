@@ -1,4 +1,5 @@
 import { manageSuspension, isSuspendedUser } from './admin-suspension.js';
+import { handleAdminLifecycle } from './admin-lifecycle.js';
 import { handleMetaApi } from './meta.js';
 import { handleGoogleAdsApi } from './google-ads.js';
 import { handleLeadsApi } from './leads.js';
@@ -159,6 +160,7 @@ async function handleApi(req, env) {
   const s = await session(req, env);
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
   if(path==='/api/admin/accounts/suspension')return manageSuspension(req,env,s);
+  if(path==='/api/admin/lifecycle')return handleAdminLifecycle(req,env,s);
   if(path==='/api/client/features'||path.startsWith('/api/admin/business-features'))return handleFeaturesApi(req,env,s);
   if (path.startsWith('/api/zernio/')) return handleZernioApi(req, env, s);
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
