@@ -3,6 +3,7 @@ import { handleAdminLifecycle } from './admin-lifecycle.js';
 import { adminInvite, acceptInvite } from './admin-invites.js';
 import { handleMetaApi } from './meta.js';
 import { handleGoogleAdsApi } from './google-ads.js';
+import { handleGa4OAuthApi, ga4ConnectionForBusiness, ga4OauthToken } from './ga4-oauth.js';
 import { handleLeadsApi } from './leads.js';
 import { handleEmailMarketingApi } from './email-marketing.js';
 import { publicMailRoute,processEmailQueue } from './email-delivery.js';
@@ -168,6 +169,7 @@ async function handleApi(req, env) {
   if (path.startsWith('/api/zernio/')) return handleZernioApi(req, env, s);
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
   if (path.startsWith('/api/google-ads/')) return handleGoogleAdsApi(req, env, s);
+  if (path.startsWith('/api/ga4/') && path !== '/api/ga4/report') return handleGa4OAuthApi(req, env, s);
   if (path === '/api/crm/leads') return handleLeadsApi(req, env, s);
   if (path === '/api/email-marketing') return handleEmailMarketingApi(req, env, s);
   if (path.startsWith('/api/assistant/')) return handleAssistantApi(req, env, s);
@@ -462,7 +464,7 @@ async function handleApi(req, env) {
     try{const u=new URL(redirect);callback=u.protocol==='https:'&&u.origin===currentOrigin&&u.pathname==='/api/meta/callback'&&!u.search&&!u.hash;}catch{}
     const checks={app_id:!!env.META_APP_ID,app_secret:!!env.META_APP_SECRET,
       session_key:/^[0-9a-fA-F]{64}$/.test(env.META_SESSION_KEY||''),redirect:callback};
-    return json({meta:{configured:Object.values(checks).every(Boolean),checks,automatic_redirect:automatic,callback_url:callback?redirect:null},ga4:{service_account:!!env.GOOGLE_SERVICE_ACCOUNT_JSON}},200,s.cookies);
+    return json({meta:{configured:Object.values(checks).every(Boolean),checks,automatic_redirect:automatic,callback_url:callback?redirect:null},ga4:{service_account:!!env.GOOGLE_SERVICE_ACCOUNT_JSON,oauth_configured:!!(env.GOOGLE_ANALYTICS_CLIENT_ID&&env.GOOGLE_ANALYTICS_CLIENT_SECRET&&/^[a-f0-9]{64}$/i.test(env.GOOGLE_ANALYTICS_ENCRYPTION_KEY||''))}},200,s.cookies);
   }
 
   if (path === '/api/businesses' && method === 'GET') {
@@ -479,17 +481,27 @@ async function handleApi(req, env) {
     const businessId = url.searchParams.get('business_id') || '';
     const siteId = url.searchParams.get('site_id') || '';
     const period = requestedPeriod(url);
-    if (!isUuid(businessId) || !isUuid(siteId)) return json({ error: 'Selecciona un negocio y un sitio válidos.' }, 400, s.cookies);
+    if (!isUuid(businessId) || (siteId && !isUuid(siteId))) return json({ error: 'Selecciona una empresa y un sitio válidos.' }, 400, s.cookies);
     if(!await ensureBusinessFeature(env,s,businessId,'ga4'))return json({error:'Google Analytics no está habilitado para esta empresa.'},403,s.cookies);
-    // This REST request is authenticated as the user. Supabase RLS determines
-    // which business/site this user can read; NEVER trust a property ID from the browser.
-    const allowed = await supaRest(env, `sites?select=id,name,ga4_property_id&business_id=eq.${businessId}&id=eq.${siteId}&limit=1`, s.access);
-    const site = allowed[0];
-    if (!site) return json({ error: 'Este sitio no pertenece a tu cuenta.' }, 403, s.cookies);
-    if (!site.ga4_property_id || !/^\d+$/.test(site.ga4_property_id)) return json({ configured: false, reason: 'Este sitio no tiene una propiedad GA4 válida registrada.' }, 200, s.cookies);
-    if (!env.GOOGLE_SERVICE_ACCOUNT_JSON) return json({ configured: false, reason: 'Falta configurar GOOGLE_SERVICE_ACCOUNT_JSON en los secretos de Cloudflare.' }, 200, s.cookies);
-    const report = await ga4FullReport(env, site.ga4_property_id, period);
-    return json({ ...report, configured: true, site: { id: site.id, name: site.name }, period }, 200, s.cookies);
+    // Resolve the OAuth connection only after verifying business membership through RLS.
+    const connection=await ga4ConnectionForBusiness(env,s,businessId);
+    let site=null;
+    if(siteId){
+      const allowed=await supaRest(env,'sites?select=id,name,ga4_property_id&business_id=eq.'+encodeURIComponent(businessId)+'&id=eq.'+encodeURIComponent(siteId)+'&limit=1',s.access);
+      site=allowed[0]||null;
+      if(!site)return json({error:'Este sitio no pertenece a tu cuenta.'},403,s.cookies);
+    }
+    // A selected GA4 property always belongs to the authenticated business connection.
+    // Existing service-account reports remain available for previously configured sites.
+    const selected=connection?.selected_property_id||null;
+    const property=selected||(site?.ga4_property_id||'');
+    if(!property||!/^[0-9]{1,30}$/.test(property))
+      return json({configured:false,reason:connection?'Elige una propiedad de Google Analytics en Integraciones.':'Conecta Google Analytics desde Integraciones y selecciona tu propiedad.'},200,s.cookies);
+    if(!selected&&!env.GOOGLE_SERVICE_ACCOUNT_JSON)
+      return json({configured:false,reason:'Conecta tu cuenta desde Integraciones para autorizar el acceso a esta propiedad.'},200,s.cookies);
+    const token=selected?await ga4OauthToken(env,connection):null;
+    const report=await ga4FullReport(env,property,period,token);
+    return json({...report,configured:true,site:{id:site?.id||'',name:site?.name||connection?.selected_property_name||'Google Analytics'},period},200,s.cookies);
   }
   if (path === '/api/hotmart/summary' && method === 'GET') {
     // The previous Hotmart pilot used global credentials and cannot be attributed to a customer.
@@ -536,8 +548,8 @@ function unpackGaRows(report, dimensions, metrics) {
     return row;
   });
 }
-async function ga4FullReport(env, property, periodKey) {
-  const token = await googleAccessToken(env);
+async function ga4FullReport(env, property, periodKey, oauthToken = null) {
+  const token = oauthToken || await googleAccessToken(env);
   const days=Number(periodKey)||30;
   const period = periodKey==='today'?[{startDate:'today',endDate:'today'}]:periodKey==='yesterday'?[{startDate:'yesterday',endDate:'yesterday'}]:[{startDate: `${days-1}daysAgo`, endDate:'today'}];
   const priorPeriod = periodKey==='today'?[{startDate:'yesterday',endDate:'yesterday'}]:periodKey==='yesterday'?[{startDate:'2daysAgo',endDate:'2daysAgo'}]:[{startDate: `${days*2-1}daysAgo`, endDate: `${days}daysAgo`}];
