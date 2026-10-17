@@ -17,7 +17,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false,
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -1325,6 +1325,7 @@ async function loadAccounts(){
    {name:'Meta Ads',info:'Facebook e Instagram Ads.'},
    {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'En desarrollo',details:'Autorización por empresa.'},
    {name:'TikTok Ads',info:'Anuncios y campañas en TikTok.',status:'Próximamente',details:'Permisos de TikTok Ads pendientes.'}] ],
+  ['Mensajería',[{name:'Zernio',info:'Conecta tu WhatsApp Business API desde Edwin CRM.'}]],
   ['Ventas y e-commerce',[
    {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'},
    {name:'Shopify',info:'Pedidos, catálogo y ventas de tienda.',status:'Próximamente',details:'Pendiente de conexión individual por tienda.'},
@@ -1335,6 +1336,7 @@ async function loadAccounts(){
   if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false"><div class="integration-head">${providerLogo(p.name)}${tag('No incluida','neutral')}</div><h3>${clean(p.name)}</h3><p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span></div></article>`;
   if(p.name==='Meta Ads')return metaCard();
    if(p.name==='Google Ads')return googleAdsCard();
+   if(p.name==='Zernio')return '<article class="integration-card provider-card"><div class="integration-head">'+icon('link',22)+tag('WhatsApp API','neutral')+'</div><h3>Zernio · WhatsApp</h3><p>Tu cliente autoriza su número desde Meta. Cada empresa usa su propio perfil de Zernio.</p>'+(state.zernioNotice?alertBlock(state.zernioNotice,'info'):'')+'<div class="integration-status"><button type="button" class="button button-primary" data-act="zernio-connect" '+(state.zernioBusy?'disabled':'')+'>'+(state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp')+'</button></div><p class="fine-print">Para números que ya usan otra API, puede ser necesaria una migración del proveedor anterior.</p></article>';
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
    <div class="integration-head">${providerLogo(p.name)}${tag(p.status,p.connected?'success':'neutral')}</div>
    <h3>${clean(p.name)}</h3><p>${clean(p.info)}</p>
@@ -1460,6 +1462,7 @@ function sidebar(){
       const user=await api('/api/me');const companies=await api('/api/businesses');
       const returnBusiness=new URLSearchParams(location.search).get('business_id');
       const googleAuthOutcome=new URLSearchParams(location.search).get('google_ads');
+      const zernioReturn=new URLSearchParams(location.search).get('zernio');
       state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){
         const parameters=new URLSearchParams(location.search),campaignReturn=parameters.get('return_to')==='campaigns';
         state.page=campaignReturn?'campaigns':'integrations';
@@ -1468,6 +1471,12 @@ function sidebar(){
         history.replaceState({},'',location.pathname+location.hash);
       }
       if(!isAdmin()&&googleAuthOutcome){state.page='integrations';history.replaceState({},'',location.pathname+location.hash);}
+      if(!isAdmin()&&zernioReturn==='return'){
+        const params=new URLSearchParams(location.search);
+        state.page='integrations';
+        state.zernioNotice=params.get('error')?'Zernio no pudo completar la conexión. Revisa la elegibilidad del número en Meta.':params.get('connected')==='whatsapp'?'Meta terminó la autorización. Confirma en Zernio que el número figure como conectado.':'El registro de WhatsApp regresó a Edwin CRM sin confirmación.';
+        history.replaceState({},'',location.pathname+location.hash);
+      }
       state.startupError='';state.loginError='';state.loginNotice='';state.loginBusy=false;state.loading=false;render();
       if(isAdmin()){await loadAdminStats();await loadAdminPlans();await loadAdminDirectory();}
       else if(state.businesses.length){
@@ -1588,6 +1597,15 @@ function sidebar(){
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
     else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin())await loadMeta();if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='zernio-connect'&&!isAdmin()){
+      if(!state.businessId||state.zernioBusy)return;
+      state.zernioBusy=true;state.zernioNotice='';render();
+      try{
+        const result=await api('/api/zernio/connect',{method:'POST',body:JSON.stringify({business_id:state.businessId})});
+        if(!result.authUrl)throw new Error('Zernio no devolvió un enlace de autorización.');
+        window.location.assign(result.authUrl);
+      }catch(error){state.zernioNotice=error.message;state.zernioBusy=false;render();}
+    }
     else if(action==='refresh'){if(state.page==='mailing'&&!isAdmin()){await window.brasperEmailMarketing?.load(state.businessId);}else if(state.page==='leads'&&!isAdmin())await loadLeads();else await (isAdmin()?loadAdminStats():refresh({force:true}));}
     else if(action==='admin-check'&&isAdmin())await loadAdminStats();
     else if(action==='admin-health-refresh'&&isAdmin())await loadAdminHealth();
