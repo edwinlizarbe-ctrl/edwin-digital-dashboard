@@ -2,9 +2,9 @@
 import { ensureBusinessFeature } from './feature-access.js';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PROPERTY=/^[0-9]{1,30}$/;
-const endpoint=env=>String(env.SUPABASE_URL||'').replace(/\\/$/,'')+'/rest/v1/';
+const endpoint=env=>String(env.SUPABASE_URL||'').replace(/\/$/,'')+'/rest/v1/';
 const validConfig=env=>Boolean(env.GOOGLE_ANALYTICS_CLIENT_ID&&env.GOOGLE_ANALYTICS_CLIENT_SECRET&&env.SUPABASE_SERVICE_ROLE_KEY&&/^[0-9a-f]{64}$/i.test(env.GOOGLE_ANALYTICS_ENCRYPTION_KEY||''));
-const b64=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');
+const b64=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const decode=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-s.length%4)%4)),c=>c.charCodeAt(0));
 const cookie=(name,value,age)=>name+'='+encodeURIComponent(value)+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age='+age;
 function jar(req){const out={};for(const part of (req.headers.get('Cookie')||'').split(';')){const i=part.indexOf('=');if(i>0){try{out[part.slice(0,i).trim()]=decodeURIComponent(part.slice(i+1))}catch{}}}return out;}
