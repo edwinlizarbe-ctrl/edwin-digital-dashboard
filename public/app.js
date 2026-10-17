@@ -1096,7 +1096,7 @@ async function loadAccounts(){
   const results=list.map(u=>`<div class="client-site-row account-access-row">
     <div class="client-avatar compact">${icon('users',19)}</div>
     <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Empresa: ${clean((state.adminDirectory?.memberships||[]).filter(m=>m.user_id===u.id).map(m=>state.businesses.find(b=>b.id===m.business_id)?.name).filter(Boolean).join(', ')||'Sin empresa vinculada')}</small><small>Rol: ${clean(u.role||'Cliente')} · Alta: ${clean(date(u.created_at))} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
-    <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button><button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button></div>
+    <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button><button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button><button class="button button-outline" data-act="account-suspension" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-status="${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'suspended':'active'}">${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'Reactivar':'Suspender'}</button></div>
   </div>`).join('');
   return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
     <div class="account-access-toolbar"><button class="button button-outline" data-act="accounts-refresh" ${state.accountsLoading?'disabled':''}>${icon('refresh',16)} ${state.accountsLoading?'Consultando…':'Actualizar usuarios'}</button><span>${fmt(list.length)} cuentas visibles</span></div>
@@ -1657,6 +1657,17 @@ function sidebar(){
     else if(action==='account-copy-temp'&&isAdmin()&&state.temporaryAccess){
       try{await navigator.clipboard.writeText(state.temporaryAccess.password);state.accountNotice='Clave copiada al portapapeles. Compártela por un canal privado.';}
       catch{state.accountNotice='Selecciona y copia la clave de forma manual.';}render();
+    }
+    else if(action==='account-suspension'&&isAdmin()){
+      const id=b.dataset.id||'',email=b.dataset.email||'',suspended=b.dataset.status==='suspended';
+      const next=suspended?'reactivate':'suspend';
+      if(!confirm((suspended?'¿Reactivar':'¿Suspender')+' el acceso de '+email+'? '+(suspended?'Podrá ingresar otra vez.':'Se bloqueará su acceso hasta que lo reactives.')))return;
+      state.accountNotice='';state.accountsError='';
+      try{
+        await api('/api/admin/accounts/suspension',{method:'POST',body:JSON.stringify({user_id:id,action:next})});
+        state.accountNotice=suspended?'Cuenta reactivada.':'Cuenta suspendida.';
+        await loadAccounts();
+      }catch(e){state.accountsError=e.message;render();}
     }
     else if(action==='account-temp'&&isAdmin()){
       const email=b.dataset.email||'',id=b.dataset.id||'';
