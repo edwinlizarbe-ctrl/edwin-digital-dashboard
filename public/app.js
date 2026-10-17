@@ -1107,19 +1107,10 @@ async function loadAccounts(){
     ${state.accountsConfigured===false?`<div class="admin-setup-guide"><strong>Activa la gestión de accesos</strong><p>En Supabase abre la configuración del proyecto → API Keys y obtén la clave de servidor <code>service_role</code>. Agrégala en Cloudflare → Worker → Variables and Secrets como secreto cifrado con el nombre <code>SUPABASE_SERVICE_ROLE_KEY</code>.</p><p>No publiques ni pegues esa clave en el chat, en GitHub ni en código del navegador. Después pulsa «Actualizar usuarios».</p></div>`:''}
     ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
     ${state.temporaryAccess?`<div class="temporary-credential" role="status"><strong>Clave temporal de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code>${clean(state.temporaryAccess.password)}</code><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar</button></div><p>Se muestra solo ahora. Envíala de forma privada y pide al cliente que la cambie en Mi cuenta.</p></div>`:''}
-    ${card('Crear acceso de cliente','Invita por correo y asigna una empresa',`<form id="admin-invite-form" class="security-form" autocomplete="off" style="display:grid;gap:12px;max-width:650px">
-  <label class="form-label">Correo electrónico del nuevo cliente
-    <input class="simple-input" type="email" name="email" maxlength="254" placeholder="cliente@empresa.com" required autocomplete="off" style="width:100%;display:block;margin-top:6px">
-  </label>
-  <label class="form-label">Empresa a la que tendrá acceso
-    <select class="simple-input" name="business_id" required style="width:100%;display:block;margin-top:6px">
-      <option value="">Seleccionar empresa</option>
-      ${state.businesses.map(b=>`<option value="${clean(b.id)}" ${state.adminLifecycle.businesses[b.id]?.suspended_at?'disabled':''}>${clean(b.name)}${state.adminLifecycle.businesses[b.id]?.suspended_at?' (suspendida)':''}</option>`).join('')}
-    </select>
-  </label>
-  <p class="fine-print" style="margin:0">La persona recibirá un enlace privado para crear su propia contraseña. No se enviará ninguna contraseña por correo. Solo accederá a la empresa que selecciones.</p>
-  <button type="submit" class="button button-primary" ${state.inviteBusy||!state.businesses.length?'disabled':''}>${state.inviteBusy?'Enviando invitación…':'Enviar invitación de acceso'}</button>
-</form>`)}
+    ${card('Crear cliente','Crear usuario y contraseña de inmediato',`<form id="admin-invite-form" class="security-form" autocomplete="off" style="display:grid;gap:12px;max-width:650px">
+<label class="form-label">Correo electrónico<input class="simple-input" name="email" type="email" required maxlength="254" placeholder="cliente@empresa.com" style="display:block;width:100%;margin-top:6px"></label>
+<p class="fine-print">Empresa asignada automáticamente: <strong>Edwin Digital</strong>. Generaremos una contraseña que podrás entregar personalmente. No se enviarán correos de invitación.</p>
+<button class="button button-primary" type="submit" ${state.inviteBusy?'disabled':''}>${state.inviteBusy?'Creando usuario…':'Crear cliente y generar clave'}</button></form>`)}
     ${card('Usuarios de clientes','Correos registrados en Supabase Auth',results||(state.accountsError?empty('No se pudo cargar el directorio. Revisa el aviso y vuelve a intentarlo.'):empty(state.accountsLoading?'Consultando cuentas…':state.accountsLoaded?'No hay cuentas de clientes disponibles.':'Pulsa Actualizar usuarios para consultar las cuentas.')))}
     ${state.emailHistoryUserId?card('Historial de cambios de correo','Solo registra cambios realizados después de activar la auditoría de Supabase',
       (state.emailHistoryLoading?'<p>Cargando historial…</p>':'')+
@@ -1975,15 +1966,16 @@ function sidebar(){
       e.preventDefault();if(!isAdmin()||state.inviteBusy)return;
       const values=new FormData(e.target);
       const email=String(values.get('email')||'').trim();
-      const business_id=String(values.get('business_id')||'');
-      if(!email||!business_id)return;
+      if(!email)return;
       state.inviteBusy=true;state.accountNotice='';state.accountsError='';
       const submit=e.target.querySelector('[type="submit"]');
-      if(submit){submit.disabled=true;submit.textContent='Enviando invitación…';}
+      if(submit){submit.disabled=true;submit.textContent='Creando usuario…';}
       try{
-        const result=await api('/api/admin/invite',{method:'POST',body:JSON.stringify({email,business_id})});
+        const result=await api('/api/admin/accounts/create-client',{method:'POST',body:JSON.stringify({email})});
+        if(!result.ok||!result.temporary_password)throw new Error('No se pudo confirmar la creación.');
+        state.temporaryAccess={email:result.email,password:result.temporary_password};
         await loadAccounts();await loadAdminDirectory();
-        state.accountNotice=result.message||'Invitación solicitada. Revisa la configuración de correo y la bandeja del cliente.';
+        state.accountNotice='Cliente creado en Edwin Digital. Copia sus datos de acceso y entrégalos personalmente.';
       }catch(error){state.accountsError=error.message;}
       finally{state.inviteBusy=false;render();}
       return;
