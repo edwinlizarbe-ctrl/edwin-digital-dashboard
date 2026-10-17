@@ -1151,7 +1151,9 @@ async function loadAccounts(){
   function clients(){
     if(!isAdmin())return overview();
     const query=state.adminQuery.trim().toLowerCase();
-    const filtered=state.businesses.filter(b=>[b.name,b.slug,linkedEmail(b.id),...directoryUsersFor(b.id).map(u=>u.email)].join(' ').toLowerCase().includes(query));
+    // Brásper is an internal company, not a client account. Keep its data and access intact.
+    const clientBusinesses=state.businesses.filter(b=>String(b.slug||'').toLowerCase()!=='brasper'&&String(b.name||'').trim().toLowerCase()!=='brásper');
+    const filtered=clientBusinesses.filter(b=>[b.name,b.slug,linkedEmail(b.id),...directoryUsersFor(b.id).map(u=>u.email)].join(' ').toLowerCase().includes(query));
     const cards=filtered.map(b=>{
       const users=directoryUsersFor(b.id);
       const suspended=!!state.adminLifecycle.businesses[b.id]?.suspended_at;
@@ -1166,7 +1168,7 @@ async function loadAccounts(){
       </article>`;
     }).join('');
     return `${heading('Administración','Mis clientes','Identidad, correos vinculados, fechas y accesos de cada empresa autorizada.')}
-      <div class="admin-toolbar"><label class="admin-search">${icon('search',18)}<input id="admin-client-search" type="search" value="${clean(state.adminQuery)}" placeholder="Buscar empresa, correo o identificador" aria-label="Buscar clientes"/></label><button class="button button-outline" data-act="directory-refresh" ${state.directoryLoading?'disabled':''}>${icon('refresh',15)} ${state.directoryLoading?'Consultando…':'Actualizar directorio'}</button><span>${fmt(filtered.length)} de ${fmt(state.businesses.length)} empresas</span></div>
+      <div class="admin-toolbar"><label class="admin-search">${icon('search',18)}<input id="admin-client-search" type="search" value="${clean(state.adminQuery)}" placeholder="Buscar empresa, correo o identificador" aria-label="Buscar clientes"/></label><button class="button button-outline" data-act="directory-refresh" ${state.directoryLoading?'disabled':''}>${icon('refresh',15)} ${state.directoryLoading?'Consultando…':'Actualizar directorio'}</button><span>${fmt(filtered.length)} de ${fmt(clientBusinesses.length)} clientes</span></div>
       ${state.directoryError?alertBlock(state.directoryError,'info'):''}
       ${!state.adminDirectory?'<p class="fine-print">Los correos y fechas de acceso aparecerán cuando termine la consulta administrativa.</p>':''}
       <div class="client-grid admin-rich-grid">${cards||empty('No se encontraron empresas con ese nombre o correo.')}</div>`;
