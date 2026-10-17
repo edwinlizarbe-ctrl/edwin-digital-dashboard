@@ -1,5 +1,6 @@
 import { manageSuspension, isSuspendedUser } from './admin-suspension.js';
 import { handleAdminLifecycle } from './admin-lifecycle.js';
+import { adminInvite, acceptInvite } from './admin-invites.js';
 import { handleMetaApi } from './meta.js';
 import { handleGoogleAdsApi } from './google-ads.js';
 import { handleLeadsApi } from './leads.js';
@@ -138,6 +139,7 @@ async function handleApi(req, env) {
     return json({ error: 'Faltan SUPABASE_URL y/o SUPABASE_ANON_KEY en Cloudflare → Variables and Secrets.' }, 503);
   }
   if (path === '/api/status' && method === 'GET') return json({ configured: true });
+  if (path === '/api/auth/accept-invite') return acceptInvite(req,env);
   if (path === '/api/auth/login' && method === 'POST') {
     if (corsPostDenied(req)) return json({ error: 'Origen no autorizado' }, 403);
     if (Number(req.headers.get('Content-Length')) > 8192) return json({ error: 'Solicitud demasiado grande' }, 413);
@@ -161,6 +163,7 @@ async function handleApi(req, env) {
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
   if(path==='/api/admin/accounts/suspension')return manageSuspension(req,env,s);
   if(path==='/api/admin/lifecycle')return handleAdminLifecycle(req,env,s);
+  if(path==='/api/admin/invite')return adminInvite(req,env,s);
   if(path==='/api/client/features'||path.startsWith('/api/admin/business-features'))return handleFeaturesApi(req,env,s);
   if (path.startsWith('/api/zernio/')) return handleZernioApi(req, env, s);
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
