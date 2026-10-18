@@ -1422,3 +1422,153 @@ input,select,textarea{max-width:100%}
     grid-template-columns:1fr;
   }
 }
+
+
+/* WhatsApp is a guided onboarding flow, not a generic integration tile.
+   Desktop: 3 clear steps, accessible CTA; mobile: stacked explanation. */
+.integration-section .integration-grid>.provider-card.wa-onboard{
+  grid-column:1/-1;
+  width:100%;
+  max-width:960px;
+  padding:25px 27px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+}
+.integration-section .provider-card.wa-onboard .integration-brand-head{
+  margin-bottom:16px;
+}
+.integration-section .provider-card.wa-onboard .integration-brand-head>.provider-logo{
+  background:rgba(37,211,102,.08);
+}
+.wa-onboard-intro{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:22px;
+  margin:0 0 3px;
+}
+.wa-onboard-intro>div{min-width:0}
+.wa-onboard-eyebrow{
+  display:block;
+  margin-bottom:7px;
+  color:#159447;
+  font-weight:800;
+  font-size:10px;
+  letter-spacing:1.25px;
+}
+.wa-onboard-intro h4{
+  margin:0;
+  color:var(--text);
+  font:800 21px/1.3 'Manrope',sans-serif;
+  letter-spacing:-.35px;
+}
+.integration-section .provider-card.wa-onboard .wa-onboard-intro p{
+  font-size:12.5px;
+  line-height:1.65;
+  margin:8px 0 0;
+  max-width:680px;
+  color:var(--muted2);
+}
+.wa-onboard-bubble{
+  display:grid;
+  place-items:center;
+  width:68px;
+  height:68px;
+  flex:0 0 68px;
+  background:rgba(37,211,102,.09);
+  border-radius:18px;
+}
+.wa-onboard-steps{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin:22px 0 18px;
+}
+.wa-onboard-step{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  min-width:0;
+  gap:9px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  padding:16px;
+  background:var(--surface2);
+}
+.wa-onboard-step-icon{
+  display:grid;
+  place-items:center;
+  width:33px;
+  height:33px;
+  background:rgba(37,211,102,.13);
+  color:#168744;
+  font-size:12px;
+  font-weight:850;
+  border-radius:10px;
+  letter-spacing:.3px;
+}
+.wa-onboard-step strong{
+  color:var(--text);
+  font-size:13px;
+  line-height:1.45;
+  font-weight:800;
+}
+.integration-section .provider-card.wa-onboard .wa-onboard-step p{
+  margin:0;
+  font-size:11.7px;
+  line-height:1.65;
+  color:var(--muted2);
+}
+.wa-onboard-footer{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:16px;
+  padding:17px 0 15px;
+  border-top:1px solid var(--border);
+}
+.wa-onboard-footer-text{display:flex;flex-direction:column;gap:5px}
+.wa-onboard-footer-text strong{font-size:12.5px;color:var(--text)}
+.wa-onboard-footer-text span{font-size:11px;color:var(--muted2);line-height:1.5}
+.integration-section .wa-onboard-connect{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-height:47px;
+  padding:12px 20px;
+  font-size:13px;
+  flex-shrink:0;
+}
+.integration-section .provider-card.wa-onboard .wa-onboard-caution{
+  margin:0;
+  padding:12px 14px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--surface2);
+  font-size:11.5px;
+  line-height:1.65;
+  color:var(--muted2);
+}
+.wa-onboard-caution strong{color:var(--text)}
+.wa-connect-dialog{background:var(--surface);color:var(--text);border-color:var(--border)}
+.wa-connect-modal-steps>div{border-color:var(--border);background:var(--surface2)}
+.wa-connect-modal-steps strong{color:var(--text)}
+.wa-connect-modal-steps small{color:var(--muted2)}
+.wa-connect-dialog>p:not(.wa-connect-modal-warning){color:var(--muted2)}
+@media(max-width:740px){
+  .wa-onboard-steps{grid-template-columns:1fr;gap:9px}
+  .wa-onboard-step{gap:6px;min-height:0;padding:13px 14px}
+  .wa-onboard-step-icon{width:29px;height:29px}
+  .wa-onboard-bubble{display:none}
+}
+@media(max-width:630px){
+  .integration-section .integration-grid>.provider-card.wa-onboard{padding:17px;max-width:none}
+  .wa-onboard-intro h4{font-size:17px}
+  .wa-onboard-footer{align-items:stretch;flex-direction:column}
+  .integration-section .wa-onboard-connect{width:100%}
+  .wa-connect-dialog{padding:18px}
+}
