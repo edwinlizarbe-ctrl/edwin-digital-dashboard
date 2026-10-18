@@ -368,8 +368,7 @@
       ['Shopify','Próximamente','integrations','Requiere conexión independiente de la tienda de esta empresa'],
       ['Hotmart','Próximamente','integrations','Requiere autorización comercial independiente por empresa'],
       ['Google Ads','Próximamente','campaigns','API pendiente'],
-      ['TikTok Ads','Próximamente','campaigns','API pendiente'],
-      ['LinkedIn Ads','Próximamente','campaigns','API pendiente']
+      ['TikTok Ads','Próximamente','campaigns','API pendiente']
     ];
     return `<div class="connection-overview">${sources.map(([name,status,page,detail])=>`<div class="connection-row"><div><b>${clean(name)}</b><small>${clean(detail)}</small></div>${tag(status,status==='Conectado'?'success':'neutral')}</div>`).join('')}<div class="connection-actions"><button class="button button-outline" data-act="nav" data-page="integrations">${icon('plug',16)} Gestionar integraciones</button><button class="button button-soft" data-act="nav" data-page="campaigns">${icon('megaphone',16)} Campañas Ads</button></div></div>`;
   }
@@ -471,7 +470,7 @@ function leadSummaryOverview(){
   function acquisition(){return `${heading('Adquisición','Descubre cómo llegan a tu sitio','Mira si las personas llegan desde búsquedas, anuncios, redes sociales, enlaces o directamente.')}${statusStrip()}<div class="content-grid"><div class="col-5">${card('¿Por dónde llegan las visitas?','Distribución de sesiones según su origen',gaReady()?donut(rows('channels').map(r=>({...r,channelLabel:friendlyChannel(r.sessionDefaultChannelGroup)})),'channelLabel','sessions'):dataPlaceholder())}</div><div class="col-7">${card('¿Desde qué sitios llegan?','Sitios y plataformas que envían visitas, según GA4',gaReady()?barList(rows('sources').map(r=>({...r,sourceLabel:friendlyTrafficSource(r.sessionSourceMedium),rawSource:r.sessionSourceMedium})),'sourceLabel','sessions',10)+'<p class="traffic-glossary">Publicidad pagada = anuncios. Acceso directo = no se identificó otro origen. Enlace desde otra web = visitas procedentes de otra página. Pasa el cursor sobre una fuente para ver su código original de GA4.</p>':dataPlaceholder())}</div><div class="col-12">${card('Comparación de orígenes','Personas, visitas y acciones importantes por origen',gaReady()?dataTable(rows('channels'),[{key:'sessionDefaultChannelGroup',label:'Canal',display:friendlyChannel},{key:'sessions',label:'Sesiones',display:fmt},{key:'totalUsers',label:'Usuarios',display:fmt},{key:'keyEvents',label:'Eventos clave',display:fmt}]):dataPlaceholder())}</div></div>${flags()}`;}
   
   function campaignMetaSetup(){
-    if(!featureEnabled('meta_ads'))return '<div class="ads-connected-compact"><span class="ads-connected-dot pending"></span><div><strong>Meta Ads no incluido</strong><small>Esta conexión no está habilitada para '+clean(displayBusiness())+'.</small></div></div>';
+    if(!featureEnabled('meta_ads')&&(!state.campaignConnectionOpen||state.campaignConnectorProvider==='meta'))return '<div class="ads-connected-compact"><span class="ads-connected-dot pending"></span><div><strong>Meta Ads no incluido</strong><small>Esta conexión no está habilitada para '+clean(displayBusiness())+'.</small></div></div>';
     const m=state.meta||{},ready=!!m.configured,connected=!!m.connected;
     const saved=m.selected_accounts||[m.selected_account].filter(Boolean),accounts=m.accounts||[];
     const isOpen=state.campaignConnectionOpen;
@@ -644,7 +643,7 @@ function adsConnectionStatus(value){
  return state.meta?.configured?{label:'Por conectar',kind:'waiting'}:{label:'En preparación',kind:'soon'};
 }
 function adsOverviewHero(platform){
- const labels={meta:'Meta Ads',google:'Google Ads',tiktok:'TikTok Ads',linkedin:'LinkedIn Ads'};
+ const labels={meta:'Meta Ads',google:'Google Ads',tiktok:'TikTok Ads'};
  const provider=labels[platform]||'Meta Ads',m=state.meta||{},status=adsConnectionStatus(platform);
  const selected=platform==='meta'?(m.selected_accounts||[m.selected_account].filter(Boolean)).length:0;
  const open=platform==='meta'&&featureEnabled('meta_ads');
@@ -717,7 +716,7 @@ function marketingHub(){
 function campaigns(){
  const connected=!!(state.meta?.connected&&(state.meta?.selected_accounts?.length||state.meta?.selected_account));
  const platform=state.adsPlatform,level=state.adsLevel,report=state.metaCampaigns;
- const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']];
+ const choices=[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads']];
  const tabs='<div class="ads-platform-tabs" role="group" aria-label="Plataforma publicitaria">'+choices.map(([value,label])=>
    '<button type="button" class="ads-platform-tab '+(platform===value?'active':'')+'" data-act="ads-platform" data-platform="'+value+'" aria-pressed="'+(platform===value?'true':'false')+'">'+providerLogo(label)+'<span class="ads-tab-label">'+label+'</span><small class="ads-tab-status '+adsConnectionStatus(value).kind+'">'+clean(adsConnectionStatus(value).label)+'</small></button>').join('')+'</div>';
  const periods=platform==='google'?[['7','7 días'],['30','30 días'],['90','90 días']]:[['today','Hoy'],['yesterday','Ayer'],['7','7 días'],['30','30 días'],['90','90 días'],['365','12 meses'],['custom','Personalizado']];
@@ -1086,7 +1085,7 @@ function adminPermissionsPanel(){
   ['Google Search Console','Autorización oficial pendiente.'],['Facebook / Instagram orgánico','Autorización de páginas y perfiles pendiente.']]],
   ['Ventas y e-commerce', [['Hotmart','Autorización individual pendiente.'],['Shopify','Conexión de tienda pendiente.']]],
   ['Publicidad', [['Meta Ads','Conexión piloto directa con Meta for Developers; los clientes requieren acceso autorizado en la app.'],
-  ['Google Ads','OAuth y permisos oficiales pendientes.'],['TikTok Ads','API pendiente.'],['LinkedIn Ads','Permisos oficiales pendientes.']]]];
+  ['Google Ads','OAuth y permisos oficiales pendientes.'],['TikTok Ads','API pendiente.']]]];
  return `${heading('Administración','Integraciones','Controla las conexiones por empresa y verifica el estado técnico de cada plataforma.')}
  ${adminPermissionsPanel()}
  ${card('Diagnóstico de Meta Ads','Comprobación del Worker activo: nunca se muestran los valores de secretos',`
@@ -1515,7 +1514,7 @@ async function loadAccounts(){
   </article>`;
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
    ${integrationHeader(p.name,p.status||'Pendiente',p.connected?'success':'neutral',subtitle)}<p>${clean(p.info)}</p>
-   <div class="integration-status"><span>${clean(p.details||'')}</span>${p.connected?'<button class="button button-outline integration-plug-action" data-act="nav" data-page="analytics">'+icon('plug',17)+' Ver datos</button>':plugButton('Próximamente',null,true,p.name==='TikTok Ads'?'tiktok':'plug')}</div>
+   <div class="integration-status"><span>${clean(p.details||'')}</span>${p.name==='TikTok Ads'?'<button class="button button-outline integration-plug-action" type="button" data-act="campaign-open-installer" data-provider="tiktok">'+adBrandIcon('tiktok')+' Ver disponibilidad</button>':p.connected?'<button class="button button-outline integration-plug-action" data-act="nav" data-page="analytics">'+icon('plug',17)+' Ver datos</button>':plugButton('Próximamente',null,true)}</div>
   </article>`;
  };
  return `${state.campaignConnectionOpen?campaignMetaSetup():''}${heading('Mis conexiones','Integraciones de mi empresa','Conecta tus plataformas una vez y consulta los datos autorizados en sus paneles.')}
@@ -1556,7 +1555,7 @@ async function loadAccounts(){
 }
 
     const groupTitle=(title)=>`<div class="nav-group-title">${clean(title)}</div>`;
-  const adsNavigation=()=>`<div class="crm-ads-nav"><button class="nav-link ${state.page==='campaigns'?'active':''}" data-act="campaign-menu" aria-expanded="${state.campaignsMenuOpen}" title="Campañas Ads">${icon('megaphone',19)}<span>Campañas Ads</span>${icon(state.campaignsMenuOpen?'chevronDown':'chevron',15)}</button>${state.campaignsMenuOpen?'<div class="crm-ads-subnav">'+[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads'],['linkedin','LinkedIn Ads']].map(([key,label])=>'<button class="crm-ads-subitem '+(state.page==='campaigns'&&state.adsPlatform===key?'active':'')+'" data-act="campaign-select" data-platform="'+key+'"><span>'+label+'</span></button>').join('')+'</div>':''}</div>`;
+  const adsNavigation=()=>`<div class="crm-ads-nav"><button class="nav-link ${state.page==='campaigns'?'active':''}" data-act="campaign-menu" aria-expanded="${state.campaignsMenuOpen}" title="Campañas Ads">${icon('megaphone',19)}<span>Campañas Ads</span>${icon(state.campaignsMenuOpen?'chevronDown':'chevron',15)}</button>${state.campaignsMenuOpen?'<div class="crm-ads-subnav">'+[['meta','Meta Ads'],['google','Google Ads'],['tiktok','TikTok Ads']].map(([key,label])=>'<button class="crm-ads-subitem '+(state.page==='campaigns'&&state.adsPlatform===key?'active':'')+'" data-act="campaign-select" data-platform="'+key+'"><span>'+label+'</span></button>').join('')+'</div>':''}</div>`;
   const salesNavigation=()=>`<div class="crm-ads-nav"><button class="nav-link ${state.page==='sales'?'active':''}" data-act="sales-menu" aria-expanded="${state.salesMenuOpen}" title="Ventas">${icon('shopping-bag',19)}<span>Ventas</span>${icon(state.salesMenuOpen?'chevronDown':'chevron',15)}</button>${state.salesMenuOpen?'<div class="crm-ads-subnav">'+[['overview','Resumen de ventas'],['shopify','Shopify'],['hotmart','Hotmart']].map(([key,label])=>'<button class="crm-ads-subitem '+(state.page==='sales'&&state.salesSource===key?'active':'')+'" data-act="sales-select" data-source="'+key+'"><span>'+label+'</span></button>').join('')+'</div>':''}</div>`;
   function ensureWhatsAppConnectDialog(){
     if(document.getElementById('wa-connect-dialog'))return;
@@ -1799,7 +1798,7 @@ function sidebar(){
     else if(action==='sales-menu'){state.salesMenuOpen=!state.salesMenuOpen;render();}
     else if(action==='sales-select'){const source=b.dataset.source;if(!['overview','shopify','hotmart'].includes(source))return;state.salesSource=source;state.page='sales';state.mobileOpen=false;render();window.scrollTo(0,0);}
     else if(action==='campaign-menu'){state.campaignsMenuOpen=!state.campaignsMenuOpen;render();}
-    else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok','linkedin'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
+    else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
     else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin()){await loadGa4Connection();await loadMeta();}if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='whatsapp'&&!isAdmin())await window.edwinWhatsAppInbox?.load(state.businessId);if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
