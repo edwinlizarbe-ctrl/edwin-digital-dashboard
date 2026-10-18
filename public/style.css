@@ -1646,3 +1646,29 @@ input,select,textarea{max-width:100%}
     display:none;
   }
 }
+
+/* Admin-only Google OAuth diagnostics: actionable checklist without any key values. */
+.google-oauth-health{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+}
+.google-oauth-health .admin-setup-guide{
+  min-width:0;
+  margin:0;
+}
+.google-oauth-health .admin-setup-guide p{
+  font-size:12px;
+  line-height:1.65;
+}
+.google-oauth-health .admin-setup-guide code{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.google-oauth-health .tag{
+  vertical-align:middle;
+  margin-right:5px;
+}
+@media(max-width:850px){
+  .google-oauth-health{grid-template-columns:1fr}
+}
