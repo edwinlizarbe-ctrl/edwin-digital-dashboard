@@ -3,7 +3,15 @@ import { ensureBusinessFeature } from './feature-access.js';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PROPERTY=/^[0-9]{1,30}$/;
 const endpoint=env=>String(env.SUPABASE_URL||'').replace(/\/$/,'')+'/rest/v1/';
-const validConfig=env=>Boolean(env.GOOGLE_ANALYTICS_CLIENT_ID&&env.GOOGLE_ANALYTICS_CLIENT_SECRET&&env.SUPABASE_SERVICE_ROLE_KEY&&/^[0-9a-f]{64}$/i.test(env.GOOGLE_ANALYTICS_ENCRYPTION_KEY||''));
+const missingConfig=env=>{
+ const missing=[];
+ if(!env.GOOGLE_ANALYTICS_CLIENT_ID)missing.push('GOOGLE_ANALYTICS_CLIENT_ID');
+ if(!env.GOOGLE_ANALYTICS_CLIENT_SECRET)missing.push('GOOGLE_ANALYTICS_CLIENT_SECRET');
+ if(!env.SUPABASE_SERVICE_ROLE_KEY)missing.push('SUPABASE_SERVICE_ROLE_KEY');
+ if(!/^[0-9a-f]{64}$/i.test(env.GOOGLE_ANALYTICS_ENCRYPTION_KEY||''))missing.push('GOOGLE_ANALYTICS_ENCRYPTION_KEY');
+ return missing;
+};
+const validConfig=env=>missingConfig(env).length===0;
 const b64=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const decode=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-s.length%4)%4)),c=>c.charCodeAt(0));
 const cookie=(name,value,age)=>name+'='+encodeURIComponent(value)+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age='+age;
@@ -72,7 +80,7 @@ export async function handleGa4OAuthApi(req,env,s){
  const businessId=url.searchParams.get('business_id')||'';
  if(!await permitted(env,s,businessId))return bad('No tienes permiso para consultar Analytics de esta empresa.',403);
  if(path==='/api/ga4/status'&&method==='GET'){
-  if(!validConfig(env))return reply({configured:false,connected:false,reason:'Falta configurar las credenciales OAuth de Google Analytics en Cloudflare.'});
+  if(!validConfig(env))return reply({configured:false,connected:false,missing_config:missingConfig(env),reason:'Falta configurar las credenciales OAuth de Google Analytics en Cloudflare.'});
   const rows=await db(env,'ed_ga4_connections','select=business_id,selected_property_id,selected_property_name,updated_at&business_id=eq.'+encodeURIComponent(businessId)+'&limit=1');
   const row=rows[0];return reply({configured:true,connected:!!row,selected_property_id:row?.selected_property_id||null,selected_property_name:row?.selected_property_name||null,updated_at:row?.updated_at||null});
  }
