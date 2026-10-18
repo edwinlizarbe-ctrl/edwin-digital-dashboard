@@ -657,13 +657,16 @@ function adsOverviewHero(platform){
  return '<section class="ads-overview-hero" aria-label="Estado de la plataforma">'+
   '<div class="ads-overview-main">'+providerLogo(provider)+'<div><span class="ads-eyebrow">PLATAFORMA PUBLICITARIA</span><h2>'+clean(provider)+'</h2><p>'+clean(sub)+'</p></div></div>'+
   '<div class="ads-overview-actions"><span class="ads-status-pill ads-status-'+status.kind+'"><span class="ads-pill-indicator"></span>'+clean(status.label)+'</span>'+
-  (googleOpen?'<button class="ads-hero-button" type="button" data-act="nav" data-page="integrations">Administrar Google Ads'+icon('chevron',15)+'</button>':'')+
+  (googleOpen?'<button class="ads-hero-button" type="button" data-act="campaign-open-installer" data-provider="google">Administrar Google Ads'+icon('chevron',15)+'</button>':'')+
+  (platform==='tiktok'?'<button class="ads-hero-button" type="button" data-act="campaign-open-installer" data-provider="tiktok">Ver disponibilidad'+icon('chevron',15)+'</button>':'')+
   (open?'<button class="ads-hero-button" type="button" data-act="campaign-connect-toggle">'+(m.connected?'Administrar conexión':'Conectar mi cuenta')+icon('chevron',15)+'</button>':'')+
   '</div></section>';
 }
 function adsGuidance(platform,connected){
  const suggestions=[];
- if(platform!=='meta')suggestions.push(['Antes de empezar','Cuando la integración esté disponible, podrás autorizar tu cuenta desde eDigital. No se muestran campañas de prueba.']);
+ if(platform==='google')suggestions.push(['Conectar Google Ads','Abre el instalador de Google Ads para autorizar tu cuenta, seleccionar una cuenta publicitaria y consultar las campañas disponibles.']);
+ else if(platform==='tiktok')suggestions.push(['Próximamente','La conexión de TikTok Ads todavía no está disponible; no solicitamos credenciales ni presentamos métricas ficticias.']);
+ else if(platform!=='meta')suggestions.push(['Antes de empezar','Esta plataforma aún requiere una integración oficial.']);
  else if(!featureEnabled('meta_ads'))suggestions.push(['Tu plan actual','Meta Ads no está habilitado para esta empresa. Revisa las integraciones disponibles de tu plan.']);
  else if(!connected){
   suggestions.push(['1. Conecta Facebook','Utiliza «Conectar mi cuenta» y concede únicamente los permisos que solicita Meta.']);
@@ -782,9 +785,10 @@ function campaigns(){
  }
  const summary=platform==='meta'&&connected?adsMetricsStrip():'';
  const settings=platform==='meta'&&connected?campaignMetaSetup():'';
+ const selectedInstaller=state.campaignConnectionOpen&&platform!=='meta'?campaignMetaSetup():'';
  return heading('Publicidad','Campañas Ads','Revisa el estado de tus cuentas y analiza datos publicitarios reales desde un solo lugar.')+
-   marketingHub()+tabs+adsOverviewHero(platform)+toolbar+settings+summary+
-   card(platform==='meta'?'Resultados y campañas de Meta Ads':'Rendimiento publicitario',platform==='meta'?adsPeriodLabel():'Conexión oficial pendiente',result)+
+   marketingHub()+tabs+adsOverviewHero(platform)+toolbar+settings+selectedInstaller+summary+
+   card(platform==='meta'?'Resultados y campañas de Meta Ads':'Rendimiento publicitario',platform==='meta'?adsPeriodLabel():platform==='google'?'Conexión y campañas de Google Ads':'Conexión oficial pendiente',result)+
    adsGuidance(platform,connected)+
    '<div class="spacer-sm"></div>'+card('Tráfico UTM en Google Analytics','Las visitas medidas por GA4 son diferentes del gasto de Meta Ads.',
    '<p class="fine-print">Para evaluar contactos o ventas, compara los eventos configurados en GA4 con los resultados de tus campañas.</p>'+
