@@ -1433,7 +1433,7 @@ async function loadAccounts(){
  ];
  const cardFor=(p)=>{
   const feature=businessFeatureKey(p.name);
-  if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader(p.name,'No incluida')}<p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span>${plugButton('No incluida',null,true)}</div></article>`;
+  if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader(p.name,'No incluida','neutral',p.name==='TikTok Ads'?'Publicidad digital':'')}<p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span>${plugButton('No incluida',null,true)}</div></article>`;
   if(p.name==='Google Analytics 4')return ga4Card();
   if(p.name==='Meta Ads')return metaCard();
    if(p.name==='Google Ads')return googleAdsCard();
@@ -1444,7 +1444,7 @@ async function loadAccounts(){
      '<div class="integration-status">'+plugButton(state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp','wa-connect-guide',state.zernioBusy)+
      '<span>El permiso se confirma en Meta. Si tu número usa otro proveedor, revisa antes su migración.</span></div></article>';
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
-   ${integrationHeader(p.name,p.status||'Pendiente',p.connected?'success':'neutral')}<p>${clean(p.info)}</p>
+   ${integrationHeader(p.name,p.status||'Pendiente',p.connected?'success':'neutral',p.name==='TikTok Ads'?'Publicidad digital':'')}<p>${clean(p.info)}</p>
    <div class="integration-status"><span>${clean(p.details||'')}</span>${p.connected?'<button class="button button-outline integration-plug-action" data-act="nav" data-page="analytics">'+icon('plug',17)+' Ver datos</button>':plugButton('Próximamente',null,true)}</div>
   </article>`;
  };
