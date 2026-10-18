@@ -965,7 +965,7 @@ const businessFeatureLabels=[
 ];
 const businessFeatureKey=name=>({
  'Google Analytics 4':'ga4','Google Search Console':'search_console',
- 'Facebook / Instagram orgánico':'social_organic','Hotmart':'hotmart','Shopify':'shopify',
+ 'Facebook / Instagram orgánico':'social_organic','Facebook':'social_organic','Instagram':'social_organic','TikTok':'social_organic','YouTube':'social_organic','Hotmart':'hotmart','Shopify':'shopify',
  'Meta Ads':'meta_ads','Google Ads':'google_ads','TikTok Ads':'tiktok_ads','LinkedIn Ads':'linkedin_ads'
 })[name]||'';
 const featureEnabled=key=>key==='google_ads'?state.clientEntitlements?.features?.google_ads===true:!state.clientEntitlements||state.clientEntitlements.features?.[key]!==false;
@@ -1218,7 +1218,7 @@ async function loadAccounts(){
  const dict={
  'Meta Ads':['meta','0866FF'],'Google Ads':['googleads','4285F4'],'TikTok Ads':['tiktok','111111'],'LinkedIn Ads':['linkedin','0A66C2'],
  'Google Analytics 4':['googleanalytics','E37400'],'Google Search Console':['googlesearchconsole','4285F4'],
- 'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
+ 'Facebook / Instagram orgánico':['instagram','E4405F'],'Facebook':['facebook','0866FF'],'Instagram':['instagram','E4405F'],'TikTok':['tiktok','111111'],'YouTube':['youtube','FF0033'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
  };
  if(name==='Google Business Profile')return '<div class="provider-logo" aria-hidden="true"><svg width="34" height="34" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="15" width="22" height="17" rx="2.5" fill="#E8F0FE"/><path d="M11 17v15h14V17" stroke="#4285F4" stroke-width="2" stroke-linejoin="round"/><rect x="16" y="23" width="8" height="9" rx="1" fill="#4285F4"/><path d="M5 9h26l2 7H3l2-7Z" fill="#4285F4"/><path d="M5 9h7l-2 7H3l2-7Z" fill="#EA4335"/><path d="M12 9h6v7h-8l2-7Z" fill="#FBBC05"/><path d="M18 9h7l2 7h-8V9Z" fill="#34A853"/><path d="M25 9h6l2 7h-6l-2-7Z" fill="#4285F4"/><path d="M3 16c0 2.2 2 3.7 4 3.7s3-1.1 4-2.2c1.1 1.5 2.3 2.2 4.2 2.2 1.5 0 2.9-.7 3.8-2.2 1 1.4 2.5 2.2 4.3 2.2s3.2-.9 4-2.2c1 1.4 2.1 2.2 3.8 2.2 2.1 0 4-1.5 4-3.7" stroke="#fff" stroke-width="1" opacity=".8"/></svg></div>';
  if(name==='WhatsApp')return '<div class="provider-logo provider-logo-whatsapp" aria-hidden="true">'+whatsAppMark(30,'#25D366')+'</div>';
@@ -1423,25 +1423,31 @@ async function loadAccounts(){
   }
   function integrations(){
  const ga=gaReady(),lookup=[
-  ['Analítica y contenidos',[
+  ['Analítica',[
    {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Este sitio aún no tiene estadísticas disponibles de Analytics.'},
    {name:'Google Search Console',info:'Consultas y posicionamiento SEO.',status:'Próximamente',details:'Necesita autorización de Google.'},
-   {name:'Google Business Profile',info:'Rendimiento de tu ficha en Google Maps y Búsqueda.',status:'Próximamente',details:'Próxima integración: búsquedas, llamadas, clics al sitio web y solicitudes de cómo llegar.'},
-   {name:'Facebook / Instagram orgánico',info:'Alcance y estadísticas de perfiles sociales.',status:'Próximamente',details:'Pendiente de permisos de páginas y perfiles.'}] ],
-  ['Publicidad',[
-   {name:'Meta Ads',info:'Facebook e Instagram Ads.'},
+   {name:'Google Business Profile',info:'Consultas y rendimiento de tu ficha de negocio en Google.',status:'Próximamente',details:'Requiere autorización oficial para consultar interacciones con el perfil de empresa.'}] ],
+  ['Publicidad digital',[
+   {name:'Meta Ads',info:'Publicidad de Facebook e Instagram.'},
    {name:'Google Ads',info:'Campañas de búsqueda, display y video.',status:'En desarrollo',details:'Autorización por empresa.'},
    {name:'TikTok Ads',info:'Anuncios y campañas en TikTok.',status:'Próximamente',details:'Permisos de TikTok Ads pendientes.'}] ],
-  ['Mensajería',[{name:'WhatsApp',info:'Conecta tu WhatsApp Business desde Edwin CRM.'}]],
+  ['Mensajería',[
+   {name:'WhatsApp',info:'Conecta tu WhatsApp Business desde Edwin CRM.'}] ],
   ['Ventas y e-commerce',[
-   {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'},
    {name:'Shopify',info:'Pedidos, catálogo y ventas de tienda.',status:'Próximamente',details:'Pendiente de conexión individual por tienda.'},
-   {name:'WooCommerce',info:'Pedidos y ventas de tu tienda WordPress.',status:'Próximamente',details:'Requiere conexión independiente a la API de WooCommerce.'}] ]
+   {name:'WooCommerce',info:'Pedidos y ventas de tu tienda WordPress.',status:'Próximamente',details:'Requiere conexión independiente a la API de WooCommerce.'},
+   {name:'Hotmart',info:'Ventas, productos, ingresos y reembolsos.',status:'Próximamente',details:'Cada negocio necesitará sus propias credenciales.'}] ],
+  ['Redes sociales y contenidos',[
+   {name:'Facebook',info:'Publicaciones, alcance e interacción de tu página.',status:'Próximamente',details:'Se necesita autorización de Meta para acceder a estadísticas orgánicas.'},
+   {name:'Instagram',info:'Reels, publicaciones e interacciones del perfil profesional.',status:'Próximamente',details:'Se necesita autorización de Meta para acceder a estadísticas orgánicas.'},
+   {name:'TikTok',info:'Contenido, visualizaciones e interacción de la cuenta.',status:'Próximamente',details:'Se necesita autorización oficial para consultar estadísticas orgánicas.'},
+   {name:'YouTube',info:'Videos, visualizaciones y rendimiento de tu canal.',status:'Próximamente',details:'Se necesita autorización de YouTube para consultar estadísticas.'}] ]
  ];
  const cardFor=(p)=>{
   const feature=businessFeatureKey(p.name);
-  if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader(p.name,'No incluida','neutral',p.name==='TikTok Ads'?'Publicidad digital':'')}<p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span>${plugButton('No incluida',null,true,p.name==='TikTok Ads'?'tiktok':'plug')}</div></article>`;
-  if(p.name='Google Analytics 4')return ga4Card();
+  const subtitle=feature==='social_organic'?'Contenido orgánico':p.name==='TikTok Ads'?'Publicidad digital':'';
+  if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader(p.name,'No incluida','neutral',subtitle)}<p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span>${plugButton('No incluida',null,true,p.name==='TikTok Ads'?'tiktok':'plug')}</div></article>`;
+  if(p.name==='Google Analytics 4')return ga4Card();
   if(p.name==='Meta Ads')return metaCard();
    if(p.name==='Google Ads')return googleAdsCard();
    if(p.name==='WhatsApp')return '<article class="integration-card provider-card" data-connected="false">'+
@@ -1451,7 +1457,7 @@ async function loadAccounts(){
      '<div class="integration-status">'+plugButton(state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp','wa-connect-guide',state.zernioBusy,'whatsapp')+
      '<span>El permiso se confirma en Meta. Si tu número usa otro proveedor, revisa antes su migración.</span></div></article>';
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
-   ${integrationHeader(p.name,p.status||'Pendiente',p.connected?'success':'neutral',p.name==='TikTok Ads'?'Publicidad digital':'')}<p>${clean(p.info)}</p>
+   ${integrationHeader(p.name,p.status||'Pendiente',p.connected?'success':'neutral',subtitle)}<p>${clean(p.info)}</p>
    <div class="integration-status"><span>${clean(p.details||'')}</span>${p.connected?'<button class="button button-outline integration-plug-action" data-act="nav" data-page="analytics">'+icon('plug',17)+' Ver datos</button>':plugButton('Próximamente',null,true,p.name==='TikTok Ads'?'tiktok':'plug')}</div>
   </article>`;
  };
