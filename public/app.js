@@ -519,7 +519,9 @@ function leadSummaryOverview(){
           '<button class="button button-primary connector-primary" data-act="google-ads-connect" '+(busy?'disabled':'')+'>'+adBrandIcon('googleads')+(state.googleAdsPopupActive?'Esperando autorización…':'Autorizar con Google')+'</button>'+
           '<p class="connector-small-note">Se abrirá la ventana oficial de Google para otorgar acceso de solo lectura.</p></div>';
       }else{
-        content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('Google Ads')+'</div><h3>Preparar Google Ads</h3><p>El administrador debe habilitar OAuth de Google Ads para esta empresa antes de autorizar la cuenta.</p><button class="button button-outline" disabled>Autorización pendiente de configuración</button></div>';
+        content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('Google Ads')+'</div><h3>'+(google.authorization_saved?'Reactivar Google Ads':'Preparar Google Ads')+'</h3><p>'+(google.authorization_saved?'Esta empresa ya tiene una autorización almacenada. No hace falta eliminarla ni volver a conectar: primero hay que recuperar la configuración segura del Worker.':'El administrador debe completar la configuración OAuth antes de autorizar una nueva cuenta.')+'</p>'+
+          oauthSetupDetails(google)+
+          '<button class="button button-outline" type="button" data-act="google-ads-check-status" '+(busy?'disabled':'')+'>Comprobar configuración</button></div>';
       }
     }else if(provider==='tiktok'){
       content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('TikTok Ads')+'</div><h3>TikTok Ads · Próximamente</h3><p>La integración oficial de TikTok Ads todavía no tiene instalador disponible en Edwin CRM.</p><button class="button button-outline" disabled>Conexión no disponible todavía</button><p class="connector-small-note">No se pedirán credenciales ni se mostrarán campañas ficticias.</p></div>';
@@ -1395,18 +1397,26 @@ async function loadAccounts(){
     finally{if(state.businessId===id){state.googleAdsBusy=false;render();}}
   }
   
+  function oauthSetupDetails(connection){
+    const names=Array.isArray(connection?.missing_config)?connection.missing_config.filter(k=>typeof k==='string'&&/^[A-Z0-9_]{3,64}$/.test(k)):[];
+    const codes=names.length?names.map(name=>'<code>'+clean(name)+'</code>').join(' '):'los secretos OAuth correspondientes';
+    return '<div class="google-config-guide"><strong>Configuración privada pendiente en Cloudflare</strong>'+
+      '<p>El administrador debe revisar <b>Workers & Pages → Settings → Variables and Secrets</b> y comprobar estas variables:</p>'+
+      '<div class="google-config-keys">'+codes+'</div>'+
+      '<p>No compartas valores ni captures secretos. Este diagnóstico no cambia ni borra conexiones existentes.</p></div>';
+  }
   function googleAdsCard(){
     const g=state.googleAds||{},on=!!g.connected,busy=!!state.googleAdsBusy,pending=!!state.googleAdsPopupActive,report=state.googleAdsReport,rows=report?.rows||[];
     const accounts=(state.googleAdsAccounts||[]).filter(x=>!x.manager);
     const options=accounts.map(x=>'<option value="'+clean(x.id)+'" '+(x.id===g.selected_customer_id?'selected':'')+'>'+clean(x.name||x.id)+' · '+clean(x.id)+'</option>').join('');
-    const caption=on?'Cuenta conectada · Consulta tus campañas desde Edwin CRM':g.configured?'Autoriza tu cuenta Google en una ventana pequeña, sin salir del dashboard.':'Esta conexión aún no está disponible para tu empresa.';
+    const caption=on?'Cuenta conectada · Consulta tus campañas desde Edwin CRM':g.configured?'Autoriza tu cuenta Google en una ventana pequeña, sin salir del dashboard.':g.authorization_saved?'Ya existe una autorización guardada para esta empresa. Falta reactivar la configuración segura del Worker.':'La autorización requiere completar primero la configuración segura de Cloudflare.';
     const controls=on?
       '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('plug',15)+' Acceso autorizado de solo lectura</span><label class="form-label">Cuenta publicitaria<select class="meta-select" id="google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label><div class="ga-buttons"><button class="button button-primary" data-act="google-ads-select" '+(busy||!accounts.length?'disabled':'')+'>Guardar cuenta</button><button class="button button-outline" data-act="google-ads-campaigns" '+(busy||!g.selected_customer_id?'disabled':'')+'>Ver campañas</button><button class="button button-soft" data-act="google-ads-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>'+(accounts.length?'':'<p class="ga-help">No se encontraron cuentas publicitarias autorizadas.</p>')+'</div>':
-      '<div class="ga-connect-panel"><button class="button button-primary ga-connect-button" data-act="campaign-open-installer" data-provider="google" '+(busy||pending?'disabled':'')+'>'+adBrandIcon('googleads')+(pending?'Esperando autorización…':'Conectar con Google Ads')+'</button><p class="ga-help">'+icon('lock',14)+' Acceso seguro y de solo lectura. No modificaremos tus anuncios.</p></div>';
+      '<div class="ga-connect-panel"><button class="button button-primary ga-connect-button" data-act="campaign-open-installer" data-provider="google" '+(busy||pending?'disabled':'')+'>'+adBrandIcon('googleads')+(pending?'Esperando autorización…':g.configured?'Conectar con Google Ads':'Revisar conexión Google Ads')+'</button><p class="ga-help">'+icon('lock',14)+' Acceso seguro y de solo lectura. No modificaremos tus anuncios.</p>'+(g.configured?'':oauthSetupDetails(g))+'</div>';
     const moneyAds=n=>report?.currency?money(n,report.currency):'—';
     const num=n=>n==null?'—':clean(String(n));
     const detail=report?(rows.length?'<div class="table-scroll ga-report-table"><table><thead><tr><th>Campaña</th><th>Inversión</th><th>Impresiones</th><th>Clics</th><th>CTR</th><th>CPC</th><th>Conversiones</th><th>Valor</th><th>ROAS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+moneyAds(r.spend)+'</td><td>'+fmt(r.impressions)+'</td><td>'+fmt(r.clicks)+'</td><td>'+num(r.ctr==null?null:r.ctr.toFixed(2)+'%')+'</td><td>'+num(r.cpc==null?null:moneyAds(r.cpc))+'</td><td>'+fmt1(r.conversions)+'</td><td>'+moneyAds(r.conversions_value)+'</td><td>'+num(r.roas==null?null:r.roas.toFixed(2)+'x')+'</td></tr>').join('')+'</tbody></table></div>':'<p class="ga-help">No hay campañas para el período elegido.</p>')+(report.partial?'<p class="fine-print">Informe parcial. Algunos resultados están pendientes.</p>':''):'';
-    return '<article class="integration-card provider-card ga-card" data-connected="'+on+'">'+integrationHeader('Google Ads',on?'Conectado':pending?'Autorizando':g.configured?'Disponible':'En preparación',on?'success':'neutral','Publicidad digital')+'<p class="ga-caption">'+clean(caption)+'</p>'+(state.googleAdsReturnMessage?alertBlock(state.googleAdsReturnMessage,'info'):'')+(state.googleAdsError?alertBlock(state.googleAdsError):'')+controls+(busy?'<p class="ga-help">Consultando Google Ads…</p>':'')+detail+'</article>';
+    return '<article class="integration-card provider-card ga-card" data-connected="'+on+'">'+integrationHeader('Google Ads',on?'Conectado':pending?'Autorizando':g.configured?'Disponible':'Activación pendiente',on?'success':'neutral','Publicidad digital')+'<p class="ga-caption">'+clean(caption)+'</p>'+(state.googleAdsReturnMessage?alertBlock(state.googleAdsReturnMessage,'info'):'')+(state.googleAdsError?alertBlock(state.googleAdsError):'')+controls+(busy?'<p class="ga-help">Consultando Google Ads…</p>':'')+detail+'</article>';
   }
 
   // Google Analytics 4 — per-business OAuth and property selection.
@@ -1467,12 +1477,12 @@ async function loadAccounts(){
     const g=state.ga4Connection||{},on=!!g.connected,busy=state.ga4ConnectionBusy,pending=state.ga4PopupActive,hasProperty=!!g.selected_property_id,siteAnalyticsReady=gaReady(),siteProperty=site()?.ga4_property_id||'',analyticsActive=hasProperty||siteAnalyticsReady;
     const list=state.ga4Properties||[];
     const options=list.map(x=>'<option value="'+clean(x.id)+'" '+(x.id===g.selected_property_id?'selected':'')+'>'+clean(x.name)+' · '+clean(x.account||'Google Analytics')+'</option>').join('');
-    const status=analyticsActive?'Conectado':on?'Elige propiedad':siteProperty?'Propiedad asignada':g.configured?'Disponible':'Por configurar';
+    const status=analyticsActive?'Conectado':on?'Elige propiedad':siteProperty?'Propiedad asignada':g.configured?'Disponible':'Activación pendiente';
     const detail=hasProperty?'Propiedad vinculada: '+clean(g.selected_property_name||g.selected_property_id):siteAnalyticsReady?'Esta web ya muestra datos reales de Google Analytics 4 en Edwin CRM.':siteProperty?'La web tiene una propiedad GA4 asignada; aún no se ha confirmado la recepción de datos.':'Autoriza tu cuenta de Google para importar estadísticas reales de tu sitio web.';
     const panel=siteAnalyticsReady&&!on?
       '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('check',15)+' Analítica disponible para esta web</span><div class="ga-buttons"><button type="button" class="button button-primary" data-act="nav" data-page="analytics">Ver analítica</button></div><p class="ga-help">La conexión OAuth individual es opcional cuando los datos de la web ya están disponibles.</p></div>':on?
       '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('plug',15)+' Cuenta Google autorizada (solo lectura)</span><label class="form-label">Propiedad de Analytics<select id="ga4-property" class="meta-select"><option value="">Selecciona tu web</option>'+options+'</select></label><div class="ga-buttons"><button type="button" class="button button-primary" data-act="ga4-select" '+(busy||!list.length?'disabled':'')+'>Guardar propiedad</button><button type="button" class="button button-outline" data-act="nav" data-page="analytics" '+(!hasProperty?'disabled':'')+'>Ver analítica</button><button type="button" class="button button-soft" data-act="ga4-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>'+(list.length?'':'<p class="ga-help">No encontramos propiedades. Comprueba que tu cuenta de Google tenga acceso a una propiedad GA4.</p>')+'</div>':
-      '<div class="ga-connect-panel"><button type="button" class="button button-primary ga-connect-button" data-act="ga4-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+icon('plug',18)+(pending?'Esperando Google…':'Conectar Google Analytics')+'</button><p class="ga-help">'+icon('lock',14)+' Permiso de lectura, independiente para cada empresa.</p>'+(g.configured?'':'<p class="ga-help">El administrador debe configurar OAuth de Google Analytics en Cloudflare y habilitar las API Data y Admin.</p>')+'</div>';
+      '<div class="ga-connect-panel"><button type="button" class="button button-primary ga-connect-button" data-act="ga4-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+icon('plug',18)+(pending?'Esperando Google…':'Conectar Google Analytics')+'</button><p class="ga-help">'+icon('lock',14)+' Permiso de lectura, independiente para cada empresa.</p>'+(g.configured?'':'<p class="ga-help">Para autorizar una nueva propiedad se deben habilitar las API Data y Admin de Google Analytics en Google Cloud.</p>'+oauthSetupDetails(g)+'<button type="button" class="button button-outline" data-act="ga4-check-status" '+(busy?'disabled':'')+'>Comprobar configuración</button>')+'</div>';
     return '<article class="integration-card provider-card ga-card" data-connected="'+analyticsActive+'">'+integrationHeader('Google Analytics 4',status,analyticsActive?'success':'neutral','Analítica web')+'<p class="ga-caption">'+detail+'</p>'+(state.ga4Notice?alertBlock(state.ga4Notice,'info'):'')+(state.ga4ConnectionError?alertBlock(state.ga4ConnectionError):'')+panel+'</article>';
   }
   function integrations(){
@@ -2026,6 +2036,7 @@ function sidebar(){
       }catch(error){if(state.businessId===current){state.metaError=error.message;state.campaignConnectionOpen=true;state.campaignWizardStage='confirm';render();}}
       finally{state.campaignAccountSaving=false;if(state.businessId===current)render();}
     }
+    else if(action==='ga4-check-status'&&!isAdmin()&&featureEnabled('ga4'))await loadGa4Connection();
     else if(action==='ga4-connect'&&!isAdmin()&&featureEnabled('ga4'))startGa4Popup();
     else if(action==='ga4-select'&&!isAdmin()&&featureEnabled('ga4')){
       const id=state.businessId,propertyId=document.getElementById('ga4-property')?.value||'';
@@ -2047,6 +2058,7 @@ function sidebar(){
       finally{if(id===state.businessId){state.ga4ConnectionBusy=false;render();}}
     }
     else if(action==='google-ads-connect'&&!isAdmin()&&featureEnabled('google_ads')&&state.googleAds?.configured)startGoogleAdsPopup();
+    else if(action==='google-ads-check-status'&&!isAdmin()&&featureEnabled('google_ads'))await loadGoogleAds();
     else if(action==='google-ads-select'&&!isAdmin()&&featureEnabled('google_ads')){
       const id=state.businessId,customerId=(document.getElementById('connector-google-ads-account')||document.getElementById('google-ads-account'))?.value||'';
       if(!customerId){state.googleAdsError='Selecciona una cuenta publicitaria.';render();return;}
