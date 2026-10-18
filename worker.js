@@ -464,7 +464,22 @@ async function handleApi(req, env) {
     try{const u=new URL(redirect);callback=u.protocol==='https:'&&u.origin===currentOrigin&&u.pathname==='/api/meta/callback'&&!u.search&&!u.hash;}catch{}
     const checks={app_id:!!env.META_APP_ID,app_secret:!!env.META_APP_SECRET,
       session_key:/^[0-9a-fA-F]{64}$/.test(env.META_SESSION_KEY||''),redirect:callback};
-    return json({meta:{configured:Object.values(checks).every(Boolean),checks,automatic_redirect:automatic,callback_url:callback?redirect:null},ga4:{service_account:!!env.GOOGLE_SERVICE_ACCOUNT_JSON,oauth_configured:!!(env.GOOGLE_ANALYTICS_CLIENT_ID&&env.GOOGLE_ANALYTICS_CLIENT_SECRET&&/^[a-f0-9]{64}$/i.test(env.GOOGLE_ANALYTICS_ENCRYPTION_KEY||''))}},200,s.cookies);
+    // Only expose booleans and callback URLs. Never return credentials or tokens.
+    const ga4Checks={
+      client_id:!!env.GOOGLE_ANALYTICS_CLIENT_ID,
+      client_secret:!!env.GOOGLE_ANALYTICS_CLIENT_SECRET,
+      encryption_key:/^[a-f0-9]{64}$/i.test(env.GOOGLE_ANALYTICS_ENCRYPTION_KEY||'')
+    };
+    const adsChecks={
+      client_id:!!env.GOOGLE_ADS_CLIENT_ID,
+      client_secret:!!env.GOOGLE_ADS_CLIENT_SECRET,
+      encryption_key:/^[a-f0-9]{64}$/i.test(env.GOOGLE_ADS_ENCRYPTION_KEY||'')
+    };
+    return json({
+      meta:{configured:Object.values(checks).every(Boolean),checks,automatic_redirect:automatic,callback_url:callback?redirect:null},
+      ga4:{service_account:!!env.GOOGLE_SERVICE_ACCOUNT_JSON,oauth_configured:Object.values(ga4Checks).every(Boolean),checks:ga4Checks,callback_url:currentOrigin+'/api/ga4/callback'},
+      google_ads:{oauth_configured:Object.values(adsChecks).every(Boolean),checks:adsChecks,callback_url:currentOrigin+'/api/google-ads/callback'}
+    },200,s.cookies);
   }
 
   if (path === '/api/businesses' && method === 'GET') {
