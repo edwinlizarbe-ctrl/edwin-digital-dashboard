@@ -1336,3 +1336,55 @@ input,select,textarea{max-width:100%}
     width:50px;height:50px;min-width:50px;
   }
 }
+
+
+/* Integraciones: iconos sociales en paralelo, nunca en pila ni recortados.
+   Mayor especificidad que .provider-logo {display:grid} y los tamaños anteriores. */
+.provider-logo.provider-logo-duo{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  padding:3px;
+}
+.integration-section .integration-brand-head>.provider-logo.provider-logo-duo{
+  display:flex;
+  flex-direction:row;
+  grid-area:brand-icon;
+  align-items:center;
+  justify-content:center;
+  width:56px;
+  height:56px;
+  min-width:56px;
+  flex:0 0 56px;
+  gap:3px;
+  padding:3px;
+  overflow:hidden;
+}
+.integration-section .integration-brand-head>.provider-logo.provider-logo-duo img{
+  display:block;
+  width:23px!important;
+  height:23px!important;
+  min-width:23px;
+  max-width:23px;
+  flex:0 0 23px;
+  object-fit:contain;
+}
+@media(max-width:620px){
+  .integration-section .integration-brand-head>.provider-logo.provider-logo-duo{
+    width:50px;
+    height:50px;
+    min-width:50px;
+    flex-basis:50px;
+    gap:2px;
+    padding:2px;
+  }
+  .integration-section .integration-brand-head>.provider-logo.provider-logo-duo img{
+    width:21px!important;
+    height:21px!important;
+    min-width:21px;
+    max-width:21px;
+    flex-basis:21px;
+  }
+}
