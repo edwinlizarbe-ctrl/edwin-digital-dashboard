@@ -1073,7 +1073,7 @@ function adminPermissionsPanel(){
  ${m.automatic_redirect?'<p class="fine-print">La URL de retorno del Worker se detecta automáticamente. Para permitir conexiones de clientes, debe figurar en Meta for Developers → Facebook Login → URI de redireccionamiento OAuth válidos. No es necesario configurar esa URL por cada cliente.</p>':''}
  ${m.configured?'<p class="fine-print">Las credenciales de plataforma están disponibles. Para que cualquier cliente externo conecte su propia cuenta, la aplicación de Meta también debe tener los permisos aprobados y estar en el modo apropiado; cada cliente autoriza mediante Facebook Login.</p>':''}
  `)}
- ${services.map(([title,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${providers.length} plataformas</span></div>
+ ${services.map(([title,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${providers.length} ${providers.length===1?'plataforma':'plataformas'}</span></div>
  <div class="integration-grid">${providers.map(([name,description])=>`<article class="integration-card provider-card"><div class="integration-head">${providerLogo(name)}${tag(name==='Meta Ads'?metaLabel:name==='Google Analytics 4'?'Disponible por propiedad':'Próximamente',name==='Meta Ads'&&m.configured?'success':'neutral')}</div><h3>${clean(name)}</h3><p>${clean(description)}</p></article>`).join('')}</div></section>`).join('')}`;
 }
   async function loadAdminHealth(){
@@ -1451,7 +1451,7 @@ async function loadAccounts(){
  return `${state.campaignConnectionOpen?campaignMetaSetup():''}${heading('Mis conexiones','Integraciones de mi empresa','Conecta tus plataformas una vez y consulta los datos autorizados en sus paneles.')}
  <div class="integration-filter-bar"><label class="admin-search">${icon('search',18)}<input type="search" id="integration-search" placeholder="Buscar plataforma…" aria-label="Buscar integración"/></label>
  <label class="company-checkbox"><input id="integration-only-connected" type="checkbox"/> Solo conectadas</label></div>
- ${lookup.map(([group,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(group)}</h2><span>${providers.length} plataformas</span></div>
+ ${lookup.map(([group,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(group)}</h2><span>${providers.length} ${providers.length===1?'plataforma':'plataformas'}</span></div>
  <div class="integration-grid">${providers.map(cardFor).join('')}</div></section>`).join('')}
  <p class="fine-print">Las conexiones marcadas «Próximamente» todavía no tienen acceso a su API y no mostrarán datos ficticios. Meta Ads requiere que la plataforma esté autorizada en Cloudflare y Meta for Developers.</p>`;
 }
