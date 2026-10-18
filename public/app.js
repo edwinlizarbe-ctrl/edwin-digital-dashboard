@@ -510,7 +510,7 @@ function leadSummaryOverview(){
         content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('Google Ads')+'</div><h3>Google Ads no incluido</h3><p>Esta conexión no está habilitada para tu empresa. Solicita acceso al administrador.</p></div>';
       }else if(googleOn){
         content='<div class="connector-form-heading"><div><h3>Configurar Google Ads</h3><p>El acceso está autorizado. Selecciona tu cuenta publicitaria.</p></div><span class="connector-account-total">Conectado</span></div>'+
-          '<label class="form-label connector-google-label">Cuenta publicitaria<select class="meta-select" id="google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label>'+
+          '<label class="form-label connector-google-label">Cuenta publicitaria<select class="meta-select" id="connector-google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label>'+
           (accounts.length?'':'<p class="connector-small-note">Google no devolvió cuentas. Revisa tus permisos.</p>')+
           '<div class="connector-privacy"><b>Solo lectura</b><p>Se consultan datos autorizados sin modificar anuncios ni presupuestos.</p></div>'+
           '<div class="connector-form-actions"><button class="button button-outline" data-act="google-ads-connect" '+(busy?'disabled':'')+'>Volver a autorizar</button><button class="button button-primary" data-act="google-ads-select" '+(busy||!accounts.length?'disabled':'')+'>Guardar cuenta</button><button class="button button-outline" data-act="connector-google-view-campaigns" '+(!google.selected_customer_id?'disabled':'')+'>Ver campañas</button></div>';
@@ -2023,7 +2023,7 @@ function sidebar(){
     }
     else if(action==='google-ads-connect'&&!isAdmin()&&featureEnabled('google_ads')&&state.googleAds?.configured)startGoogleAdsPopup();
     else if(action==='google-ads-select'&&!isAdmin()&&featureEnabled('google_ads')){
-      const id=state.businessId,customerId=document.getElementById('google-ads-account')?.value||'';
+      const id=state.businessId,customerId=(document.getElementById('connector-google-ads-account')||document.getElementById('google-ads-account'))?.value||'';
       if(!customerId){state.googleAdsError='Selecciona una cuenta publicitaria.';render();return;}
       state.googleAdsBusy=true;state.googleAdsError='';render();
       try{await api('/api/google-ads/select?business_id='+encodeURIComponent(id),{method:'POST',body:JSON.stringify({customer_id:customerId})});if(id===state.businessId){state.googleAdsReport=null;await loadGoogleAds();}}
