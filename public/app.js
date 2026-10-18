@@ -1084,6 +1084,29 @@ function adminPermissionsPanel(){
  const health=state.adminHealth||{},m=health.meta||{},checks=m.checks||{};
  const failed=[['app_id','META_APP_ID'],['app_secret','META_APP_SECRET'],['redirect','META_REDIRECT_URI'],['session_key','META_SESSION_KEY']].filter(([key])=>!checks[key]).map(([,name])=>name);
  const metaLabel=!state.adminHealth?'Sin verificar':m.configured?'Configuración detectada':'Configuración incompleta';
+ const ga4Health=health.ga4||{},adsHealth=health.google_ads||{},healthKnown=!!state.adminHealth;
+ const healthLabel=ok=>!healthKnown?'Sin verificar':ok?'OAuth preparado':'Falta configuración';
+ const ga4Missing=[['client_id','GOOGLE_ANALYTICS_CLIENT_ID'],['client_secret','GOOGLE_ANALYTICS_CLIENT_SECRET'],['encryption_key','GOOGLE_ANALYTICS_ENCRYPTION_KEY']].filter(([key])=>!ga4Health.checks?.[key]).map(([,name])=>name);
+ const adsMissing=[['client_id','GOOGLE_ADS_CLIENT_ID'],['client_secret','GOOGLE_ADS_CLIENT_SECRET'],['encryption_key','GOOGLE_ADS_ENCRYPTION_KEY']].filter(([key])=>!adsHealth.checks?.[key]).map(([,name])=>name);
+ const googleDiagnostic=card('Google Analytics 4 y Google Ads','Verifica únicamente la configuración privada del Worker. No revela contraseñas ni prueba el acceso a cuentas reales.',`
+  <div class="google-oauth-health">
+   <div class="admin-setup-guide">
+    <strong>Google Analytics 4</strong>
+    <p>${tag(healthLabel(ga4Health.oauth_configured),ga4Health.oauth_configured?'success':'neutral')} Permisos de lectura por empresa.</p>
+    ${healthKnown&&!ga4Health.oauth_configured?'<p>Falta configurar en Cloudflare: <code>'+clean(ga4Missing.join(', '))+'</code>.</p>':''}
+    <p>En Google Cloud, habilita Google Analytics Data API y Admin API y registra esta URI de redirección OAuth:</p>
+    <div class="admin-callback-row"><code>${clean(ga4Health.callback_url||location.origin+'/api/ga4/callback')}</code></div>
+   </div>
+   <div class="admin-setup-guide">
+    <strong>Google Ads</strong>
+    <p>${tag(healthLabel(adsHealth.oauth_configured),adsHealth.oauth_configured?'success':'neutral')} Autorización OAuth y acceso a Google Ads API por confirmar.</p>
+    ${healthKnown&&!adsHealth.oauth_configured?'<p>Falta configurar en Cloudflare: <code>'+clean(adsMissing.join(', '))+'</code>.</p>':''}
+    <p>En el cliente OAuth de Google Cloud, registra esta URI de redirección:</p>
+    <div class="admin-callback-row"><code>${clean(adsHealth.callback_url||location.origin+'/api/google-ads/callback')}</code></div>
+   </div>
+  </div>
+  <p class="fine-print">«OAuth preparado» significa que las variables están presentes y la clave de cifrado tiene el formato correcto. Debes completar la autorización con Google y comprobar una propiedad o cuenta real desde el acceso de cliente.</p>
+ `);
  const services=[['Analítica y contenidos',[
   ['Google Analytics 4','Consultas disponibles si existe propiedad y cuenta de servicio autorizada.'],
   ['Google Search Console','Autorización oficial pendiente.'],['Facebook / Instagram orgánico','Autorización de páginas y perfiles pendiente.']]],
@@ -1102,6 +1125,7 @@ function adminPermissionsPanel(){
  ${m.automatic_redirect?'<p class="fine-print">La URL de retorno del Worker se detecta automáticamente. Para permitir conexiones de clientes, debe figurar en Meta for Developers → Facebook Login → URI de redireccionamiento OAuth válidos. No es necesario configurar esa URL por cada cliente.</p>':''}
  ${m.configured?'<p class="fine-print">Las credenciales de plataforma están disponibles. Para que cualquier cliente externo conecte su propia cuenta, la aplicación de Meta también debe tener los permisos aprobados y estar en el modo apropiado; cada cliente autoriza mediante Facebook Login.</p>':''}
  `)}
+ ${googleDiagnostic}
  ${services.map(([title,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(title)}</h2><span>${providers.length} ${providers.length===1?'plataforma':'plataformas'}</span></div>
  <div class="integration-grid">${providers.map(([name,description])=>`<article class="integration-card provider-card"><div class="integration-head">${providerLogo(name)}${tag(name==='Meta Ads'?metaLabel:name==='Google Analytics 4'?'Disponible por propiedad':'Próximamente',name==='Meta Ads'&&m.configured?'success':'neutral')}</div><h3>${clean(name)}</h3><p>${clean(description)}</p></article>`).join('')}</div></section>`).join('')}`;
 }
