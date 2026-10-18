@@ -990,7 +990,7 @@ function reportExtras(){
 const businessFeatureLabels=[
  ['ga4','Google Analytics 4'],['search_console','Google Search Console'],
  ['social_organic','Facebook / Instagram orgánico'],['hotmart','Hotmart'],['shopify','Shopify'],
- ['meta_ads','Meta Ads'],['google_ads','Google Ads'],['tiktok_ads','TikTok Ads'],['linkedin_ads','LinkedIn Ads']
+ ['meta_ads','Meta Ads'],['google_ads','Google Ads'],['tiktok_ads','TikTok Ads']
 ];
 const businessFeatureKey=name=>({
  'Google Analytics 4':'ga4','Google Search Console':'search_console',
