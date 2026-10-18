@@ -1572,3 +1572,77 @@ input,select,textarea{max-width:100%}
   .integration-section .wa-onboard-connect{width:100%}
   .wa-connect-dialog{padding:18px}
 }
+
+/* Ads connector installer 2026-10-17: navigable three-platform picker. */
+.ads-modal-shell.connector-windsor .connector-provider{
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  border:1px solid transparent;
+  background:transparent;
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+  transition:background .16s,border-color .16s;
+}
+.ads-modal-shell.connector-windsor .connector-provider.selected{
+  border-color:#d5e2ff;
+  background:#edf2ff;
+}
+.ads-modal-shell.connector-windsor .connector-provider:not(.selected):hover{
+  background:#f3f6fd;
+  border-color:#e4eaf5;
+}
+.ads-modal-shell.connector-windsor .connector-provider:focus-visible{
+  outline:2px solid #2563EB;
+  outline-offset:2px;
+}
+.ads-modal-shell.connector-windsor .connector-provider:disabled{
+  opacity:.62;
+  cursor:not-allowed;
+}
+.ads-modal-shell.connector-windsor .connector-google-label{
+  margin:14px 0 18px;
+  color:#26384f;
+  max-width:580px;
+}
+.ads-modal-shell.connector-windsor .connector-google-label select{
+  display:block;
+  width:100%;
+  max-width:none;
+  margin:9px 0 0;
+  min-height:44px;
+  background:#fff;
+  color:#26384f;
+}
+.ads-modal-shell.connector-windsor .connector-form-actions .button{
+  white-space:normal;
+}
+@media(max-width:680px){
+  .ads-modal-shell.connector-windsor .connector-sidebar{
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .ads-modal-shell.connector-windsor .connector-provider{
+    flex:1 1 auto;
+    width:auto;
+    min-width:102px;
+    padding:6px 9px;
+    margin:0;
+  }
+  .ads-modal-shell.connector-windsor .connector-provider small{
+    display:none;
+  }
+  .ads-modal-shell.connector-windsor .connector-provider .provider-logo{
+    width:27px;
+    height:27px;
+    flex-basis:27px;
+  }
+  .ads-modal-shell.connector-windsor .connector-provider .provider-logo img{
+    width:21px;
+    height:21px;
+  }
+  .ads-modal-shell.connector-windsor .connector-selected-mark{
+    display:none;
+  }
+}
