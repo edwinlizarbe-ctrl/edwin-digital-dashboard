@@ -1388,3 +1388,37 @@ input,select,textarea{max-width:100%}
     flex-basis:21px;
   }
 }
+
+
+/* Advertising actions: brand marks contrast clearly on blue connect buttons.
+   Applies only where Meta Ads, Google Ads or TikTok Ads explicitly opt in. */
+.integration-action-mark{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 26px;
+  width:26px;
+  height:26px;
+  padding:4px;
+  border-radius:50%;
+  background:#fff;
+  border:1px solid rgba(14,42,83,.08);
+}
+.integration-action-mark img{
+  display:block;
+  width:18px;
+  height:18px;
+  object-fit:contain;
+}
+.integration-plug-action .integration-action-mark,
+.ga-connect-button .integration-action-mark{
+  margin-right:2px;
+}
+.integration-section .integration-grid:has(> .provider-card:nth-child(4):last-child){
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+@media(max-width:630px){
+  .integration-section .integration-grid:has(> .provider-card:nth-child(4):last-child){
+    grid-template-columns:1fr;
+  }
+}
