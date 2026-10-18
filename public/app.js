@@ -11,7 +11,7 @@
     mobileOpen: false, campaignsMenuOpen: false, salesMenuOpen: false, salesSource: 'overview', sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', profileNotice: '', profileSaved: false, loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
-    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsBestOnly: false, adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
+    metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsBestOnly: false, adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignConnectorProvider: 'meta', campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
     emailBusy: false, emailError: '', emailNotice: '',
     accent: (localStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(localStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: localStorage.getItem('ed-sidebar-v7')==='white' ? 'white' : 'navy',
@@ -480,26 +480,51 @@ function leadSummaryOverview(){
     }
     const stage=state.campaignWizardStage==='confirm'&&connected?'confirm':connected?'accounts':'authorize';
     const chosen=state.campaignWizardSelectedIds||saved;
+
+    const provider=['meta','google','tiktok'].includes(state.campaignConnectorProvider)?state.campaignConnectorProvider:'meta';
+    const google=state.googleAds||{},googleOn=!!google.connected;
+    const providerNames={meta:'Meta Ads',google:'Google Ads',tiktok:'TikTok Ads'};
     const providerItems=[
-      {name:'Meta Ads',logo:'Meta Ads',active:true,sub:'Facebook e Instagram'},
-      {name:'Google Ads',logo:'Google Ads',sub:'Próximamente'},
-      {name:'TikTok Ads',logo:'TikTok Ads',sub:'Próximamente'},
-      {name:'LinkedIn Ads',logo:'LinkedIn Ads',sub:'Próximamente'},
-      {name:'Google Analytics 4',logo:'Google Analytics 4',sub:'Desde Integraciones'}
+      {key:'meta',name:'Meta Ads',sub:connected?'Conectado':'Facebook e Instagram'},
+      {key:'google',name:'Google Ads',sub:googleOn?'Conectado':google.configured?'Disponible':'Ver configuración'},
+      {key:'tiktok',name:'TikTok Ads',sub:'Próximamente'}
     ];
-    const catalogue='<aside class="connector-sidebar"><div class="connector-sidebar-title">Conexiones</div>'+
-      '<label class="connector-provider-search"><span>'+icon('search',17)+'</span><input id="campaign-provider-search" type="search" placeholder="Buscar plataformas" aria-label="Buscar plataforma"/></label>'+
-      '<div class="connector-provider-group">PUBLICIDAD</div>'+
-      providerItems.slice(0,4).map(p=>'<div class="connector-provider '+(p.active?'selected':'pending')+'" data-provider-name="'+clean(p.name.toLowerCase())+'">'+providerLogo(p.logo)+'<span><b>'+clean(p.name)+'</b><small>'+clean(p.sub)+'</small></span>'+(p.active?'<span class="connector-selected-mark" aria-hidden="true">✓</span>':'')+'</div>').join('')+
-      '<div class="connector-provider-group">ANALÍTICA</div>'+
-      providerItems.slice(4).map(p=>'<div class="connector-provider pending" data-provider-name="'+clean(p.name.toLowerCase())+'">'+providerLogo(p.logo)+'<span><b>'+clean(p.name)+'</b><small>'+clean(p.sub)+'</small></span></div>').join('')+
-      '<p class="connector-sidebar-foot">Las demás plataformas se conectarán cuando estén disponibles sus APIs oficiales.</p></aside>';
-    const progress='<div class="connector-progress">'+
+    const catalogue='<aside class="connector-sidebar" aria-label="Plataformas publicitarias"><div class="connector-sidebar-title">Conexiones</div>'+
+      '<label class="connector-provider-search">'+icon('search',17)+'<input id="campaign-provider-search" type="search" placeholder="Buscar plataformas" aria-label="Buscar plataforma"/></label>'+
+      '<div class="connector-provider-group">PUBLICIDAD DIGITAL</div>'+
+      providerItems.map(p=>'<button type="button" class="connector-provider '+(provider===p.key?'selected':'')+'" data-act="connector-provider-select" data-provider="'+p.key+'" data-provider-name="'+clean(p.name.toLowerCase())+'" aria-pressed="'+(provider===p.key?'true':'false')+'">'+providerLogo(p.name)+'<span><b>'+clean(p.name)+'</b><small>'+clean(p.sub)+'</small></span>'+(provider===p.key?'<span class="connector-selected-mark" aria-hidden="true">✓</span>':'')+'</button>').join('')+
+      '<p class="connector-sidebar-foot">Selecciona una plataforma para ver sus pasos de conexión. TikTok Ads aún no está disponible.</p></aside>';
+
+    const progress=provider==='meta'?'<div class="connector-progress">'+
       [['1','Autorizar Facebook',connected],['2','Elegir cuentas',stage==='confirm'||saved.length>0],['3','Confirmar conexión',stage==='confirm'||saved.length>0]].map(([n,t,done],i)=>
        '<span class="connector-progress-step '+(done?'done':((stage==='authorize'&&i===0)||(stage==='accounts'&&i===1)||(stage==='confirm'&&i===2)?'current':''))+'"><i>'+n+'</i>'+t+'</span>').join('')+
-      '</div>';
+      '</div>':provider==='google'?'<div class="connector-progress">'+
+      [['1','Autorizar Google',googleOn],['2','Elegir cuenta',!!google.selected_customer_id],['3','Consultar campañas',!!state.googleAdsReport]].map(([n,t,done],i)=>
+       '<span class="connector-progress-step '+(done?'done':(i===(!googleOn?0:!google.selected_customer_id?1:2)?'current':''))+'"><i>'+n+'</i>'+t+'</span>').join('')+
+      '</div>':'';
     let content='';
-    if(state.metaLoading){
+    if(provider==='google'){
+      const allowed=featureEnabled('google_ads'),busy=!!state.googleAdsBusy||!!state.googleAdsPopupActive;
+      const accounts=(state.googleAdsAccounts||[]).filter(a=>!a.manager);
+      const options=accounts.map(a=>'<option value="'+clean(a.id)+'" '+(a.id===google.selected_customer_id?'selected':'')+'>'+clean(a.name||a.id)+' · '+clean(a.id)+'</option>').join('');
+      if(!allowed){
+        content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('Google Ads')+'</div><h3>Google Ads no incluido</h3><p>Esta conexión no está habilitada para tu empresa. Solicita acceso al administrador.</p></div>';
+      }else if(googleOn){
+        content='<div class="connector-form-heading"><div><h3>Configurar Google Ads</h3><p>El acceso está autorizado. Selecciona tu cuenta publicitaria.</p></div><span class="connector-account-total">Conectado</span></div>'+
+          '<label class="form-label connector-google-label">Cuenta publicitaria<select class="meta-select" id="google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label>'+
+          (accounts.length?'':'<p class="connector-small-note">Google no devolvió cuentas. Revisa tus permisos.</p>')+
+          '<div class="connector-privacy"><b>Solo lectura</b><p>Se consultan datos autorizados sin modificar anuncios ni presupuestos.</p></div>'+
+          '<div class="connector-form-actions"><button class="button button-outline" data-act="google-ads-connect" '+(busy?'disabled':'')+'>Volver a autorizar</button><button class="button button-primary" data-act="google-ads-select" '+(busy||!accounts.length?'disabled':'')+'>Guardar cuenta</button><button class="button button-outline" data-act="connector-google-view-campaigns" '+(!google.selected_customer_id?'disabled':'')+'>Ver campañas</button></div>';
+      }else if(google.configured){
+        content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('Google Ads')+'</div><h3>Autorizar Google Ads</h3><p>Conecta tu cuenta de Google para seleccionar una cuenta publicitaria y consultar sus campañas.</p>'+
+          '<button class="button button-primary connector-primary" data-act="google-ads-connect" '+(busy?'disabled':'')+'>'+adBrandIcon('googleads')+(state.googleAdsPopupActive?'Esperando autorización…':'Autorizar con Google')+'</button>'+
+          '<p class="connector-small-note">Se abrirá la ventana oficial de Google para otorgar acceso de solo lectura.</p></div>';
+      }else{
+        content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('Google Ads')+'</div><h3>Preparar Google Ads</h3><p>El administrador debe habilitar OAuth de Google Ads para esta empresa antes de autorizar la cuenta.</p><button class="button button-outline" disabled>Autorización pendiente de configuración</button></div>';
+      }
+    }else if(provider==='tiktok'){
+      content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('TikTok Ads')+'</div><h3>TikTok Ads · Próximamente</h3><p>La integración oficial de TikTok Ads todavía no tiene instalador disponible en Edwin CRM.</p><button class="button button-outline" disabled>Conexión no disponible todavía</button><p class="connector-small-note">No se pedirán credenciales ni se mostrarán campañas ficticias.</p></div>';
+    }else if(state.metaLoading){
       content='<div class="connector-loader" role="status"><span class="spinner"></span><strong>Consultando tu conexión con Meta…</strong><p>Solo cargaremos las cuentas que Facebook haya autorizado.</p></div>';
     }else if(!ready){
       content='<div class="connector-message-panel"><div class="connector-meta-symbol">'+providerLogo('Meta Ads')+'</div><h3>Conectar tu cuenta de Facebook</h3>'+
@@ -533,13 +558,14 @@ function leadSummaryOverview(){
     }
     const body='<div class="connector-content"><div class="connector-context"><span>INTEGRACIONES / PUBLICIDAD</span>'+
        '<button type="button" class="connector-close" data-act="campaign-connect-toggle" aria-label="Cerrar conexión">'+icon('close',20)+'</button></div>'+
-       '<div class="connector-topline">'+providerLogo('Meta Ads')+'<span><b>Meta Ads</b><small>'+clean(displayBusiness())+'</small></span></div>'+
+       '<div class="connector-topline">'+providerLogo(providerNames[provider])+'<span><b>'+clean(providerNames[provider])+'</b><small>'+clean(displayBusiness())+'</small></span></div>'+
        progress+
-       (state.metaError?alertBlock(state.metaError):'')+
-       (state.campaignAccountNotice?'<div class="company-message" role="status">'+clean(state.campaignAccountNotice)+'</div>':'')+
+       (provider==='meta'&&state.metaError?alertBlock(state.metaError):'')+
+       (provider==='google'&&state.googleAdsError?alertBlock(state.googleAdsError):'')+
+       (provider==='meta'&&state.campaignAccountNotice?'<div class="company-message" role="status">'+clean(state.campaignAccountNotice)+'</div>':'')+
        '<div class="connector-main">'+content+'</div></div>';
     return '<div class="ads-modal-backdrop" data-act="campaign-connect-toggle" aria-hidden="true"></div>'+
-     '<div class="ads-modal-shell connector-windsor" role="dialog" aria-modal="true" aria-label="Conectar Meta Ads">'+
+     '<div class="ads-modal-shell connector-windsor" role="dialog" aria-modal="true" aria-label="Configurar integración publicitaria">'+
      '<div class="connector-layout">'+catalogue+body+'</div></div>';
   }
 
@@ -1349,7 +1375,7 @@ async function loadAccounts(){
     const caption=on?'Cuenta conectada · Consulta tus campañas desde Edwin CRM':g.configured?'Autoriza tu cuenta Google en una ventana pequeña, sin salir del dashboard.':'Esta conexión aún no está disponible para tu empresa.';
     const controls=on?
       '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('plug',15)+' Acceso autorizado de solo lectura</span><label class="form-label">Cuenta publicitaria<select class="meta-select" id="google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label><div class="ga-buttons"><button class="button button-primary" data-act="google-ads-select" '+(busy||!accounts.length?'disabled':'')+'>Guardar cuenta</button><button class="button button-outline" data-act="google-ads-campaigns" '+(busy||!g.selected_customer_id?'disabled':'')+'>Ver campañas</button><button class="button button-soft" data-act="google-ads-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>'+(accounts.length?'':'<p class="ga-help">No se encontraron cuentas publicitarias autorizadas.</p>')+'</div>':
-      '<div class="ga-connect-panel"><button class="button button-primary ga-connect-button" data-act="google-ads-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+adBrandIcon('googleads')+(pending?'Esperando autorización…':'Conectar con Google Ads')+'</button><p class="ga-help">'+icon('lock',14)+' Acceso seguro y de solo lectura. No modificaremos tus anuncios.</p></div>';
+      '<div class="ga-connect-panel"><button class="button button-primary ga-connect-button" data-act="campaign-open-installer" data-provider="google" '+(busy||pending?'disabled':'')+'>'+adBrandIcon('googleads')+(pending?'Esperando autorización…':'Conectar con Google Ads')+'</button><p class="ga-help">'+icon('lock',14)+' Acceso seguro y de solo lectura. No modificaremos tus anuncios.</p></div>';
     const moneyAds=n=>report?.currency?money(n,report.currency):'—';
     const num=n=>n==null?'—':clean(String(n));
     const detail=report?(rows.length?'<div class="table-scroll ga-report-table"><table><thead><tr><th>Campaña</th><th>Inversión</th><th>Impresiones</th><th>Clics</th><th>CTR</th><th>CPC</th><th>Conversiones</th><th>Valor</th><th>ROAS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+moneyAds(r.spend)+'</td><td>'+fmt(r.impressions)+'</td><td>'+fmt(r.clicks)+'</td><td>'+num(r.ctr==null?null:r.ctr.toFixed(2)+'%')+'</td><td>'+num(r.cpc==null?null:moneyAds(r.cpc))+'</td><td>'+fmt1(r.conversions)+'</td><td>'+moneyAds(r.conversions_value)+'</td><td>'+num(r.roas==null?null:r.roas.toFixed(2)+'x')+'</td></tr>').join('')+'</tbody></table></div>':'<p class="ga-help">No hay campañas para el período elegido.</p>')+(report.partial?'<p class="fine-print">Informe parcial. Algunos resultados están pendientes.</p>':''):'';
@@ -1923,7 +1949,25 @@ function sidebar(){
     else if(action==='edit-site-cancel'){state.editSiteId='';state.siteError='';render();}
     else if(action==='company-logo-clear'){state.companyLogoClear=true;state.companyLogoDraft=null;state.companyNotice='';render();}
     else if(action==='meta-panel-toggle'){state.metaPanelOpen=!state.metaPanelOpen;render();}
+    else if(action==='connector-provider-select'&&!isAdmin()){
+      const provider=b.dataset.provider;
+      if(!state.campaignConnectionOpen||!['meta','google','tiktok'].includes(provider))return;
+      state.campaignConnectorProvider=provider;render();
+      if(provider==='google'&&featureEnabled('google_ads')&&!state.googleAdsBusy)await loadGoogleAds();
+    }
+    else if(action==='campaign-open-installer'&&!isAdmin()){
+      const provider=b.dataset.provider;
+      if(!['meta','google','tiktok'].includes(provider))return;
+      state.campaignConnectorProvider=provider;state.campaignConnectionOpen=true;
+      state.campaignWizardStage='accounts';state.campaignWizardSelectedIds=null;render();
+      if(provider==='google'&&featureEnabled('google_ads'))await loadGoogleAds();
+    }
+    else if(action==='connector-google-view-campaigns'&&!isAdmin()&&featureEnabled('google_ads')){
+      state.campaignConnectionOpen=false;state.page='campaigns';state.adsPlatform='google';state.adsLevel='campaign';
+      render();await loadGoogleAdsReport();
+    }
     else if(action==='campaign-connect-toggle'){
+      if(!state.campaignConnectionOpen)state.campaignConnectorProvider='meta';
       state.campaignConnectionOpen=!state.campaignConnectionOpen;
       state.campaignAccountNotice='';state.metaError='';
       state.campaignWizardStage='accounts';state.campaignWizardSelectedIds=null;
