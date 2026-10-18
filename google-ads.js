@@ -26,7 +26,15 @@ function popupCompleted(req,result,businessId,cookies=[]){
  for(const cookie of cookies)h.append('Set-Cookie',cookie);
  return new Response(html,{status:200,headers:h});
 }
-function ready(env){return !!(env.GOOGLE_ADS_CLIENT_ID&&env.GOOGLE_ADS_CLIENT_SECRET&&env.SUPABASE_SERVICE_ROLE_KEY&&/^[a-f0-9]{64}$/i.test(env.GOOGLE_ADS_ENCRYPTION_KEY||''));}
+function missingConfig(env){
+ const missing=[];
+ if(!env.GOOGLE_ADS_CLIENT_ID)missing.push('GOOGLE_ADS_CLIENT_ID');
+ if(!env.GOOGLE_ADS_CLIENT_SECRET)missing.push('GOOGLE_ADS_CLIENT_SECRET');
+ if(!env.SUPABASE_SERVICE_ROLE_KEY)missing.push('SUPABASE_SERVICE_ROLE_KEY');
+ if(!/^[a-f0-9]{64}$/i.test(env.GOOGLE_ADS_ENCRYPTION_KEY||''))missing.push('GOOGLE_ADS_ENCRYPTION_KEY');
+ return missing;
+}
+function ready(env){return missingConfig(env).length===0;}
 async function oauthToken(env,values){const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.GOOGLE_ADS_CLIENT_ID,client_secret:env.GOOGLE_ADS_CLIENT_SECRET,...values})});if(!r.ok)throw Error('Google rechazó la autorización (HTTP '+r.status+').');return r.json();}
 async function access(env,row){const t=await oauthToken(env,{grant_type:'refresh_token',refresh_token:(await unseal(env,row.refresh_token_cipher))?.refresh_token||''});if(!t.access_token)throw Error('No se pudo renovar el acceso. Vuelve a conectar Google Ads.');return t.access_token;}
 async function ads(env,path,token,post,loginCustomerId){const h={Authorization:'Bearer '+token,Accept:'application/json'};if(loginCustomerId)h['login-customer-id']=loginCustomerId;/* Google Cloud project OAuth access: developer-token deprecated Sep 2026. */if(post)h['Content-Type']='application/json';const r=await fetch('https://googleads.googleapis.com/v25/'+path,{method:post?'POST':'GET',headers:h,...(post?{body:JSON.stringify(post)}:{})});if(!r.ok)throw Error('Google Ads API rechazó la consulta (HTTP '+r.status+'). Revisa el nivel de acceso y permisos.');return r.json();}
@@ -87,9 +95,22 @@ export async function handleGoogleAdsApi(req,env,s){
  if(!await owns(env,s,businessId))return error('No tienes acceso a esta empresa.',403);
  if(!await ensureBusinessFeature(env,s,businessId,'google_ads'))return error('Google Ads no está habilitado para esta empresa.',403);
  if(p==='/api/google-ads/status'&&m==='GET'){
-  if(!ready(env))return reply({configured:false,connected:false,reason:'Falta configuración privada de Google Ads o la migración.'});
+  const missing=missingConfig(env);
+  if(missing.length){
+   // The account may have an existing authorization even when Worker secrets
+   // are missing. Do not treat a saved row as an active connection.
+   let authorization_saved=null,selected_customer_id=null;
+   if(env.SUPABASE_SERVICE_ROLE_KEY){
+    try{
+     const rows=await db(env,'ed_google_ads_connections','select=business_id,selected_customer_id&business_id=eq.'+encodeURIComponent(businessId)+'&limit=1');
+     authorization_saved=rows.length>0;
+     selected_customer_id=rows[0]?.selected_customer_id||null;
+    }catch{ /* Configuration status remains accessible if the database cannot be reached. */ }
+   }
+   return reply({configured:false,connected:false,authorization_saved,selected_customer_id,missing_config:missing,reason:'La configuración privada de Google Ads en Cloudflare está incompleta.'});
+  }
   const rows=await db(env,'ed_google_ads_connections','select=business_id,selected_customer_id,updated_at&business_id=eq.'+encodeURIComponent(businessId)+'&limit=1');
-  return reply({configured:true,connected:!!rows.length,selected_customer_id:rows[0]?.selected_customer_id||null,updated_at:rows[0]?.updated_at||null});
+  return reply({configured:true,connected:!!rows.length,authorization_saved:!!rows.length,selected_customer_id:rows[0]?.selected_customer_id||null,updated_at:rows[0]?.updated_at||null});
  }
  if(!ready(env))return error('Falta configurar GOOGLE_ADS_ENCRYPTION_KEY y las credenciales OAuth.',503);
  if(p==='/api/google-ads/connect'&&m==='GET'){
