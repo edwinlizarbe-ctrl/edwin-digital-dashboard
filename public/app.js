@@ -1450,12 +1450,43 @@ async function loadAccounts(){
   if(p.name==='Google Analytics 4')return ga4Card();
   if(p.name==='Meta Ads')return metaCard();
    if(p.name==='Google Ads')return googleAdsCard();
-   if(p.name==='WhatsApp')return '<article class="integration-card provider-card" data-connected="false">'+
-     integrationHeader('WhatsApp','Disponible','neutral','WhatsApp Business')+
-     '<p>Conecta WhatsApp Business con la autorización segura de Meta.</p>'+
-     (state.zernioNotice?alertBlock(state.zernioNotice,'info'):'')+
-     '<div class="integration-status">'+plugButton(state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp','wa-connect-guide',state.zernioBusy,'whatsapp')+
-     '<span>El permiso se confirma en Meta. Si tu número usa otro proveedor, revisa antes su migración.</span></div></article>';
+   if(p.name==='WhatsApp')return `<article class="integration-card provider-card wa-onboard" data-connected="false" aria-label="Guía para conectar WhatsApp Business">
+    ${integrationHeader('WhatsApp','Disponible','neutral','WhatsApp Business')}
+    <div class="wa-onboard-intro">
+      <div>
+        <span class="wa-onboard-eyebrow">CONEXIÓN GUIADA</span>
+        <h4>Conecta WhatsApp Business con tu CRM</h4>
+        <p>Vincula el número de tu empresa mediante un proceso de autorización seguro. Te explicamos qué necesitas antes de empezar.</p>
+      </div>
+      <span class="wa-onboard-bubble" aria-hidden="true">${whatsAppMark(41,'#25D366')}</span>
+    </div>
+    <div class="wa-onboard-steps" aria-label="Pasos de conexión">
+      <div class="wa-onboard-step">
+        <span class="wa-onboard-step-icon" aria-hidden="true">01</span>
+        <strong>Prepara tu cuenta</strong>
+        <p>Ten acceso a tu cuenta empresarial de Meta y al número de WhatsApp que deseas conectar.</p>
+      </div>
+      <div class="wa-onboard-step">
+        <span class="wa-onboard-step-icon" aria-hidden="true">02</span>
+        <strong>Autoriza la conexión</strong>
+        <p>Inicia la conexión desde Edwin CRM y sigue los permisos que solicite el proceso seguro.</p>
+      </div>
+      <div class="wa-onboard-step">
+        <span class="wa-onboard-step-icon" aria-hidden="true">03</span>
+        <strong>Finaliza la vinculación</strong>
+        <p>Completa la configuración del número y verifica que la integración se haya confirmado.</p>
+      </div>
+    </div>
+    ${state.zernioNotice?alertBlock(state.zernioNotice,'info'):''}
+    <div class="wa-onboard-footer">
+      <div class="wa-onboard-footer-text">
+        <strong>¿Listo para empezar?</strong>
+        <span>La autorización del número se realiza fuera de Edwin CRM.</span>
+      </div>
+      <button type="button" class="button button-primary wa-onboard-connect" data-act="wa-connect-guide" ${state.zernioBusy?'disabled':''}>${whatsAppMark(21)} ${state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp'}</button>
+    </div>
+    <p class="wa-onboard-caution"><strong>Importante:</strong> si tu número ya está conectado a otro proveedor, revisa primero los requisitos de migración. No elimines el número ni la cuenta actual.</p>
+  </article>`;
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
    ${integrationHeader(p.name,p.status||'Pendiente',p.connected?'success':'neutral',subtitle)}<p>${clean(p.info)}</p>
    <div class="integration-status"><span>${clean(p.details||'')}</span>${p.connected?'<button class="button button-outline integration-plug-action" data-act="nav" data-page="analytics">'+icon('plug',17)+' Ver datos</button>':plugButton('Próximamente',null,true,p.name==='TikTok Ads'?'tiktok':'plug')}</div>
@@ -1507,7 +1538,15 @@ async function loadAccounts(){
     dialog.id='wa-connect-dialog';
     dialog.className='wa-connect-dialog';
     dialog.setAttribute('aria-labelledby','wa-connect-dialog-title');
-    dialog.innerHTML='<div class="wa-connect-modal-header"><div><span class="wa-connect-kicker">INTEGRACIÓN WHATSAPP</span><h2 id="wa-connect-dialog-title">Conectar WhatsApp</h2></div><button type="button" class="wa-connect-x" aria-label="Cerrar ventana" data-wa-close>×</button></div><p>Autoriza tu cuenta empresarial de Meta para vincular WhatsApp Business con Edwin CRM.</p><p class="wa-connect-modal-warning">Si tu número está asociado a otro proveedor, confirma primero si necesita migración. No elimines el número existente.</p><div class="wa-connect-modal-actions"><button type="button" class="button button-outline" data-wa-close>Cancelar</button><button type="button" class="button button-primary integration-plug-action" data-act="zernio-connect">'+icon('plug',17)+' Conectar con Meta</button></div>';
+    dialog.innerHTML='<div class="wa-connect-modal-header"><div><span class="wa-connect-kicker">INTEGRACIÓN WHATSAPP</span><h2 id="wa-connect-dialog-title">Conectar WhatsApp Business</h2></div><button type="button" class="wa-connect-x" aria-label="Cerrar ventana" data-wa-close>×</button></div>'+
+      '<p>Antes de continuar, comprueba los siguientes pasos para vincular tu número con Edwin CRM.</p>'+
+      '<div class="wa-connect-modal-steps" aria-label="Pasos para conectar WhatsApp">'+
+        '<div><span>1</span><strong>Prepara tu cuenta empresarial</strong><small>Accede a Meta con permisos sobre la empresa y el número que vas a vincular.</small></div>'+
+        '<div><span>2</span><strong>Autoriza la conexión</strong><small>Continúa en la pantalla de autorización que se abrirá y sigue sus indicaciones.</small></div>'+
+        '<div><span>3</span><strong>Confirma la vinculación</strong><small>Verifica que el proceso haya finalizado antes de usar la integración.</small></div>'+
+      '</div>'+
+      '<p class="wa-connect-modal-warning"><strong>¿Tu número ya usa otro proveedor?</strong> Revisa primero si necesita migración. No elimines el número ni la cuenta existente.</p>'+
+      '<div class="wa-connect-modal-actions"><button type="button" class="button button-outline" data-wa-close>Cancelar</button><button type="button" class="button button-primary integration-plug-action" data-act="zernio-connect">'+whatsAppMark(19)+' Continuar con la conexión</button></div>';
     document.body.append(dialog);
     dialog.addEventListener('click',event=>{if(event.target===dialog || event.target.closest('[data-wa-close]'))dialog.close();});
   }
