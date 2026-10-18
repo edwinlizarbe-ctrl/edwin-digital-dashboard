@@ -1213,13 +1213,14 @@ async function loadAccounts(){
     return value===null || value===undefined || !Number.isFinite(n) ? '—' :
       new Intl.NumberFormat('es-PE',{maximumFractionDigits:digits}).format(n);
   }
+  const whatsAppMark=(size=20,color='currentColor')=>'<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="'+color+'" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.966-.273-.099-.471-.148-.67.15-.198.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.058-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.297-.496.1-.198.05-.372-.025-.521-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.372-.01-.57-.01s-.52.074-.792.372c-.273.297-1.04 1.016-1.04 2.479s1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.077 4.487.709.306 1.262.489 1.693.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.999-3.648-.235-.374a9.86 9.86 0 0 1-1.516-5.275c.002-5.45 4.437-9.885 9.892-9.885a9.83 9.83 0 0 1 6.995 2.9 9.83 9.83 0 0 1 2.896 7.003c-.003 5.45-4.438 9.889-9.894 9.889m8.413-18.297A11.82 11.82 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892a11.85 11.85 0 0 0 1.587 5.94L.057 24l6.314-1.656a11.9 11.9 0 0 0 5.674 1.446h.005c6.556 0 11.893-5.336 11.896-11.893a11.82 11.82 0 0 0-3.482-8.409Z"/></svg>';
   function providerLogo(name){
  const dict={
  'Meta Ads':['meta','0866FF'],'Google Ads':['googleads','4285F4'],'TikTok Ads':['tiktok','111111'],'LinkedIn Ads':['linkedin','0A66C2'],
  'Google Analytics 4':['googleanalytics','E37400'],'Google Search Console':['googlesearchconsole','4285F4'],
  'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
  };
- if(name==='WhatsApp')return '<div class="provider-logo provider-logo-whatsapp" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5A9 9 0 1 1 21 11.5Z"/><path d="M8 11h8m-8 4h5"/></svg></div>';
+ if(name==='WhatsApp')return '<div class="provider-logo provider-logo-whatsapp" aria-hidden="true">'+whatsAppMark(30,'#25D366')+'</div>';
  if(name==='WooCommerce')return '<div class="provider-logo" aria-hidden="true">'+icon('shopping-bag',28)+'</div>';
  if(name==='Facebook / Instagram orgánico')
    return '<div class="provider-logo provider-logo-duo" aria-hidden="true"><img src="/logos/facebook.svg" width="26" height="26" alt=""/><img src="/logos/instagram.svg" width="26" height="26" alt=""/></div>';
@@ -1232,10 +1233,10 @@ async function loadAccounts(){
         '<div class="integration-brand-text"><h3>'+clean(name)+'</h3>'+(subtitle?'<small>'+clean(subtitle)+'</small>':'')+
         '</div>'+tag(status,kind)+'</div>';
     }
-    function plugButton(label,action,disabled=false){
+    function plugButton(label,action,disabled=false,brandIcon='plug'){
       return '<button class="button button-primary integration-plug-action" type="button"'+
         (action?' data-act="'+clean(action)+'"':'')+(disabled?' disabled':'')+
-        '>'+icon('plug',17)+' '+clean(label)+'</button>';
+        '>'+(brandIcon==='whatsapp'?whatsAppMark(19):icon('plug',17))+' '+clean(label)+'</button>';
     }
     function metaCard(){
  if(!featureEnabled('meta_ads'))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader('Meta Ads','No incluida')}<p>Publicidad de Facebook e Instagram.</p><div class="integration-status"><span>Esta empresa no tiene habilitada esta conexión. Consulta las opciones de tu plan.</span>${plugButton('No incluida',null,true)}</div></article>`;
@@ -1441,7 +1442,7 @@ async function loadAccounts(){
      integrationHeader('WhatsApp','Disponible','neutral','WhatsApp Business')+
      '<p>Conecta WhatsApp Business con la autorización segura de Meta.</p>'+
      (state.zernioNotice?alertBlock(state.zernioNotice,'info'):'')+
-     '<div class="integration-status">'+plugButton(state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp','wa-connect-guide',state.zernioBusy)+
+     '<div class="integration-status">'+plugButton(state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp','wa-connect-guide',state.zernioBusy,'whatsapp')+
      '<span>El permiso se confirma en Meta. Si tu número usa otro proveedor, revisa antes su migración.</span></div></article>';
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
    ${integrationHeader(p.name,p.status||'Pendiente',p.connected?'success':'neutral',p.name==='TikTok Ads'?'Publicidad digital':'')}<p>${clean(p.info)}</p>
