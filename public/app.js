@@ -1220,6 +1220,7 @@ async function loadAccounts(){
  'Google Analytics 4':['googleanalytics','E37400'],'Google Search Console':['googlesearchconsole','4285F4'],
  'Facebook / Instagram orgánico':['instagram','E4405F'],'Hotmart':['hotmart','FF7A31'],'Shopify':['shopify','7AB55C']
  };
+ if(name==='Google Business Profile')return '<div class="provider-logo" aria-hidden="true"><svg width="34" height="34" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="15" width="22" height="17" rx="2.5" fill="#E8F0FE"/><path d="M11 17v15h14V17" stroke="#4285F4" stroke-width="2" stroke-linejoin="round"/><rect x="16" y="23" width="8" height="9" rx="1" fill="#4285F4"/><path d="M5 9h26l2 7H3l2-7Z" fill="#4285F4"/><path d="M5 9h7l-2 7H3l2-7Z" fill="#EA4335"/><path d="M12 9h6v7h-8l2-7Z" fill="#FBBC05"/><path d="M18 9h7l2 7h-8V9Z" fill="#34A853"/><path d="M25 9h6l2 7h-6l-2-7Z" fill="#4285F4"/><path d="M3 16c0 2.2 2 3.7 4 3.7s3-1.1 4-2.2c1.1 1.5 2.3 2.2 4.2 2.2 1.5 0 2.9-.7 3.8-2.2 1 1.4 2.5 2.2 4.3 2.2s3.2-.9 4-2.2c1 1.4 2.1 2.2 3.8 2.2 2.1 0 4-1.5 4-3.7" stroke="#fff" stroke-width="1" opacity=".8"/></svg></div>';
  if(name==='WhatsApp')return '<div class="provider-logo provider-logo-whatsapp" aria-hidden="true">'+whatsAppMark(30,'#25D366')+'</div>';
  if(name==='WooCommerce')return '<div class="provider-logo" aria-hidden="true">'+icon('shopping-bag',28)+'</div>';
  if(name==='Facebook / Instagram orgánico')
@@ -1233,13 +1234,17 @@ async function loadAccounts(){
         '<div class="integration-brand-text"><h3>'+clean(name)+'</h3>'+(subtitle?'<small>'+clean(subtitle)+'</small>':'')+
         '</div>'+tag(status,kind)+'</div>';
     }
+    function adBrandIcon(name){
+      const slug={meta:'meta',googleads:'googleads',tiktok:'tiktok'}[name];
+      return slug?'<span class="integration-action-mark" aria-hidden="true"><img src="/logos/'+slug+'.svg" width="18" height="18" alt="" onerror="this.onerror=null;this.src=\'/logos/platform.svg\'"/></span>':icon('plug',17);
+    }
     function plugButton(label,action,disabled=false,brandIcon='plug'){
       return '<button class="button button-primary integration-plug-action" type="button"'+
         (action?' data-act="'+clean(action)+'"':'')+(disabled?' disabled':'')+
-        '>'+(brandIcon==='whatsapp'?whatsAppMark(19):icon('plug',17))+' '+clean(label)+'</button>';
+        '>'+(brandIcon==='whatsapp'?whatsAppMark(19):adBrandIcon(brandIcon))+' '+clean(label)+'</button>';
     }
     function metaCard(){
- if(!featureEnabled('meta_ads'))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader('Meta Ads','No incluida')}<p>Publicidad de Facebook e Instagram.</p><div class="integration-status"><span>Esta empresa no tiene habilitada esta conexión. Consulta las opciones de tu plan.</span>${plugButton('No incluida',null,true)}</div></article>`;
+ if(!featureEnabled('meta_ads'))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader('Meta Ads','No incluida')}<p>Publicidad de Facebook e Instagram.</p><div class="integration-status"><span>Esta empresa no tiene habilitada esta conexión. Consulta las opciones de tu plan.</span>${plugButton('No incluida',null,true,'meta')}</div></article>`;
  if(!metaPilotEligible())return '';
  const m=state.meta||{},list=m.accounts||[],selected=m.selected_accounts||[m.selected_account].filter(Boolean);
  const accounts=list.map(x=>`<label class="meta-account-row"><input class="meta-account-check" type="checkbox" value="${clean(x.id)}" ${selected.includes(x.id)?'checked':''}/><span><strong>${clean(x.name)}</strong><small>${clean(x.id)} · ${clean(x.currency)}</small></span></label>`).join('');
@@ -1248,14 +1253,14 @@ async function loadAccounts(){
   const v=x.metrics;
   return `<div class="meta-account-result"><strong>${clean(x.name)} · ${clean(x.currency)}</strong>${v?`<div class="meta-kpi-grid"><div><small>Inversión</small><strong>${metaMetric(v.spend,2)}</strong></div><div><small>Clics</small><strong>${metaMetric(v.clicks)}</strong></div><div><small>Impresiones</small><strong>${metaMetric(v.impressions)}</strong></div><div><small>CTR</small><strong>${metaMetric(v.ctr,2)}%</strong></div><div><small>CPC</small><strong>${metaMetric(v.cpc,2)}</strong></div></div>`:'<p class="fine-print">Sin datos en el período.</p>'}</div>`;
  }).join('');
- const body=!m.configured?`<p>La conexión de Meta Ads aún no está habilitada en esta plataforma. Cuando termine la activación general, podrás conectar tu propia cuenta de Facebook sin asistencia.</p>${plugButton("Próximamente",null,true)}<p class="fine-print">Cuando la conexión esté disponible, iniciarás sesión con Facebook, elegirás tus cuentas publicitarias y los informes aparecerán en este panel.</p>`:
- !m.connected?`${plugButton('Conectar Meta Ads','campaign-connect-toggle')}`:
+ const body=!m.configured?`<p>La conexión de Meta Ads aún no está habilitada en esta plataforma. Cuando termine la activación general, podrás conectar tu propia cuenta de Facebook sin asistencia.</p>${plugButton("Próximamente",null,true,'meta')}<p class="fine-print">Cuando la conexión esté disponible, iniciarás sesión con Facebook, elegirás tus cuentas publicitarias y los informes aparecerán en este panel.</p>`:
+ !m.connected?`${plugButton('Conectar Meta Ads','campaign-connect-toggle',false,'meta')}`:
  `<label class="form-label">Elige hasta cinco cuentas publicitarias</label>
  <input class="meta-search" id="meta-account-search" placeholder="Buscar cuenta publicitaria…" autocomplete="off"/>
  <div class="meta-account-list">${accounts||'<p>No se encontraron cuentas autorizadas.</p>'}</div>
  <div class="meta-actions"><button class="button button-outline" data-act="meta-refresh">${icon('refresh',16)} Actualizar datos</button><button class="button button-soft" data-act="meta-disconnect">Desconectar</button><button class="button button-outline" data-act="nav" data-page="campaigns">Ver campañas ${icon('chevron',15)}</button></div>
  <p class="fine-print">Consulta las estadísticas desde Resumen y Campañas Ads. Esta conexión piloto está vinculada al navegador actual y no es permanente entre dispositivos.</p>`;
- return `<article class="integration-card provider-card" data-connected="${m.connected?'true':'false'}">${integrationHeader('Meta Ads',m.connected?'Conectado':m.configured?'Disponible':'Pendiente',m.connected?'success':'neutral','Publicidad digital')}<p>Publicidad de Facebook e Instagram.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${m.connected&&!state.metaPanelOpen?`<div class="integration-compact-footer"><span>${selected.length} cuenta(s) seleccionadas</span><button class="button button-outline integration-plug-action" data-act="campaign-connect-toggle">${icon('plug',17)} Administrar conexión</button></div>`:body}${m.connected&&state.metaPanelOpen?`<button class="button button-soft" data-act="meta-panel-toggle">Cerrar detalles</button>`:''}</div>${state.metaLoading?'<span class="fine-print">Consultando conexión…</span>':''}</article>`;
+ return `<article class="integration-card provider-card" data-connected="${m.connected?'true':'false'}">${integrationHeader('Meta Ads',m.connected?'Conectado':m.configured?'Disponible':'Pendiente',m.connected?'success':'neutral','Publicidad digital')}<p>Publicidad de Facebook e Instagram.</p>${state.metaError?alertBlock(state.metaError):''}<div class="integration-status">${m.connected&&!state.metaPanelOpen?`<div class="integration-compact-footer"><span>${selected.length} cuenta(s) seleccionadas</span><button class="button button-outline integration-plug-action" data-act="campaign-connect-toggle">${adBrandIcon('meta')} Administrar conexión</button></div>`:body}${m.connected&&state.metaPanelOpen?`<button class="button button-soft" data-act="meta-panel-toggle">Cerrar detalles</button>`:''}</div>${state.metaLoading?'<span class="fine-print">Consultando conexión…</span>':''}</article>`;
 }
     async function loadMeta() {
     if(!metaPilotEligible()) {state.meta=null;state.metaReport=null;state.metaError='';render();return;}
@@ -1344,7 +1349,7 @@ async function loadAccounts(){
     const caption=on?'Cuenta conectada · Consulta tus campañas desde Edwin CRM':g.configured?'Autoriza tu cuenta Google en una ventana pequeña, sin salir del dashboard.':'Esta conexión aún no está disponible para tu empresa.';
     const controls=on?
       '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('plug',15)+' Acceso autorizado de solo lectura</span><label class="form-label">Cuenta publicitaria<select class="meta-select" id="google-ads-account"><option value="">Elige una cuenta</option>'+options+'</select></label><div class="ga-buttons"><button class="button button-primary" data-act="google-ads-select" '+(busy||!accounts.length?'disabled':'')+'>Guardar cuenta</button><button class="button button-outline" data-act="google-ads-campaigns" '+(busy||!g.selected_customer_id?'disabled':'')+'>Ver campañas</button><button class="button button-soft" data-act="google-ads-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>'+(accounts.length?'':'<p class="ga-help">No se encontraron cuentas publicitarias autorizadas.</p>')+'</div>':
-      '<div class="ga-connect-panel"><button class="button button-primary ga-connect-button" data-act="google-ads-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+icon('plug',18)+(pending?'Esperando autorización…':'Conectar con Google Ads')+'</button><p class="ga-help">'+icon('lock',14)+' Acceso seguro y de solo lectura. No modificaremos tus anuncios.</p></div>';
+      '<div class="ga-connect-panel"><button class="button button-primary ga-connect-button" data-act="google-ads-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+adBrandIcon('googleads')+(pending?'Esperando autorización…':'Conectar con Google Ads')+'</button><p class="ga-help">'+icon('lock',14)+' Acceso seguro y de solo lectura. No modificaremos tus anuncios.</p></div>';
     const moneyAds=n=>report?.currency?money(n,report.currency):'—';
     const num=n=>n==null?'—':clean(String(n));
     const detail=report?(rows.length?'<div class="table-scroll ga-report-table"><table><thead><tr><th>Campaña</th><th>Inversión</th><th>Impresiones</th><th>Clics</th><th>CTR</th><th>CPC</th><th>Conversiones</th><th>Valor</th><th>ROAS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+moneyAds(r.spend)+'</td><td>'+fmt(r.impressions)+'</td><td>'+fmt(r.clicks)+'</td><td>'+num(r.ctr==null?null:r.ctr.toFixed(2)+'%')+'</td><td>'+num(r.cpc==null?null:moneyAds(r.cpc))+'</td><td>'+fmt1(r.conversions)+'</td><td>'+moneyAds(r.conversions_value)+'</td><td>'+num(r.roas==null?null:r.roas.toFixed(2)+'x')+'</td></tr>').join('')+'</tbody></table></div>':'<p class="ga-help">No hay campañas para el período elegido.</p>')+(report.partial?'<p class="fine-print">Informe parcial. Algunos resultados están pendientes.</p>':''):'';
@@ -1421,6 +1426,7 @@ async function loadAccounts(){
   ['Analítica y contenidos',[
    {name:'Google Analytics 4',info:'Usuarios, sesiones y conversiones del sitio.',status:ga?'Conectado':'No conectado',connected:ga,details:ga?'Propiedad de Analytics con lectura autorizada.':'Este sitio aún no tiene estadísticas disponibles de Analytics.'},
    {name:'Google Search Console',info:'Consultas y posicionamiento SEO.',status:'Próximamente',details:'Necesita autorización de Google.'},
+   {name:'Google Business Profile',info:'Rendimiento de tu ficha en Google Maps y Búsqueda.',status:'Próximamente',details:'Próxima integración: búsquedas, llamadas, clics al sitio web y solicitudes de cómo llegar.'},
    {name:'Facebook / Instagram orgánico',info:'Alcance y estadísticas de perfiles sociales.',status:'Próximamente',details:'Pendiente de permisos de páginas y perfiles.'}] ],
   ['Publicidad',[
    {name:'Meta Ads',info:'Facebook e Instagram Ads.'},
@@ -1434,8 +1440,8 @@ async function loadAccounts(){
  ];
  const cardFor=(p)=>{
   const feature=businessFeatureKey(p.name);
-  if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader(p.name,'No incluida','neutral',p.name==='TikTok Ads'?'Publicidad digital':'')}<p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span>${plugButton('No incluida',null,true)}</div></article>`;
-  if(p.name==='Google Analytics 4')return ga4Card();
+  if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader(p.name,'No incluida','neutral',p.name==='TikTok Ads'?'Publicidad digital':'')}<p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span>${plugButton('No incluida',null,true,p.name==='TikTok Ads'?'tiktok':'plug')}</div></article>`;
+  if(p.name='Google Analytics 4')return ga4Card();
   if(p.name==='Meta Ads')return metaCard();
    if(p.name==='Google Ads')return googleAdsCard();
    if(p.name==='WhatsApp')return '<article class="integration-card provider-card" data-connected="false">'+
@@ -1446,7 +1452,7 @@ async function loadAccounts(){
      '<span>El permiso se confirma en Meta. Si tu número usa otro proveedor, revisa antes su migración.</span></div></article>';
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
    ${integrationHeader(p.name,p.status||'Pendiente',p.connected?'success':'neutral',p.name==='TikTok Ads'?'Publicidad digital':'')}<p>${clean(p.info)}</p>
-   <div class="integration-status"><span>${clean(p.details||'')}</span>${p.connected?'<button class="button button-outline integration-plug-action" data-act="nav" data-page="analytics">'+icon('plug',17)+' Ver datos</button>':plugButton('Próximamente',null,true)}</div>
+   <div class="integration-status"><span>${clean(p.details||'')}</span>${p.connected?'<button class="button button-outline integration-plug-action" data-act="nav" data-page="analytics">'+icon('plug',17)+' Ver datos</button>':plugButton('Próximamente',null,true,p.name==='TikTok Ads'?'tiktok':'plug')}</div>
   </article>`;
  };
  return `${state.campaignConnectionOpen?campaignMetaSetup():''}${heading('Mis conexiones','Integraciones de mi empresa','Conecta tus plataformas una vez y consulta los datos autorizados en sus paneles.')}
