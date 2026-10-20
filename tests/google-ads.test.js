@@ -26,6 +26,7 @@ function mockServer(allow=company){
   if(u.includes('/rest/v1/ed_business_features?'))return json([{business_id:company,plan:'free',features:{google_ads:true}}]);
   if(u.includes('/rest/v1/ed_google_ads_connections?')){
    if(method==='PATCH'){Object.assign(connection,JSON.parse(opt.body));return json([connection]);}
+   if(method==='POST'){connection={...(connection||{}),...JSON.parse(opt.body)};return json([connection]);}
    if(method==='DELETE'){connection=null;return json([{business_id:company}]);}
    return json(connection?[connection]:[]);
   }
@@ -74,6 +75,53 @@ test('another business cannot access connection data',async()=>{
   const r=await handleGoogleAdsApi(new Request(origin+'/api/google-ads/status?business_id='+other),server.env,session);
   assert.equal(r.status,403);
   assert.equal(server.calls.some(x=>x.url.includes('ed_google_ads_connections')),false);
+ });
+});
+test('status distinguishes a readable authorization from a token encrypted with an old key',async()=>{
+ await scopedTest(async server=>{
+  server.connection().selected_customer_id='2222222222';
+  const saved=server.connection().refresh_token_cipher;
+  const good=await handleGoogleAdsApi(new Request(origin+'/api/google-ads/status?business_id='+company),server.env,session);
+  const current=await good.json();
+  assert.equal(current.connected,true);
+  assert.equal(current.needs_reauthorization,false);
+  assert.equal(current.selected_customer_id,'2222222222');
+  server.env.GOOGLE_ADS_ENCRYPTION_KEY='cd'.repeat(32);
+  const response=await handleGoogleAdsApi(new Request(origin+'/api/google-ads/status?business_id='+company),server.env,session);
+  const stale=await response.json();
+  assert.equal(response.status,200);
+  assert.equal(stale.configured,true);
+  assert.equal(stale.authorization_saved,true);
+  assert.equal(stale.connected,false);
+  assert.equal(stale.needs_reauthorization,true);
+  assert.equal(stale.selected_customer_id,null);
+  assert.equal(server.connection().refresh_token_cipher,saved);
+  assert.equal(server.calls.some(x=>x.url==='https://oauth2.googleapis.com/token'),false);
+ });
+});
+test('reauthorizing after key change replaces only the saved OAuth token after callback',async()=>{
+ await scopedTest(async server=>{
+  server.connection().selected_customer_id='2222222222';
+  server.connection().selected_login_customer_id='1111111111';
+  const previous=server.connection().refresh_token_cipher;
+  server.env.GOOGLE_ADS_ENCRYPTION_KEY='cd'.repeat(32);
+  const begin=await handleGoogleAdsApi(new Request(origin+'/api/google-ads/connect?business_id='+company),server.env,session);
+  assert.equal(begin.status,302);
+  const login=new URL(begin.headers.get('Location'));
+  assert.equal(login.hostname,'accounts.google.com');
+  assert.equal(server.connection().refresh_token_cipher,previous);
+  const pendingCookie=begin.headers.get('Set-Cookie').split(';')[0];
+  const callback=new Request(origin+'/api/google-ads/callback?state='+encodeURIComponent(login.searchParams.get('state'))+'&code=mock-code',{headers:{Cookie:pendingCookie}});
+  const result=await handleGoogleAdsApi(callback,server.env,session);
+  assert.equal(result.status,302);
+  assert.notEqual(server.connection().refresh_token_cipher,previous);
+  assert.equal(server.connection().selected_customer_id,null);
+  assert.equal(server.connection().selected_login_customer_id,null);
+  assert.equal(server.calls.some(x=>x.url.includes('ed_google_ads_connections')&&x.method==='DELETE'),false);
+  const check=await handleGoogleAdsApi(new Request(origin+'/api/google-ads/status?business_id='+company),server.env,session);
+  const status=await check.json();
+  assert.equal(status.connected,true);
+  assert.equal(status.needs_reauthorization,false);
  });
 });
 test('MCC child accounts are returned and manager is tagged',async()=>{
