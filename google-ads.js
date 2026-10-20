@@ -109,8 +109,13 @@ export async function handleGoogleAdsApi(req,env,s){
    }
    return reply({configured:false,connected:false,authorization_saved,selected_customer_id,missing_config:missing,reason:'La configuración privada de Google Ads en Cloudflare está incompleta.'});
   }
-  const rows=await db(env,'ed_google_ads_connections','select=business_id,selected_customer_id,updated_at&business_id=eq.'+encodeURIComponent(businessId)+'&limit=1');
-  return reply({configured:true,connected:!!rows.length,authorization_saved:!!rows.length,selected_customer_id:rows[0]?.selected_customer_id||null,updated_at:rows[0]?.updated_at||null});
+  const rows=await db(env,'ed_google_ads_connections','select=business_id,refresh_token_cipher,selected_customer_id,updated_at&business_id=eq.'+encodeURIComponent(businessId)+'&limit=1');
+  // A saved row is not necessarily usable after a Worker encryption-key rotation.
+  // Check decryptability locally; do not call Google or expose the token in status.
+  const saved=rows[0]||null;
+  const token=saved?await unseal(env,saved.refresh_token_cipher):null;
+  const connected=typeof token?.refresh_token==='string'&&token.refresh_token.length>0;
+  return reply({configured:true,connected,authorization_saved:!!saved,needs_reauthorization:!!saved&&!connected,selected_customer_id:connected?saved.selected_customer_id||null:null,updated_at:saved?.updated_at||null});
  }
  if(!ready(env))return error('Falta configurar GOOGLE_ADS_ENCRYPTION_KEY y las credenciales OAuth.',503);
  if(p==='/api/google-ads/connect'&&m==='GET'){
