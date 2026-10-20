@@ -1263,7 +1263,7 @@ async function loadAccounts(){
     const form=!data||!configured||!!data.oauth_property_id?'':(
       '<form id="admin-ga4-manual-form" class="security-form" autocomplete="off" style="display:grid;gap:12px;max-width:700px">'+
       '<label class="form-label">Sitio del cliente<select name="site_id" class="simple-input" id="admin-ga4-site" style="display:block;width:100%;margin-top:6px">'+options+'<option value="" '+(!selected?'selected':'')+'>+ Registrar un nuevo sitio web</option></select></label>'+
-      '<div id="admin-ga4-new-site-fields" '+(selected?'hidden':'')+' style="display:grid;gap:10px">'+
+      '<div id="admin-ga4-new-site-fields" '+(selected?'hidden':'')+' style="margin-top:10px">'+
       '<label class="form-label">Nombre del sitio<input id="admin-ga4-site-name" name="site_name" class="simple-input" placeholder="Tienda principal" minlength="2" maxlength="100" '+(!selected?'required':'')+' style="display:block;width:100%;margin-top:6px"/></label>'+
       '<label class="form-label">URL del sitio (HTTPS)<input id="admin-ga4-site-url" name="site_url" type="url" class="simple-input" placeholder="https://cliente.com" maxlength="300" '+(!selected?'required':'')+' style="display:block;width:100%;margin-top:6px"/></label></div>'+
       '<label class="form-label">ID de propiedad Google Analytics 4<input name="property_id" class="simple-input" inputmode="numeric" pattern="[0-9]{1,30}" placeholder="Ej. 123456789" required style="display:block;width:100%;margin-top:6px"/></label>'+
