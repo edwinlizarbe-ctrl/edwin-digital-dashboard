@@ -75,8 +75,8 @@ export async function handleAdminGa4(req,env,s,getServiceToken){
    if(existing.length!==1)return respond({error:'El sitio no pertenece a la empresa seleccionada.'},404);
   }
   // Avoid assigning one client's property to a different tenant.
-  const assigned=await query(env,'sites?select=id,business_id&ga4_property_id=eq.'+encodeURIComponent(propertyId)+'&limit=100');
-  if(assigned.some(row=>row.business_id!==businessId))return respond({error:'Esta propiedad GA4 ya está asignada a otra empresa de Edwin CRM.'},409);
+  const assigned=await query(env,'sites?select=id&ga4_property_id=eq.'+encodeURIComponent(propertyId)+'&business_id=neq.'+encodeURIComponent(businessId)+'&limit=1');
+  if(assigned.length)return respond({error:'Esta propiedad GA4 ya está asignada a otra empresa de Edwin CRM.'},409);
   // The credential remains on the Worker; never return access tokens or private keys.
   const accessToken=await getServiceToken(env);
   const check=await fetch('https://analyticsdata.googleapis.com/v1beta/properties/'+propertyId+':runReport',{
