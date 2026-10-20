@@ -25,10 +25,12 @@ function harness(){
   if(u.pathname==='/rest/v1/businesses')return json(u.searchParams.get('id')==='eq.'+tenant?[{id:tenant,name:'Cliente Alfa'}]:[]);
   if(u.pathname==='/rest/v1/ed_ga4_connections')return json(data.oauth?[{selected_property_id:data.oauth}]:[]);
   if(u.pathname==='/rest/v1/sites'){
-   const biz=u.searchParams.get('business_id')?.slice(3);
+   const businessFilter=u.searchParams.get('business_id')||'';
+   const biz=businessFilter.startsWith('eq.')?businessFilter.slice(3):null;
+   const notBiz=businessFilter.startsWith('neq.')?businessFilter.slice(4):null;
    const site=u.searchParams.get('id')?.slice(3);
    const property=u.searchParams.get('ga4_property_id')?.slice(3);
-   if(method==='GET')return json(data.sites.filter(x=>(!biz||x.business_id===biz)&&(!site||x.id===site)&&(!property||x.ga4_property_id===property)));
+   if(method==='GET')return json(data.sites.filter(x=>(!biz||x.business_id===biz)&&(!notBiz||x.business_id!==notBiz)&&(!site||x.id===site)&&(!property||x.ga4_property_id===property)));
    if(method==='PATCH'){
     const rows=data.sites.filter(x=>x.id===site&&x.business_id===biz);
     rows.forEach(x=>Object.assign(x,JSON.parse(opt.body)));
