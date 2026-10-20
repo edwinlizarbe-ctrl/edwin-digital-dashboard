@@ -1478,12 +1478,8 @@ async function loadAccounts(){
         const list=await api('/api/ga4/properties?business_id='+encodeURIComponent(id));
         if(id!==state.businessId)return;
         state.ga4Properties=list.properties||[];
-        if(state.ga4Properties.length===1&&!info.selected_property_id){
-          const only=state.ga4Properties[0];
-          await api('/api/ga4/select?business_id='+encodeURIComponent(id),{method:'POST',body:JSON.stringify({property_id:only.id})});
-          if(id!==state.businessId)return;
-          state.ga4Connection={...info,selected_property_id:only.id,selected_property_name:only.name};
-          state.ga4Notice='Propiedad de Analytics vinculada automáticamente.';
+        if(state.ga4Properties.length===1&&!info.selected_property_id&&!state.ga4Notice){
+          state.ga4Notice='Hay una propiedad de Google Analytics disponible. Selecciónala y pulsa «Guardar propiedad» para confirmarla.';
         }
       }
     }catch(e){if(id===state.businessId)state.ga4ConnectionError=e.message;}
