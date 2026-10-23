@@ -30,12 +30,12 @@
   if(!id)return show('Selecciona la empresa Brásper.',true);
   const submit=form.querySelector('[type="submit"]');submit.disabled=true;submit.textContent='Generando HTML…';
   const d=new FormData(form),article=String(d.get('article')||'').trim();
-  const lines=article.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
-  const first=(lines[0]||'').replace(/^#{1,3}\\s*/,'').replace(/^\\*\\*(.*?)\\*\\*$/,'$1');
+  const lines=article.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const first=(lines[0]||'').replace(/^#{1,3}\s*/,'').replace(/^\*\*(.*?)\*\*$/,'$1');
   const title=first.slice(0,200);
   if(title.length<2){show('Pega un artículo que empiece con el título.',true);submit.disabled=false;submit.textContent='Generar HTML →';return;}
   const lower=' '+article.toLowerCase()+' ';
-  const pt=/(\\b(você|vocês|não|também|saiba|envio|dinheiro|reais|cotação|brasileiro|transferências|artigos)\\b|\\b(para o|para a|com o|do brasil|no brasil)\\b)/i.test(lower);
+  const pt=/(\b(você|vocês|não|também|saiba|envio|dinheiro|reais|cotação|brasileiro|transferências|artigos)\b|\b(para o|para a|com o|do brasil|no brasil)\b)/i.test(lower);
   const data={business_id:id,title,article,language:pt?'pt':'es',related:[],include_title:false,include_date:false};
   result='';
   const output=$('bp-html-output');if(output)output.value='';
