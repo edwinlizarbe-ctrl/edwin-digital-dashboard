@@ -1,0 +1,44 @@
+# Puente GitHub -> Claude Code. El flujo se ejecuta solo cuando
+# edwinlizarbe-ctrl menciona @claude en una issue o un PR.
+# Requisitos de activacion (realizados una sola vez por el propietario):
+# 1. Instalar la app oficial https://github.com/apps/claude para este repositorio.
+# 2. Generar el token con "claude setup-token" usando Claude Pro/Max cuando proceda.
+# 3. Guardarlo UNICAMENTE como secreto CLAUDE_CODE_OAUTH_TOKEN
+#    en Settings > Secrets and variables > Actions.
+# No introducir tokens en codigo, issues ni chats.
+name: Claude Code - instrucciones desde GitHub
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  claude-handoff:
+    # Acepta mensajes del propietario, nunca de colaboradores externos.
+    if: >-
+      github.event.comment.user.login == 'edwinlizarbe-ctrl' &&
+      contains(github.event.comment.body, '@claude')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: claude-handoff-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Delegar tarea a Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          include_comments_by_actor: edwinlizarbe-ctrl
+          claude_args: |
+            --max-turns 12
