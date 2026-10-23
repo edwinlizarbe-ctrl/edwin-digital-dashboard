@@ -43,6 +43,26 @@ const knownFlags=raw=>isPlainObject(raw)?Object.fromEntries(ED_FEATURES.filter(k
 // States: {configured:false,available:true}  -> service key or migration missing (legacy defaults apply)
 //         {configured:true,available:true}   -> table readable
 //         {configured:true,available:false}  -> table exists but could not be read: fail closed
+// Counts only (no ids): businesses visible to this admin vs. those with a stored row.
+async function provisioningCounts(env,s,key){
+ try{
+  const permitted=await fetch(supaBase(env)+'/rest/v1/businesses?select=id&limit=500',{headers:{apikey:env.SUPABASE_ANON_KEY,Authorization:'Bearer '+s.access}});
+  if(!permitted.ok)return {};
+  const list=await permitted.json().catch(()=>null);
+  if(!Array.isArray(list))return {};
+  const allowed=[...new Set(list.map(x=>x?.id).filter(validId))];
+  let provisioned=0;
+  if(allowed.length){
+   const r=await fetch(supaBase(env)+'/rest/v1/ed_business_features?select=business_id&business_id=in.('+allowed.join(',')+')&limit=500',{headers:{apikey:key,Authorization:'Bearer '+key,Accept:'application/json'}});
+   if(!r.ok)return {};
+   const rows=await r.json().catch(()=>null);
+   if(!Array.isArray(rows))return {};
+   provisioned=new Set(rows.map(x=>x?.business_id).filter(x=>allowed.includes(x))).size;
+  }
+  return {businesses_total:allowed.length,businesses_provisioned:provisioned,businesses_unprovisioned:allowed.length-provisioned,
+   ...(list.length>=500?{counts_truncated:true}:{})};
+ }catch{return {};}
+}
 async function featureRow(env,id){
  const strict=strictMode(env);
  // Legacy fallback: allowed only outside strict mode; strict denies and reports it.
@@ -69,6 +89,12 @@ export async function readBusinessEntitlements(env,s,id){
  if(!validId(id)||!await ownsBusiness(env,s,id))return null;
  const data=await featureRow(env,id);
  if(!data.available)return {configured:!data.strictBlocked,unavailable:true,strict_blocked:!!data.strictBlocked,business_id:id,plan:null,features:{...ALL_DENIED},updated_at:null,provisioned:false};
+ // Strict mode: a business without a stored row is not provisioned, so it gets nothing
+ // (the legacy GA4/Meta defaults only exist for the non-strict compatibility path).
+ if(strictMode(env)&&!data.row){
+  warnOnce('business not provisioned',true);
+  return {configured:true,unprovisioned:true,strict_blocked:true,business_id:id,plan:null,features:{...ALL_DENIED},updated_at:null,provisioned:false};
+ }
  const plan=data.row?.plan||null;
  const features=plan==='premium'
   ?Object.fromEntries(ED_FEATURES.map(feature=>[feature,true]))
@@ -107,7 +133,7 @@ export async function handleFeaturesApi(req,env,s){
    const check=await fetch(supaBase(env)+'/rest/v1/ed_business_features?select=business_id&limit=0',{
     headers:{apikey:key,Authorization:'Bearer '+key,Accept:'application/json'}
    });
-   if(check.ok)return report({configured:true,service_role_configured:true,migration_applied:true},false);
+   if(check.ok)return report({configured:true,service_role_configured:true,migration_applied:true,...await provisioningCounts(env,s,key)},false);
    const err=check.status===404?await check.json().catch(()=>null):null;
    const missing=!!err&&(err.code==='PGRST205'||err.code==='42P01');
    if(missing)warnOnce('migration not applied',strict);

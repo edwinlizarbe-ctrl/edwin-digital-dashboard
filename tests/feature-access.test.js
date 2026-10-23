@@ -11,14 +11,15 @@ const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Cont
 const freeRow=(over={})=>({business_id:business,plan:'free',features:{ga4:true,meta_ads:false,google_ads:true},updated_at:'2026-10-14T01:00:00.000001+00:00',...over});
 
 // Stateful fake of the two Supabase tables the module touches.
-async function inServer(fn,{row=freeRow(),featureStatus=null,featureThrows=false,beforePatch=null}={}){
+async function inServer(fn,{row=freeRow(),featureStatus=null,featureThrows=false,beforePatch=null,visible=null,provisioned=null}={}){
  const original=globalThis.fetch,calls=[];let stored=row;
  globalThis.fetch=async(url,options={})=>{
   const u=String(url),method=options.method||'GET';calls.push({url:u,method,body:options.body});
-  if(u.includes('/rest/v1/businesses?'))return json(u.includes(business)?[{id:business}]:[]);
+  if(u.includes('/rest/v1/businesses?')){if(visible&&u.includes('limit=500'))return json(visible.map(id=>({id})));return json(u.includes(business)?[{id:business}]:[]);}
   if(u.includes('/rest/v1/ed_business_features')){
    if(featureThrows)throw new TypeError('network down');
    if(method==='GET'){
+    if(provisioned&&u.includes('business_id=in.('))return json(provisioned.filter(id=>u.includes(id)).map(business_id=>({business_id})));
     if(featureStatus)return featureStatus instanceof Response?featureStatus.clone():json({},featureStatus);
     return json(stored&&u.includes('business_id=eq.'+business)?[stored]:[]);
    }
@@ -235,4 +236,55 @@ test('health reports legacy fallback with a security warning (admin only)',async
    assert.equal(body.legacy_fallback_active,false,'a transient outage is not the legacy fallback');
   },{featureStatus:500});
  });
+});
+
+// Strict mode + valid table + business without a stored row (not provisioned).
+test('strict mode denies a business that has no stored permissions row',async()=>{
+ await captureWarnings(async logs=>{
+  await inServer(async()=>{
+   const data=await readBusinessEntitlements(strictEnv,client,business);
+   assert.equal(data.unprovisioned,true);assert.equal(data.provisioned,false);assert.equal(data.configured,true);
+   assert.ok(ED_FEATURES.every(k=>data.features[k]===false));
+   for(const f of ED_FEATURES)assert.equal(await ensureBusinessFeature(strictEnv,client,business,f),false);
+   const res=await handleFeaturesApi(get('/api/client/features?business_id='+business),strictEnv,client);
+   assert.ok(Object.values((await res.json()).features).every(v=>v===false));
+  },{row:null});
+  assert.ok(logs.some(l=>l.includes('not provisioned')&&!l.includes(business)));
+ });
+});
+test('non-strict mode keeps legacy defaults for a business without a row',async()=>{
+ await inServer(async()=>{
+  const data=await readBusinessEntitlements(env,client,business);
+  assert.equal(data.features.ga4,true);assert.equal(data.features.meta_ads,true);assert.equal(data.provisioned,false);
+ },{row:null});
+});
+test('strict mode keeps provisioned businesses (free and premium) and other tenants stay isolated',async()=>{
+ await inServer(async()=>{
+  assert.equal((await readBusinessEntitlements(strictEnv,client,business)).features.ga4,false);
+  assert.equal(await readBusinessEntitlements(strictEnv,client,other),null);
+ },{row:freeRow({features:{ga4:false}})});
+ await inServer(async()=>{
+  const data=await readBusinessEntitlements(strictEnv,client,business);
+  assert.ok(ED_FEATURES.every(k=>data.features[k]===true));
+ },{row:freeRow({plan:'premium'})});
+});
+test('an admin can still provision an unprovisioned business while strict is on',async()=>{
+ await inServer(async({row})=>{
+  const res=await handleFeaturesApi(post(JSON.stringify({business_id:business,plan:'free'})),strictEnv,admin);
+  assert.equal(res.status,200);assert.equal(row().plan,'free');
+  assert.equal((await readBusinessEntitlements(strictEnv,client,business)).provisioned,true);
+ },{row:null});
+});
+test('health reports only counts of unprovisioned businesses',async()=>{
+ const ids=[business,other,'00000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000004','00000000-0000-4000-8000-000000000005'];
+ await inServer(async()=>{
+  const res=await handleFeaturesApi(get('/api/admin/business-features/health'),env,admin);
+  const text=await res.text(),body=JSON.parse(text);
+  assert.equal(body.businesses_total,5);assert.equal(body.businesses_provisioned,3);assert.equal(body.businesses_unprovisioned,2);
+  assert.ok(ids.every(id=>!text.includes(id)),'no business ids in the response');
+ },{visible:ids,provisioned:ids.slice(0,3)});
+ await inServer(async()=>{
+  const body=await(await handleFeaturesApi(get('/api/admin/business-features/health'),env,admin)).json();
+  assert.equal(body.businesses_total,0);assert.equal(body.businesses_unprovisioned,0);
+ },{visible:[]});
 });
