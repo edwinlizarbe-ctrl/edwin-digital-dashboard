@@ -1,3 +1,4 @@
+/* Verificación de publicación automática GitHub → Cloudflare · 2026-10-23 · sin cambios funcionales. */
 /* E Digital — nombre provisional del CRM | los datos mostrados proceden de APIs autorizadas. */
 (() => {
   'use strict';
