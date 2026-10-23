@@ -1647,6 +1647,7 @@ async function loadAccounts(){
   </article>`;
  };
  return `${state.campaignConnectionOpen?campaignMetaSetup():''}${heading('Mis conexiones','Integraciones de mi empresa','Conecta tus plataformas una vez y consulta los datos autorizados en sus paneles.')}
+ <section class="card crm-import-gateway"><div><span class="crm-import-kicker">SIN CLAVES NI AUTORIZACIONES EXTERNAS</span><h2>Importa contactos desde CSV</h2><p>Si tu plataforma permite exportar contactos, puedes traerlos a Oportunidades hoy mismo. No importa ni sincroniza anuncios, conversaciones o ventas automáticamente.</p></div><button type="button" class="button button-primary" data-act="nav" data-page="leads">${icon('upload',16)} Ir al importador CSV</button></section>
  <div class="integration-filter-bar"><label class="admin-search">${icon('search',18)}<input type="search" id="integration-search" placeholder="Buscar plataforma…" aria-label="Buscar integración"/></label>
  <label class="company-checkbox"><input id="integration-only-connected" type="checkbox"/> Solo conectadas</label></div>
  ${lookup.map(([group,providers])=>`<section class="integration-section"><div class="section-caption"><h2>${clean(group)}</h2><span>${providers.length} ${providers.length===1?'plataforma':'plataformas'}</span></div>
