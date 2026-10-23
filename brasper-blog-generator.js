@@ -5,17 +5,65 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normal=v=>String(v??'').replace(/\r\n?/g,'\n');
 const validUrl=raw=>{try{const u=new URL(String(raw||'').trim());return ['https:','http:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null}catch{return null}};
-const CSS='<style>.bp-blog{font:400 16px/1.75 Arial,Helvetica,sans-serif;color:#263653;max-width:100%;overflow-wrap:anywhere}.bp-blog h1{font-weight:800;font-size:clamp(25px,3vw,34px);line-height:1.24;color:#203c85;margin:0 0 14px}.bp-blog .bp-meta{font-size:13px;color:#667993;margin:0 0 24px}.bp-blog h2{font-weight:800;font-size:21px;line-height:1.35;color:#203c85;border-left:4px solid #5140ad;padding-left:14px;margin:31px 0 15px}.bp-blog p{margin:12px 0}.bp-blog ul{padding-left:23px;margin:14px 0}.bp-blog li{padding:4px 0}.bp-blog li::marker{color:#5140ad}.bp-blog .bp-related{margin:36px 0 0;border-top:1px solid #e1e4ed;padding-top:22px}.bp-blog .bp-related h3{font-size:19px;margin:0 0 12px;color:#203c85}.bp-blog .bp-related li{font-size:15px;line-height:1.48;padding:7px 0}.bp-blog a{color:#203c85;text-decoration:underline;text-underline-offset:3px}.bp-blog .bp-action{text-align:center;margin:35px 0 14px}.bp-blog .bp-cta{display:inline-block;background:#203c85;color:#fff;text-decoration:none;padding:15px 24px;border-radius:26px;font-weight:800;transition:transform .2s,background .2s,box-shadow .2s}.bp-blog .bp-cta:hover,.bp-blog .bp-cta:focus-visible{background:#5140ad;transform:translateY(-3px);box-shadow:0 9px 23px #203c8540}.bp-blog .bp-note{text-align:center;font-style:italic;color:#66718a;font-size:12px;line-height:1.6;margin:12px auto 0}@media(max-width:600px){.bp-blog h2{font-size:19px}.bp-blog .bp-related li{font-size:15px}}@media(prefers-reduced-motion:reduce){.bp-blog .bp-cta{transition:none}.bp-blog .bp-cta:hover{transform:none}}</style>';
-export function articleToHtml(article){
- let html=[],list=[];
- const flush=()=>{if(list.length){html.push('<ul>'+list.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul>');list=[]}};
- for(const line of normal(article).split('\n')){
-  const value=line.trim();if(!value){flush();continue}
-  if(value.startsWith('## ')){flush();html.push('<h2>'+esc(value.slice(3))+'</h2>')}
-  else if(/^[-•] /.test(value)){list.push(value.slice(2))}
-  else{flush();html.push('<p>'+esc(value)+'</p>')}
+const CSS='<style>.bp-blog{font:400 16px/1.75 Arial,Helvetica,sans-serif;color:#263653;max-width:100%;overflow-wrap:anywhere}.bp-blog h1{font-weight:800;font-size:clamp(25px,3vw,34px);line-height:1.24;color:#203c85;margin:0 0 14px}.bp-blog .bp-meta{font-size:13px;color:#667993;margin:0 0 24px}.bp-blog h2{font-weight:800;font-size:21px;line-height:1.35;color:#203c85;border-left:4px solid #5140ad;padding-left:14px;margin:31px 0 15px}.bp-blog h3{color:#314780;font-size:18px;line-height:1.4;margin:23px 0 11px}.bp-blog strong{font-weight:800}.bp-blog p{margin:12px 0}.bp-blog ul{padding-left:23px;margin:14px 0}.bp-blog li{padding:4px 0}.bp-blog li::marker{color:#5140ad}.bp-blog .bp-related{margin:36px 0 0;border-top:1px solid #e1e4ed;padding-top:22px}.bp-blog .bp-related h3{font-size:19px;margin:0 0 12px;color:#203c85}.bp-blog .bp-related li{font-size:15px;line-height:1.48;padding:7px 0}.bp-blog a{color:#203c85;text-decoration:underline;text-underline-offset:3px}.bp-blog .bp-action{text-align:center;margin:35px 0 14px}.bp-blog .bp-cta{display:inline-block;background:#203c85;color:#fff;text-decoration:none;padding:15px 24px;border-radius:26px;font-weight:800;transition:transform .2s,background .2s,box-shadow .2s}.bp-blog .bp-cta:hover,.bp-blog .bp-cta:focus-visible{background:#5140ad;transform:translateY(-3px);box-shadow:0 9px 23px #203c8540}.bp-blog .bp-note{text-align:center;font-style:italic;color:#66718a;font-size:12px;line-height:1.6;margin:12px auto 0}@media(max-width:600px){.bp-blog h2{font-size:19px}.bp-blog .bp-related li{font-size:15px}}@media(prefers-reduced-motion:reduce){.bp-blog .bp-cta{transition:none}.bp-blog .bp-cta:hover{transform:none}}</style>';
+// Conservative Markdown subset. User words are never sent to an LLM or executed.
+function inlineHtml(text){
+ const s=String(text??'');
+ const token=/\[([^\]\n]+)\]\(([^)\s]+)\)|\*\*(.+?)\*\*|__(.+?)__|\*([^*\n]+)\*/g;
+ let out='',from=0,m;
+ while((m=token.exec(s))){
+  out+=esc(s.slice(from,m.index));
+  if(m[1]!==undefined){
+   const link=validUrl(m[2]);
+   out+=link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">'+inlineHtml(m[1])+'</a>':esc(m[0]);
+  }else if(m[3]!==undefined||m[4]!==undefined){
+   out+='<strong>'+inlineHtml(m[3]??m[4])+'</strong>';
+  }else if(m[5]!==undefined){
+   out+='<em>'+inlineHtml(m[5])+'</em>';
+  }
+  from=token.lastIndex;
  }
- flush();return html.join('\n');
+ return out+esc(s.slice(from));
+}
+export function articleToHtml(article,options={}){
+ const html=[],paragraph=[],list=[];
+ let listType='',start=1,skippedTitle=false;
+ const flushParagraph=()=>{if(paragraph.length){html.push('<p>'+inlineHtml(paragraph.join(' '))+'</p>');paragraph.length=0}};
+ const flushList=()=>{if(list.length){
+  const tag=listType==='ol'?'ol':'ul';
+  const attr=tag==='ol'&&start!==1?' start="'+start+'"':'';
+  html.push('<'+tag+attr+'>'+list.map(item=>'<li>'+inlineHtml(item)+'</li>').join('')+'</'+tag+'>');
+  list.length=0;listType='';start=1;
+ }};
+ for(const raw of normal(article).split('\n')){
+  const line=raw.trim();
+  if(!line){flushParagraph();flushList();continue}
+  const heading=/^(#{1,3})\s+(.+)$/.exec(line);
+  if(heading){
+   flushParagraph();flushList();
+   if(heading[1]==='#'){
+    const value=heading[2].replace(/^\*\*(.*?)\*\*$/,'$1').trim();
+    // If pasted article includes the same H1 as the title input, the site's
+    // own title (or optional H1) already renders it. Avoid duplicating it.
+    if(!skippedTitle && value.toLocaleLowerCase()===String(options.title||'').trim().toLocaleLowerCase()){
+     skippedTitle=true;continue;
+    }
+   }
+   const level=heading[1].length===3?3:2;
+   html.push('<h'+level+'>'+inlineHtml(heading[2])+'</h'+level+'>');continue;
+  }
+  const bullet=/^[-*•]\s+(.+)$/.exec(line),numbered=/^(\d{1,3})\.\s+(.+)$/.exec(line);
+  if(bullet||numbered){
+   flushParagraph();
+   const type=numbered?'ol':'ul';
+   if(listType && type!==listType)flushList();
+   if(!list.length){listType=type;start=numbered?Number(numbered[1]):1;}
+   list.push(bullet?bullet[1]:numbered[2]);continue;
+  }
+  flushList();paragraph.push(line);
+ }
+ flushParagraph();flushList();
+ return html.join('\n');
 }
 export function generateBlogHtml(input){
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Completa el artículo.');
@@ -41,7 +89,7 @@ export function generateBlogHtml(input){
  const dateHtml=input.include_date===true&&date?'<p class="bp-meta">Brásper · '+esc(date)+'</p>':'';
  const callToAction=pt?'Faça seu envio agora →':'Haz tu envío ahora →';
  const note=pt?'Este conteúdo é informativo. Tarifas, câmbio e prazos podem variar. Confira as condições vigentes antes de enviar.':'Este contenido es informativo. Las tarifas, el tipo de cambio y los plazos pueden variar. Revisa las condiciones vigentes antes de enviar.';
- return CSS+'\n<article class="bp-blog" lang="'+lang+'">'+headline+dateHtml+articleToHtml(article)+rel+'<div class="bp-action"><a class="bp-cta" href="https://brasper.com/" target="_blank" rel="noopener noreferrer">'+callToAction+'</a></div><p class="bp-note">'+note+'</p></article>';
+ return CSS+'\n<article class="bp-blog" lang="'+lang+'">'+headline+dateHtml+articleToHtml(article,{title})+rel+'<div class="bp-action"><a class="bp-cta" href="https://brasper.com/" target="_blank" rel="noopener noreferrer">'+callToAction+'</a></div><p class="bp-note">'+note+'</p></article>';
 }
 
 /** Resolve access with the caller JWT + RLS, never with an admin token. */
