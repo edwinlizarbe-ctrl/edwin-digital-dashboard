@@ -22,7 +22,7 @@ function inlineHtml(text){
   out+=autoLinks(s.slice(from,m.index));
   if(m[1]!==undefined){
    const link=validUrl(m[2]);
-   out+=link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">'+inlineHtml(m[1])+'</a>':esc(m[0]);
+   out+=link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">'+esc(m[1])+'</a>':esc(m[0]);
   }else if(m[3]!==undefined||m[4]!==undefined){
    out+='<strong>'+inlineHtml(m[3]??m[4])+'</strong>';
   }else if(m[5]!==undefined){
