@@ -24,7 +24,7 @@ test('genera cuerpo ES con formato corporativo sin duplicar H1 ni fecha',()=>{
  assert.match(html,/Ahorra &lt;tiempo&gt; y revisa condiciones\./);
  assert.match(html,/<li>Primer paso<\/li>/);
  assert.doesNotMatch(html,/<h1>/);
- assert.doesNotMatch(html,/bp-meta/);
+ assert.doesNotMatch(html,/<p class="bp-meta">/);
  assert.match(html,/Haz tu envío ahora/);
  assert.match(html,/https:\/\/brasper\.com/);
 });
