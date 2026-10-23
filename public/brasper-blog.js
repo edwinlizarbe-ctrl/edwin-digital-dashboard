@@ -11,15 +11,11 @@
    result='';lastBusiness=businessId||'';
    return '<div class="bp-tool"><div class="bp-tool-hero"><div><span class="bp-tool-eyebrow">BRÁSPER · ESTUDIO EDITORIAL</span><h1>Tu artículo, con un formato impecable.</h1><p>Convierte textos de Brásper en HTML listo para revisar, copiar y pegar. Sin reescribir tus palabras ni utilizar inteligencia artificial de pago.</p></div><span class="bp-tool-label">GENERADOR HTML</span></div>'+
    (isAdmin?'<div class="bp-invite-admin"><div><b>Acceso editorial de Ana</b><p>Invitación segura a marketing.brasper@gmail.com · únicamente Blog de Brásper.</p></div><button type="button" class="button button-outline" id="bp-invite-ana">Invitar a Ana</button><span id="bp-invite-feedback" role="status" aria-live="polite"></span></div>':'')+
-   '<div class="bp-tool-grid"><section class="card bp-tool-editor"><div class="bp-tool-head"><span class="bp-tool-index">01</span><div><h2>Prepara el contenido</h2><p>Solo tú decides el texto, los enlaces y el idioma.</p></div></div>'+
-   '<form id="bp-blog-form" data-business-id="'+clean(businessId)+'"><div class="bp-form-dual"><label>Idioma<select name="language" class="simple-input"><option value="es">Español · Perú</option><option value="pt">Português · Brasil</option></select></label><label>Fecha editorial (opcional)<input class="simple-input" type="month" name="date"></label></div>'+
-   '<label>Título del artículo<input name="title" class="simple-input" maxlength="200" required placeholder="Escribe el título tal como irá en la web"></label>'+
-   '<label>Texto del artículo<textarea name="article" class="simple-input bp-article-input" maxlength="60000" required placeholder="Pega aquí tu artículo.&#10;&#10;## Subtítulo&#10;&#10;Párrafo de tu blog.&#10;&#10;- Primera recomendación&#10;- Segunda recomendación"></textarea></label>'+
-   '<div class="bp-format-help"><b>Guía rápida:</b> escribe <code>##</code> antes de un subtítulo y <code>-</code> antes de cada viñeta. Se reconocen enlaces Markdown [texto](URL), negritas **texto** y listas. El título repetido en el artículo se omite para evitar duplicaciones.</div>'+
-   '<label>Artículos relacionados <span class="bp-form-hint">(máximo 7)</span><textarea name="related" class="simple-input bp-links-input" placeholder="Título del artículo | https://brasper.com/enlace-real&#10;Otro artículo | https://brasper.com/otro-enlace"></textarea></label>'+
-   '<div class="bp-tool-checks"><label><input type="checkbox" name="include_title"> Incluir título dentro del HTML</label><label><input type="checkbox" name="include_date"> Incluir fecha dentro del HTML</label></div>'+
-   '<p class="bp-tool-detail">Por defecto no duplicamos el título ni la fecha, porque la plantilla del blog puede mostrarlos por separado. El contenido no se publica automáticamente.</p>'+
-   '<button type="submit" class="button button-primary bp-generate-button">Generar mi HTML →</button></form></section>'+
+   '<div class="bp-tool-grid"><section class="card bp-tool-editor"><div class="bp-tool-head"><span class="bp-tool-index">01</span><div><h2>Pega tu blog completo</h2><p>Un solo campo. Conservamos el texto y detectamos automáticamente español o portugués.</p></div></div>'+
+   '<form id="bp-blog-form" data-business-id="'+clean(businessId)+'">'+
+   '<label>Artículo completo<textarea name="article" class="simple-input bp-article-input" maxlength="60000" required placeholder="Pega aquí TODO el artículo, incluido el título, los subtítulos y las listas."></textarea></label>'+
+   '<p class="bp-tool-detail">Solo convertimos el texto al formato editorial de Brásper: azul y morado, con enlaces de Brásper y PIX; nunca enlazamos bancos. No cambiamos el idioma ni reescribimos el contenido.</p>'+
+   '<button type="submit" class="button button-primary bp-generate-button">Generar HTML →</button></form></section>'+
    '<section class="card bp-tool-preview"><div class="bp-tool-head"><span class="bp-tool-index">02</span><div><h2>Revisa el resultado</h2><p>El diseño azul y morado oficial de Brásper.</p></div></div>'+
    '<div class="bp-preview-chrome"><div class="bp-preview-top"><span>VISTA PREVIA DEL ARTÍCULO</span><span>BRÁSPER / BLOG</span></div><iframe id="bp-blog-preview" title="Vista previa segura del artículo" sandbox="" loading="lazy"></iframe></div>'+
    '<div id="bp-generator-status" class="bp-tool-status" role="status" aria-live="polite">Completa el artículo para previsualizar tu HTML.</div>'+
@@ -33,10 +29,14 @@
   e.preventDefault();const form=e.target,id=form.dataset.businessId;
   if(!id)return show('Selecciona la empresa Brásper.',true);
   const submit=form.querySelector('[type="submit"]');submit.disabled=true;submit.textContent='Generando HTML…';
-  const d=new FormData(form),lines=String(d.get('related')||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  if(lines.length>7){show('Solo se permiten siete artículos relacionados.',true);submit.disabled=false;submit.textContent='Generar mi HTML →';return;}
-  const related=lines.map(line=>{const i=line.lastIndexOf('|');return i<0?{title:line,url:''}:{title:line.slice(0,i).trim(),url:line.slice(i+1).trim()}});
-  const data={business_id:id,title:String(d.get('title')||''),article:String(d.get('article')||''),date:String(d.get('date')||''),language:String(d.get('language')||''),related,include_title:d.has('include_title'),include_date:d.has('include_date')};
+  const d=new FormData(form),article=String(d.get('article')||'').trim();
+  const lines=article.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+  const first=(lines[0]||'').replace(/^#{1,3}\\s*/,'').replace(/^\\*\\*(.*?)\\*\\*$/,'$1');
+  const title=first.slice(0,200);
+  if(title.length<2){show('Pega un artículo que empiece con el título.',true);submit.disabled=false;submit.textContent='Generar HTML →';return;}
+  const lower=' '+article.toLowerCase()+' ';
+  const pt=/(\\b(você|vocês|não|também|saiba|envio|dinheiro|reais|cotação|brasileiro|transferências|artigos)\\b|\\b(para o|para a|com o|do brasil|no brasil)\\b)/i.test(lower);
+  const data={business_id:id,title,article,language:pt?'pt':'es',related:[],include_title:false,include_date:false};
   result='';
   const output=$('bp-html-output');if(output)output.value='';
   document.querySelectorAll('[data-bp-action]').forEach(x=>x.disabled=true);
