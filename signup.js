@@ -75,17 +75,21 @@ export async function handleSignup(req, env) {
   } catch { return reply({ error: 'No se pudo contactar el servicio de registro. Inténtalo más tarde.' }, 502); }
   if (res.status === 429) return reply({ error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' }, 429);
   if (res.status >= 500) return reply({ error: 'El servicio de registro no está disponible. Inténtalo más tarde.' }, 502);
-  if (res.status === 422) {
+  if (res.status === 400 || res.status === 422) {
     const detail = await res.json().catch(() => ({}));
-    const code = String(detail.error_code || detail.code || '');
+    const code = String(detail.error_code || detail.code || '').toLowerCase();
+    if (/email_exists|user_already_exists|user_already_registered/.test(code)) return reply({ ok: true, message: SIGNUP_OK }, 200);
     if (/weak_password/.test(code)) return reply({ error: 'La contraseña es demasiado débil. Usa una más larga y menos común.' }, 400);
     if (/validation|email_address_invalid/.test(code)) return reply({ error: 'Escribe un correo electrónico válido.' }, 400);
-  } else if (res.status >= 400) {
     return reply({ error: 'No se pudo completar el registro. Revisa los datos e inténtalo de nuevo.' }, 400);
   }
+  if (res.status >= 400) return reply({ error: 'No se pudo completar el registro. Inténtalo de nuevo.' }, 400);
   // Respuesta idéntica exista o no el correo (anti-enumeración). Nunca se emiten cookies.
   const data = res.ok ? await res.json().catch(() => ({})) : {};
-  if (data && data.access_token) console.error('SUPABASE AUTH: "Confirm email" está desactivado; actívalo antes de publicar el registro.');
+  if (data && data.access_token) {
+    console.error('SUPABASE AUTH: Confirm email no está activo; no habilitar onboarding hasta activarlo.');
+    return reply({ error: 'La confirmación de correo aún no está configurada. Contacta al administrador antes de continuar.' }, 503);
+  }
   return reply({ ok: true, message: SIGNUP_OK }, 200);
 }
 
