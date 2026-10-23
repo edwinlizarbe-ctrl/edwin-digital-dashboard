@@ -40,6 +40,7 @@
   const periodLabel = () => ({ today:'Hoy', yesterday:'Ayer', '7':'Últimos 7 días', '30':'Últimos 30 días', '90':'Últimos 90 días', '365':'Últimos 12 meses' })[state.period] || 'Últimos 30 días';
   const site = () => state.sites.find(s => s.id === state.siteId);
   const isAdmin = () => state.user?.role === 'admin';
+  const isBlogEditor = () => state.user?.role === 'blog_editor';
   // Read-only metrics from the currently selected client. No passwords, keys or other tenants.
   window.edigitalAssistantContext = () => {
     const company = state.businesses.find(b => b.id === state.businessId);
@@ -1752,12 +1753,18 @@ function sidebar(){
     queueMicrotask(() => window.dispatchEvent(new Event('edigital:render')));
     if(state.loading){root.innerHTML=`<div class="initial-load"><span class="spinner"></span><strong>Preparando Edwin CRM…</strong></div>`;return;}
     if(!state.user){login();return;}
+    if(isBlogEditor()){
+      // Isolated workspace: not even the full navigation or company controls are rendered.
+      state.page='blog';
+      root.innerHTML=`<div class="bp-editor-layout"><aside class="bp-editor-nav"><div>${brand(false)}<p>Estudio editorial · Brásper</p><div class="bp-editor-active">${icon('file-text',18)} Blog</div></div><div class="bp-editor-account"><span>${clean(state.user.email||'')}</span><button class="button button-outline" type="button" data-act="logout">Cerrar sesión</button></div></aside><main class="bp-editor-content">${state.businessId?window.edwinBrasperBlog?.page(state.businessId,false)||'<p>Preparando Blog…</p>':'<p>No se pudo verificar el acceso a Brásper.</p>'}</main></div>`;
+      return;
+    }
     if(!isAdmin()&&!state.businesses.length){onboarding();return;}
     if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','blog','settings'].includes(state.page))state.page='adminHome';
     if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
     if(state.page==='mailing'&&!/^brasper$|^bras-per$/.test(String(business()?.slug||'').toLowerCase()))state.page='overview';
     if(state.page==='blog'&&!isAdmin()&&!/^brasper$|^bras-per$/.test(String(business()?.slug||'').toLowerCase()))state.page='overview';
-    const contents={whatsapp:()=>window.edwinWhatsAppInbox?.page(state.businessId)||'<p>Preparando WhatsApp…</p>',overview,analytics,acquisition,campaigns,sales,leads,utm,audience,content,events,hotmart,reports,mailing:()=>window.brasperEmailMarketing?.page(state.businessId)||'<p>Preparando Email Marketing…</p>',blog:()=>window.edwinBrasperBlog?.page((isAdmin()?state.businesses.find(b=>b.slug==='brasper'):business())?.id)||'<p>Preparando Blog…</p>',clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
+    const contents={whatsapp:()=>window.edwinWhatsAppInbox?.page(state.businessId)||'<p>Preparando WhatsApp…</p>',overview,analytics,acquisition,campaigns,sales,leads,utm,audience,content,events,hotmart,reports,mailing:()=>window.brasperEmailMarketing?.page(state.businessId)||'<p>Preparando Email Marketing…</p>',blog:()=>window.edwinBrasperBlog?.page((isAdmin()?state.businesses.find(b=>b.slug==='brasper'):business())?.id,isAdmin())||'<p>Preparando Blog…</p>',clients,accounts,clientDetail,adminHome,adminOperations,adminIntegrations,integrations,company,settings};
     let pageMarkup;
     try {pageMarkup=(contents[state.page]||overview)();}
     catch(error){
@@ -1811,7 +1818,15 @@ function sidebar(){
     state.loading=true;render();
     try{
       const status=await api('/api/status');if(!status.configured)throw new Error(`Configuración pendiente: ${(status.missing||[]).join(', ')}`);
-      const user=await api('/api/me');const companies=await api('/api/businesses');
+      const user=await api('/api/me');
+      if(user.user?.role==='blog_editor'){
+        const access=await api('/api/brasper/blog/access');
+        state.user=user.user;state.businessId=access.business_id;
+        state.businesses=[{id:access.business_id,name:'Brásper',slug:'brasper'}];
+        state.page='blog';state.loginError='';state.loading=false;render();
+        return; // Do not fetch businesses, analytics, leads, sites or integrations.
+      }
+      const companies=await api('/api/businesses');
       const returnBusiness=new URLSearchParams(location.search).get('business_id');
       const googleAuthOutcome=new URLSearchParams(location.search).get('google_ads');
       const ga4AuthOutcome=new URLSearchParams(location.search).get('ga4');

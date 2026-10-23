@@ -43,6 +43,31 @@ export function generateBlogHtml(input){
  const note=pt?'Este conteúdo é informativo. Tarifas, câmbio e prazos podem variar. Confira as condições vigentes antes de enviar.':'Este contenido es informativo. Las tarifas, el tipo de cambio y los plazos pueden variar. Revisa las condiciones vigentes antes de enviar.';
  return CSS+'\n<article class="bp-blog" lang="'+lang+'">'+headline+dateHtml+articleToHtml(article)+rel+'<div class="bp-action"><a class="bp-cta" href="https://brasper.com/" target="_blank" rel="noopener noreferrer">'+callToAction+'</a></div><p class="bp-note">'+note+'</p></article>';
 }
+
+/** Resolve access with the caller JWT + RLS, never with an admin token. */
+async function blogEditorBusinessId(env,s){
+ if(s.user.role!=='blog_editor'||String(s.user.email||'').toLowerCase()!=='marketing.brasper@gmail.com')return null;
+ const root=String(env.SUPABASE_URL||'').replace(/\/$/,'');
+ const headers={apikey:env.SUPABASE_ANON_KEY,Authorization:'Bearer '+s.access,Accept:'application/json'};
+ const members=await fetch(root+'/rest/v1/business_members?select=business_id&user_id=eq.'+encodeURIComponent(s.user.id)+'&limit=2',{headers});
+ if(!members.ok)throw Error('No se pudo validar la membresía editorial.');
+ const list=await members.json();
+ if(!Array.isArray(list)||list.length!==1||!UUID.test(String(list[0]?.business_id||'')))return null;
+ const businesses=await fetch(root+'/rest/v1/businesses?select=id,slug&id=eq.'+encodeURIComponent(list[0].business_id)+'&limit=1',{headers});
+ if(!businesses.ok)throw Error('No se pudo validar Brásper.');
+ const rows=await businesses.json();
+ if(!Array.isArray(rows)||rows.length!==1||rows[0].id!==list[0].business_id||rows[0].slug!=='brasper')return null;
+ return rows[0].id;
+}
+export async function handleBlogAccess(req,env,s){
+ const output=(data,status)=>reply(data,status,s.cookies||[]);
+ if(req.method!=='GET')return output({error:'Método no permitido.'},405);
+ try{
+  const id=await blogEditorBusinessId(env,s);
+  return id?output({ok:true,business_id:id},200):output({error:'Sin acceso editorial a Brásper.'},403);
+ }catch{return output({error:'No se pudo verificar el acceso editorial.'},502)}
+}
+
 function reply(body,status=200,cookies=[]){
  const h=new Headers({'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
  cookies.forEach(x=>h.append('Set-Cookie',x));
@@ -70,7 +95,12 @@ export async function handleBlogGenerator(req,env,s){
  }catch{return output({error:'No se pudo verificar la empresa.'},502)}
  if(!Array.isArray(businesses)||businesses.length!==1||businesses[0].id!==businessId||businesses[0].slug!=='brasper')
   return output({error:'El generador Blog es exclusivo de Brásper.'},403);
- if(!['admin','client'].includes(s.user.role))return output({error:'Acceso no autorizado.'},403);
+ if(!['admin','client','blog_editor'].includes(s.user.role))return output({error:'Acceso no autorizado.'},403);
+ if(s.user.role==='blog_editor'){
+  let allowed;try{allowed=await blogEditorBusinessId(env,s)}
+  catch{return output({error:'No se pudo comprobar la membresía editorial.'},502)}
+  if(allowed!==businessId)return output({error:'Acceso editorial denegado.'},403);
+ }
  try{return output({ok:true,html:generateBlogHtml(data)},200)}
  catch(e){return output({error:e.message||'No se pudo generar el HTML.'},400)}
 }

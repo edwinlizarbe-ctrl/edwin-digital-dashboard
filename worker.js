@@ -1,12 +1,12 @@
 import { manageSuspension, isSuspendedUser } from './admin-suspension.js';
 import { handleAdminLifecycle } from './admin-lifecycle.js';
-import { adminInvite, acceptInvite } from './admin-invites.js';
+import { adminInvite, adminInviteBlogEditor, acceptInvite } from './admin-invites.js';
 import { handleMetaApi } from './meta.js';
 import { handleGoogleAdsApi } from './google-ads.js';
 import { handleSearchConsoleApi } from './search-console.js';
 import { handleGa4OAuthApi, ga4ConnectionForBusiness, ga4OauthToken } from './ga4-oauth.js';
 import { handleLeadsApi } from './leads.js';
-import { handleBlogGenerator } from './brasper-blog-generator.js';
+import { handleBlogGenerator, handleBlogAccess } from './brasper-blog-generator.js';
 import { handleEmailMarketingApi } from './email-marketing.js';
 import { publicMailRoute,processEmailQueue } from './email-delivery.js';
 import { handleAssistantApi } from './assistant-api.js';
@@ -170,6 +170,17 @@ async function handleApi(req, env) {
   }
   const s = await session(req, env);
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
+  // Dedicated least-privilege account: fail closed on every other authenticated API.
+  // This runs BEFORE all business, sales, analytics, contacts and integration routes.
+  if(s.user.role==='blog_editor'){
+    if(String(s.user.email||'').toLowerCase()!=='marketing.brasper@gmail.com')
+      return json({error:'Perfil editorial no autorizado.'},403,s.cookies);
+    if(path==='/api/me' && method==='GET')return json({user:s.user},200,s.cookies);
+    if(path==='/api/brasper/blog/access')return handleBlogAccess(req,env,s);
+    if(path==='/api/brasper/blog/generate')return handleBlogGenerator(req,env,s);
+    return json({error:'Este perfil solo puede utilizar Blog de Brásper.'},403,s.cookies);
+  }
+  if(path==='/api/admin/invite-blog-editor')return adminInviteBlogEditor(req,env,s);
   if(path==='/api/admin/accounts/suspension')return manageSuspension(req,env,s);
   if(path==='/api/admin/lifecycle')return handleAdminLifecycle(req,env,s);
   if(path==='/api/admin/invite')return adminInvite(req,env,s);
