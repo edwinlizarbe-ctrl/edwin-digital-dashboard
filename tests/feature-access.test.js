@@ -110,11 +110,12 @@ test('a concurrent change is retried on fresh data instead of being overwritten'
  }});
 });
 test('persistent conflicts return 409 and never force a write',async()=>{
+ let version=0;
  await inServer(async({calls})=>{
   const res=await handleFeaturesApi(post(JSON.stringify({business_id:business,feature:'ga4',enabled:false})),env,admin);
   assert.equal(res.status,409);
   assert.equal(calls.filter(c=>c.method==='PATCH').length,3);
- },{beforePatch:set=>set(freeRow({updated_at:'2026-10-14T0'+Math.floor(Math.random()*9)+':30:00.000001+00:00'+Math.random()}))});
+ },{beforePatch:set=>set(freeRow({updated_at:'2026-10-14T01:30:00.00000'+(++version)+'+00:00'}))});
 });
 test('first plan assignment uses a plain insert and never merges',async()=>{
  await inServer(async({calls,row})=>{
