@@ -19,7 +19,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, crmImportRows:[], crmImportFile:'', crmImportSkipped:0, crmImportWarnings:[], crmImportError:'', crmImportBusy:false, crmImportSource:'other', crmImportBusinessId:'', zernioBusy:false, zernioNotice:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, crmImportRows:[], crmImportFile:'', crmImportSkipped:0, crmImportWarnings:[], crmImportError:'', crmImportBusy:false, crmImportSource:'other', crmImportBusinessId:'', siteCreateBusy:false, siteCreateError:'', zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -950,7 +950,7 @@ function reportExtras(){
  <p class="fine-print">Sector y país se guardan en tu cuenta. El nombre registrado de la empresa no puede cambiarse desde este panel.</p>
  </form>`)}</div>
  <div class="col-5">${card('Conexiones de mi empresa','Al conectar una fuente, aparecerá en sus reportes',connectionOverview())}</div>
- <div class="col-12">${card('Mis sitios web',`${fmt(state.sites.length)} sitios visibles para tu usuario`,`${state.siteNotice?`<div class="company-message">${icon('check',15)} ${clean(state.siteNotice)}</div>`:''}${sites||empty('No hay sitios web registrados para este negocio.')}<p class="fine-print">Aquí puedes modificar el nombre y la URL de un sitio autorizado. La creación de nuevos sitios requiere permisos y configuración de propiedad GA4.</p>`)}</div>
+ <div class="col-12">${card('Mis sitios web',`${fmt(state.sites.length)} sitios visibles para tu usuario`,`${state.siteNotice?`<div class="company-message">${icon('check',15)} ${clean(state.siteNotice)}</div>`:''}${state.siteCreateError?alertBlock(state.siteCreateError):''}<form id="site-create-form" class="company-edit-panel site-create-form"><h3>Agregar sitio web</h3><p class="fine-print">Registra la dirección de tu web para organizarla en Edwin CRM. No necesita claves externas.</p><div class="company-form-grid"><label class="form-label">Nombre del sitio<input class="simple-input" name="siteName" minlength="2" maxlength="100" placeholder="Mi tienda o sitio web" required/></label><label class="form-label">URL pública<input class="simple-input" name="siteUrl" type="url" maxlength="300" placeholder="https://miempresa.com" required/></label></div><button type="submit" class="button button-primary" ${state.siteCreateBusy?'disabled':''}>${icon('plus',16)} ${state.siteCreateBusy?'Guardando…':'Agregar sitio'}</button></form>${sites||empty('Todavía no hay sitios registrados. Puedes agregar el primero aquí.')}<p class="fine-print">El sitio queda declarado en tu empresa, no verificado. Registrar su URL no conecta Google Analytics, Google Ads ni Search Console: sus autorizaciones se gestionan por separado.</p>`)}</div>
  </div>`;
 }
   // Customer-only admin listings; internal Brásper remains stored and available elsewhere.
@@ -1800,7 +1800,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.sc=null;state.scSites=null;state.scReport=null;state.scError='';state.scNotice='';state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.crmImportRows=[];state.crmImportFile='';state.crmImportError='';state.crmImportSkipped=0;state.crmImportWarnings=[];state.crmImportBusinessId='';state.crmImportBusy=false;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.siteCreateBusy=false;state.siteCreateError='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.sc=null;state.scSites=null;state.scReport=null;state.scError='';state.scNotice='';state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.crmImportRows=[];state.crmImportFile='';state.crmImportError='';state.crmImportSkipped=0;state.crmImportWarnings=[];state.crmImportBusinessId='';state.crmImportBusy=false;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await loadClientEntitlements(id);await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole()]);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
@@ -1905,6 +1905,21 @@ function sidebar(){
  }catch(e){state.companyError=e.message||'No se pudieron guardar los cambios.';}
  finally{state.companyBusy=false;render();}
 }
+  async function createSite(form){
+    if(!state.businessId||state.siteCreateBusy||isAdmin())return;
+    const data=new FormData(form),businessId=state.businessId;
+    state.siteCreateBusy=true;state.siteCreateError='';state.siteNotice='';render();
+    try{
+      const result=await api('/api/sites/create',{method:'POST',body:JSON.stringify({
+        business_id:businessId,name:String(data.get('siteName')||'').trim(),url:String(data.get('siteUrl')||'').trim()
+      })});
+      if(state.businessId!==businessId)return;
+      if(!result.site?.id)throw new Error('El servidor no confirmó el sitio.');
+      state.sites=[...state.sites,result.site];
+      state.siteNotice='Sitio registrado. La propiedad y las conexiones de Analytics se verifican por separado.';
+    }catch(e){if(businessId===state.businessId)state.siteCreateError=e.message||'No se pudo registrar el sitio.';}
+    finally{if(businessId===state.businessId){state.siteCreateBusy=false;render();}}
+  }
   async function saveSite(form){
  if(!state.businessId||state.siteBusy)return;
  const data=new FormData(form),businessId=state.businessId,siteId=String(data.get('siteId')||'');
@@ -2470,6 +2485,7 @@ function sidebar(){
       render();return;
     }
     if(e.target.id==='company-profile-form'){e.preventDefault();await saveCompany(e.target);return;}
+    if(e.target.id==='site-create-form'){e.preventDefault();await createSite(e.target);return;}
     if(e.target.id==='site-edit-form'){e.preventDefault();await saveSite(e.target);return;}
     if(e.target.id==='change-password-form'){
       e.preventDefault(); if(!state.user || state.passwordBusy)return;
