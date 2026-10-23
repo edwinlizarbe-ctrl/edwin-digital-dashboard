@@ -6,6 +6,7 @@ import { handleGoogleAdsApi } from './google-ads.js';
 import { handleSearchConsoleApi } from './search-console.js';
 import { handleGa4OAuthApi, ga4ConnectionForBusiness, ga4OauthToken } from './ga4-oauth.js';
 import { handleLeadsApi } from './leads.js';
+import { handleBlogGenerator } from './brasper-blog-generator.js';
 import { handleEmailMarketingApi } from './email-marketing.js';
 import { publicMailRoute,processEmailQueue } from './email-delivery.js';
 import { handleAssistantApi } from './assistant-api.js';
@@ -179,6 +180,7 @@ async function handleApi(req, env) {
   if (path.startsWith('/api/search-console/')) return handleSearchConsoleApi(req, env, s);
   if (path.startsWith('/api/ga4/') && path !== '/api/ga4/report') return handleGa4OAuthApi(req, env, s);
   if (path === '/api/crm/leads' || path === '/api/crm/leads/import') return handleLeadsApi(req, env, s);
+  if (path === '/api/brasper/blog/generate') return handleBlogGenerator(req, env, s);
   if (path === '/api/email-marketing') return handleEmailMarketingApi(req, env, s);
   if (path.startsWith('/api/assistant/')) return handleAssistantApi(req, env, s);
   if (path === '/api/onboarding/business') return handleOnboardingBusiness(req, env, s);
