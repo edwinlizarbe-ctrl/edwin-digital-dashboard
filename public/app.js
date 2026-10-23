@@ -417,11 +417,23 @@
     return `<section class="welcome-banner" aria-label="Bienvenida"><div class="welcome-banner-content"><span class="welcome-eyebrow">TU ESPACIO DE ANÁLISIS</span><h2>${greeting}${name?', '+clean(name):''}! <span aria-hidden="true">👋</span></h2><p>${clean(subtitle)}</p></div><div class="welcome-decor" aria-hidden="true">${icon('activity',60)}</div></section>`;
   }
   function firstRunPanel(){
+    // Acompañamiento de primer uso: estados de cuenta reales, nunca cifras simuladas.
+    // La guía desaparece cuando existen informes reales de GA4.
     if(gaReady()||state.gaLoading)return '';
-    const on=featureEnabled('ga4');
-    const title=on?'Comienza a conocer tu negocio':'Las métricas web no están habilitadas';
-    const text=on?'Las métricas de Edwin CRM aparecen cuando conectas una fuente real, como Google Analytics 4. Mientras tanto no mostramos cifras ni gráficos: sin datos de prueba. Conectar una fuente puede requerir permisos de administrador de tu sitio o cuenta.':'La integración con Google Analytics no está habilitada para esta empresa, así que no hay métricas web que mostrar. Puedes revisar qué fuentes están disponibles en Integraciones y seguir trabajando tus contactos en Oportunidades.';
-    return `<section class="first-run-panel" aria-labelledby="first-run-title"><div class="first-run-copy"><span class="first-run-eyebrow">${icon('info',14)} Sin métricas conectadas</span><h2 id="first-run-title">${title}</h2><p>${text}</p><span class="first-run-badge">Sin datos de prueba</span></div><div class="first-run-actions"><button class="button button-primary" type="button" data-act="nav" data-page="integrations">${icon('plug',16)} Explorar integraciones</button><button class="button button-outline" type="button" data-act="nav" data-page="leads">${icon('users',16)} Ir a Oportunidades</button></div></section>`;
+    const companyExists=!!business();
+    const leadCheckPending=state.leadsLoading;
+    const leadCheckError=!!state.leadsError;
+    const leadRegistered=!leadCheckPending&&!leadCheckError&&Array.isArray(state.leads)&&state.leads.length>0;
+    const gaIncluded=featureEnabled('ga4');
+    const leadStatus=leadCheckPending?'Comprobando':leadCheckError?'No disponible':leadRegistered?'Completado':'Por hacer';
+    const leadDescription=leadCheckPending?'Consultando tus oportunidades…':leadCheckError?'No pudimos comprobar las oportunidades. Puedes abrir el módulo para revisar.':leadRegistered?'Ya tienes al menos una oportunidad registrada en esta empresa.':'Puedes registrar clientes y oportunidades sin conectar ninguna herramienta.';
+    const steps=[
+      {number:'01',title:'Revisa los datos de tu empresa',description:'Tu espacio de negocio ya está disponible y separado de otros clientes.',done:companyExists,status:companyExists?'Completado':'Por hacer',page:'company',action:'Ver mi empresa'},
+      {number:'02',title:'Registra tu primera oportunidad',description:leadDescription,done:leadRegistered,status:leadStatus,page:'leads',action:'Ir a Oportunidades'},
+      {number:'03',title:'Explora las integraciones',description:gaIncluded?'Cuando autorices una fuente real, podremos mostrar sus resultados. Puede requerir permisos adicionales.':'Google Analytics no está habilitado para esta empresa. Consulta las herramientas disponibles sin activar planes ni cobros.',done:false,status:gaIncluded?'Opcional':'No incluida',page:'integrations',action:'Ver integraciones'}
+    ];
+    const rows=steps.map(step=>`<li class="start-step"><span class="start-number" aria-hidden="true">${step.done?icon('check',16):step.number}</span><div class="start-step-body"><div class="start-step-head"><h3>${clean(step.title)}</h3><span class="start-step-state ${step.done?'is-done':''}">${clean(step.status)}</span></div><p>${clean(step.description)}</p></div><button class="button button-outline start-step-action" type="button" data-act="nav" data-page="${step.page}">${clean(step.action)} ${icon('chevron',14)}</button></li>`).join('');
+    return `<section class="first-run-panel start-guide" aria-labelledby="start-guide-title"><div class="start-guide-heading"><div><span class="first-run-eyebrow">${icon('spark',14)} PRIMEROS PASOS EN EDWIN CRM</span><h2 id="start-guide-title">Tu empresa está lista. ¿Qué sigue?</h2><p>Empieza a organizar tus clientes y conecta tus herramientas cuando las necesites. No mostramos datos de prueba.</p></div><span class="start-guide-label">Guía de inicio</span></div><ol class="start-steps">${rows}</ol></section>`;
   }
   function salesOverview(){
     // Commerce figures must come from an authorized business-scoped source; GA4 key events are not sales.
