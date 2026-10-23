@@ -1,0 +1,31 @@
+name: CRM - pruebas de integración
+on:
+  pull_request:
+    paths:
+      - 'worker.js'
+      - 'signup.js'
+      - 'public/app.js'
+      - 'public/style.css'
+      - 'tests/**'
+      - 'migrations/**'
+      - '.github/workflows/crm-ci.yml'
+  push:
+    branches: [main]
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis del Worker y la interfaz
+        run: |
+          node --check worker.js
+          node --check public/app.js
+          node --check signup.js
+      - name: Pruebas unitarias de todos los módulos
+        run: node --test tests/*.test.js

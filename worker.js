@@ -10,6 +10,7 @@ import { publicMailRoute,processEmailQueue } from './email-delivery.js';
 import { handleAssistantApi } from './assistant-api.js';
 import { handleFeaturesApi, ensureBusinessFeature } from './feature-access.js';
 import { handleZernioApi } from './zernio.js';
+import { handleSignup, handleOnboardingBusiness } from './signup.js';
 /**
  * Edwin Digital Dashboard · Cloudflare Workers
  * Credentials stay in Cloudflare runtime secrets; browser never gets these values.
@@ -141,6 +142,7 @@ async function handleApi(req, env) {
   }
   if (path === '/api/status' && method === 'GET') return json({ configured: true });
   if (path === '/api/auth/accept-invite') return acceptInvite(req,env);
+  if (path === '/api/auth/signup') return handleSignup(req, env);
   if (path === '/api/auth/login' && method === 'POST') {
     if (corsPostDenied(req)) return json({ error: 'Origen no autorizado' }, 403);
     if (Number(req.headers.get('Content-Length')) > 8192) return json({ error: 'Solicitud demasiado grande' }, 413);
@@ -173,6 +175,7 @@ async function handleApi(req, env) {
   if (path === '/api/crm/leads') return handleLeadsApi(req, env, s);
   if (path === '/api/email-marketing') return handleEmailMarketingApi(req, env, s);
   if (path.startsWith('/api/assistant/')) return handleAssistantApi(req, env, s);
+  if (path === '/api/onboarding/business') return handleOnboardingBusiness(req, env, s);
   if (path === '/api/me' && method === 'GET') return json({ user: s.user }, 200, s.cookies);
   if (path === '/api/auth/change-password' && method === 'POST') {
     if (corsPostDenied(req)) return json({ error: 'Origen no autorizado.' }, 403, s.cookies);
