@@ -4,18 +4,25 @@
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normal=v=>String(v??'').replace(/\r\n?/g,'\n');
-const validUrl=raw=>{try{const u=new URL(String(raw||'').trim());return ['https:','http:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null}catch{return null}};
+const validUrl=raw=>{try{const u=new URL(String(raw||'').trim());const h=u.hostname.toLowerCase();const allowed=h==='brasper.com'||h.endsWith('.brasper.com')||h==='wa.me'||h==='api.whatsapp.com'||(h==='www.bcb.gov.br'&&u.pathname.toLowerCase().includes('pix'))||h==='wix.com'||h.endsWith('.wix.com');return u.protocol==='https:'&&!u.username&&!u.password&&allowed?u.href:null}catch{return null}};
 const CSS='<style>.bp-blog{font:400 16px/1.75 Arial,Helvetica,sans-serif;color:#263653;max-width:100%;overflow-wrap:anywhere}.bp-blog h1{font-weight:800;font-size:clamp(25px,3vw,34px);line-height:1.24;color:#203c85;margin:0 0 14px}.bp-blog .bp-meta{font-size:13px;color:#667993;margin:0 0 24px}.bp-blog h2{font-weight:800;font-size:21px;line-height:1.35;color:#203c85;border-left:4px solid #5140ad;padding-left:14px;margin:31px 0 15px}.bp-blog h3{color:#314780;font-size:18px;line-height:1.4;margin:23px 0 11px}.bp-blog strong{font-weight:800}.bp-blog p{margin:12px 0}.bp-blog ul{padding-left:23px;margin:14px 0}.bp-blog li{padding:4px 0}.bp-blog li::marker{color:#5140ad}.bp-blog .bp-related{margin:36px 0 0;border-top:1px solid #e1e4ed;padding-top:22px}.bp-blog .bp-related h3{font-size:19px;margin:0 0 12px;color:#203c85}.bp-blog .bp-related li{font-size:15px;line-height:1.48;padding:7px 0}.bp-blog a{color:#203c85;text-decoration:underline;text-underline-offset:3px}.bp-blog .bp-action{text-align:center;margin:35px 0 14px}.bp-blog .bp-cta{display:inline-block;background:#203c85;color:#fff;text-decoration:none;padding:15px 24px;border-radius:26px;font-weight:800;transition:transform .2s,background .2s,box-shadow .2s}.bp-blog .bp-cta:hover,.bp-blog .bp-cta:focus-visible{background:#5140ad;transform:translateY(-3px);box-shadow:0 9px 23px #203c8540}.bp-blog .bp-note{text-align:center;font-style:italic;color:#66718a;font-size:12px;line-height:1.6;margin:12px auto 0}@media(max-width:600px){.bp-blog h2{font-size:19px}.bp-blog .bp-related li{font-size:15px}}@media(prefers-reduced-motion:reduce){.bp-blog .bp-cta{transition:none}.bp-blog .bp-cta:hover{transform:none}}</style>';
 // Conservative Markdown subset. User words are never sent to an LLM or executed.
+function autoLinks(text){
+ return esc(text).replace(/Br[aá]sper|PIX|Wix/gi,word=>{
+  const key=word.toLowerCase();
+  const href=key==='pix'?'https://www.bcb.gov.br/estabilidadefinanceira/pix':key==='wix'?'https://www.wix.com/':'https://brasper.com/';
+  return '<a href="'+href+'" target="_blank" rel="noopener noreferrer">'+word+'</a>';
+ });
+}
 function inlineHtml(text){
  const s=String(text??'');
  const token=/\[([^\]\n]+)\]\(([^)\s]+)\)|\*\*(.+?)\*\*|__(.+?)__|\*([^*\n]+)\*/g;
  let out='',from=0,m;
  while((m=token.exec(s))){
-  out+=esc(s.slice(from,m.index));
+  out+=autoLinks(s.slice(from,m.index));
   if(m[1]!==undefined){
    const link=validUrl(m[2]);
-   out+=link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">'+inlineHtml(m[1])+'</a>':esc(m[0]);
+   out+=link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">'+esc(m[1])+'</a>':esc(m[0]);
   }else if(m[3]!==undefined||m[4]!==undefined){
    out+='<strong>'+inlineHtml(m[3]??m[4])+'</strong>';
   }else if(m[5]!==undefined){
@@ -23,7 +30,7 @@ function inlineHtml(text){
   }
   from=token.lastIndex;
  }
- return out+esc(s.slice(from));
+ return out+autoLinks(s.slice(from));
 }
 export function articleToHtml(article,options={}){
  const html=[],paragraph=[],list=[];
@@ -89,7 +96,8 @@ export function generateBlogHtml(input){
  const dateHtml=input.include_date===true&&date?'<p class="bp-meta">Brásper · '+esc(date)+'</p>':'';
  const callToAction=pt?'Faça seu envio agora →':'Haz tu envío ahora →';
  const note=pt?'Este conteúdo é informativo. Tarifas, câmbio e prazos podem variar. Confira as condições vigentes antes de enviar.':'Este contenido es informativo. Las tarifas, el tipo de cambio y los plazos pueden variar. Revisa las condiciones vigentes antes de enviar.';
- return CSS+'\n<article class="bp-blog" lang="'+lang+'">'+headline+dateHtml+articleToHtml(article,{title})+rel+'<div class="bp-action"><a class="bp-cta" href="https://brasper.com/" target="_blank" rel="noopener noreferrer">'+callToAction+'</a></div><p class="bp-note">'+note+'</p></article>';
+ const body=article.replace(/^\s*([^\n]+)\n?/, (match,line)=>line.replace(/^#{1,3}\s*/,'').replace(/^\*\*(.*?)\*\*$/,'$1').trim().toLocaleLowerCase()===title.toLocaleLowerCase()?'':match);
+ return CSS+'\n<article class="bp-blog" lang="'+lang+'">'+headline+dateHtml+articleToHtml(body,{title})+rel+'<div class="bp-action"><a class="bp-cta" href="https://brasper.com/" target="_blank" rel="noopener noreferrer">'+callToAction+'</a></div><p class="bp-note">'+note+'</p></article>';
 }
 
 /** Resolve access with the caller JWT + RLS, never with an admin token. */

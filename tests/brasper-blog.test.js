@@ -38,7 +38,7 @@ test('genera portugués y opt-in para título/fecha, con hasta siete relacionado
 test('rechaza javascript URL, atributos HTML y más de siete relacionados',()=>{
  assert.throws(()=>generateBlogHtml({...valid,related:[{title:'Peligro',url:'javascript:alert(1)'}]}),/URL/);
  assert.throws(()=>generateBlogHtml({...valid,related:Array.from({length:8},()=>valid.related[0])}),/siete/i);
- const html=generateBlogHtml({...valid,title:'"><script>alert(1)</script>',article:'## <img src=x onerror=alert(1)>\n\n<script>danger</script>',include_title:true,related:[{title:'<svg onload=alert(1)>',url:'https://example.com/?a=1&b=2'}]});
+ const html=generateBlogHtml({...valid,title:'"><script>alert(1)</script>',article:'## <img src=x onerror=alert(1)>\n\n<script>danger</script>',include_title:true,related:[{title:'<svg onload=alert(1)>',url:'https://brasper.com/?a=1&b=2'}]});
  assert.doesNotMatch(html,/<script>danger<\/script>/);
  assert.match(html,/&lt;script&gt;danger&lt;\/script&gt;/);
  assert.match(html,/&lt;svg onload/);
@@ -86,4 +86,12 @@ test('módulo Blog está presente en sidebar Brásper, separado de otras empresa
  assert.match(view,/data-bp-action="copy"/);
  assert.match(view,/data-bp-action="download"/);
  assert.doesNotMatch(view,/openai\.com|anthropic\.com|api\.openai/);
+});
+
+test('el HTML enlaza Brásper y PIX, nunca agrega enlaces bancarios',()=>{
+ const html=generateBlogHtml({...valid,title:'Transferencias',article:'Transferencias\\n\\nCon Brásper puedes recibir por PIX. Interbank y Nubank se mencionan solo como texto.',related:[]});
+ assert.match(html,/href="https:\/\/brasper.com\/"/);
+ assert.match(html,/href="https:\/\/www.bcb.gov.br\/estabilidadefinanceira\/pix"/);
+ assert.doesNotMatch(html,/href="[^"]*(interbank|nubank)/i);
+ assert.doesNotMatch(html,/<p>Transferencias<\/p>/);
 });
