@@ -29,6 +29,11 @@ begin
   if not exists (select 1 from public.profiles p where p.id = v_uid and p.role = 'client') then
     raise exception 'not_allowed' using errcode = '42501';
   end if;
+  -- No provisionar negocios si Supabase Auth no confirmó realmente el correo.
+  -- No confiar únicamente en el frontend ni en el ajuste "Confirm email" del proveedor.
+  if not exists (select 1 from auth.users u where u.id = v_uid and u.email_confirmed_at is not null) then
+    raise exception 'email_unverified' using errcode = '42501';
+  end if;
 
   -- Serializa solicitudes simultáneas del mismo usuario (doble clic / reintentos).
   perform pg_advisory_xact_lock(hashtextextended('ed_onboard_business:' || v_uid::text, 0));
