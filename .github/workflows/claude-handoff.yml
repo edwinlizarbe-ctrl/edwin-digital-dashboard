@@ -1,0 +1,38 @@
+# Propuesta para revisar antes de activar: enlace de instrucciones ChatGPT -> GitHub -> Claude.
+# Requiere instalar la app oficial de Claude y configurar CLAUDE_CODE_OAUTH_TOKEN
+# en Settings > Secrets and variables > Actions. No introducir credenciales en el codigo.
+name: Claude Code - instrucciones desde GitHub
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  claude-handoff:
+    # Solo el propietario, mencionando a Claude expresamente, puede activar el agente.
+    if: >-
+      github.event.comment.user.login == 'edwinlizarbe-ctrl' &&
+      contains(github.event.comment.body, '@claude')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: claude-handoff-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Delegar a Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --max-turns 12
