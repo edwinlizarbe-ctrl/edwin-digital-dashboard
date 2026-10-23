@@ -111,7 +111,7 @@ test('reset-password validates method, origin, body, passwords and token before 
     assert.equal((await handleResetPassword(req(p, { access_token: t, ...goodPw }, { origin: 'https://evil.example' }), env)).status, 403);
     assert.equal((await handleResetPassword(req(p, {}, { type: 'text/plain' }), env)).status, 415);
     assert.equal((await handleResetPassword(req(p, null, { raw: '{no' }), env)).status, 400);
-    assert.equal((await handleResetPassword(req(p, null, { raw: JSON.stringify({ access_token: 'x'.repeat(3000) }) }), env)).status, 413);
+    assert.equal((await handleResetPassword(req(p, null, { raw: JSON.stringify({ access_token: 'x'.repeat(9000) }) }), env)).status, 413);
     assert.equal((await handleResetPassword(req(p, { access_token: t, password: 'corta', confirm: 'corta' }), env)).status, 400);
     assert.equal((await handleResetPassword(req(p, { access_token: t, password: 'x'.repeat(129), confirm: 'x'.repeat(129) }), env)).status, 400);
     assert.equal((await handleResetPassword(req(p, { access_token: t, password: 'clave-nueva-123', confirm: 'otra-distinta-1' }), env)).status, 400);
