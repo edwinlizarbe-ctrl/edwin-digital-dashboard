@@ -265,6 +265,37 @@ async function handleApi(req, env) {
     if(rows.length!==1)return json({error:'Supabase no confirmó el cambio.'},502,s.cookies);
     return json({ok:true,name:rows[0].name},200,s.cookies);
   }
+  if(path==='/api/sites/create' && method==='POST') {
+    if(!companyJsonRequest(req,3000))return json({error:'Solicitud no autorizada o demasiado grande.'},403,s.cookies);
+    let input;try{input=await companyParse(req,3000);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
+    const id=input?.business_id,name=typeof input?.name==='string'?input.name.trim().replace(/\\s+/g,' '):'',rawUrl=typeof input?.url==='string'?input.url.trim():'';
+    if(s.user.role==='admin'||!isUuid(id))return json({error:'Empresa no autorizada.'},403,s.cookies);
+    let website;
+    try{
+      const u=new URL(rawUrl);
+      if(!['http:','https:'].includes(u.protocol)||!u.hostname.includes('.')||u.username||u.password||rawUrl.length>300||!u.hostname||u.hash)throw Error('Sitio inválido.');
+      website=u.toString();
+    }catch{return json({error:'Usa una URL pública válida, por ejemplo https://miempresa.com.'},400,s.cookies);}
+    if(name.length<2||name.length>100)return json({error:'El nombre del sitio debe tener entre 2 y 100 caracteres.'},400,s.cookies);
+    const membership=await supaRest(env,'businesses?select=id&id=eq.'+encodeURIComponent(id)+'&limit=1',s.access);
+    if(!membership.length)return json({error:'No tienes acceso a esta empresa.'},403,s.cookies);
+    if(!env.SUPABASE_SERVICE_ROLE_KEY)return json({error:'Falta configurar el almacenamiento privado.'},503,s.cookies);
+    const existing=await supaRest(env,'sites?select=id&business_id=eq.'+encodeURIComponent(id)+'&limit=11',s.access);
+    if(existing.length>=10)return json({error:'Has alcanzado el límite inicial de 10 sitios por empresa.'},409,s.cookies);
+    const key=env.SUPABASE_SERVICE_ROLE_KEY;
+    const created=await fetch(String(env.SUPABASE_URL).replace(/\\/$/,'')+'/rest/v1/sites',{
+      method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',Accept:'application/json',Prefer:'return=representation'},
+      body:JSON.stringify({business_id:id,name,url:website,ga4_property_id:null})
+    });
+    if(!created.ok){
+      if(created.status===409)return json({error:'Este sitio ya está registrado en tu empresa.'},409,s.cookies);
+      return json({error:'No se pudo registrar el sitio. Inténtalo nuevamente.'},502,s.cookies);
+    }
+    const saved=await created.json().catch(()=>[]);
+    if(saved.length!==1)return json({error:'Supabase no confirmó el sitio creado.'},502,s.cookies);
+    return json({ok:true,site:{id:saved[0].id,business_id:id,name:saved[0].name,url:saved[0].url,ga4_property_id:null}},201,s.cookies);
+  }
+
   if(path==='/api/sites/edit' && method==='PATCH') {
     if(!companyJsonRequest(req,3000))return json({error:'Solicitud no permitida.'},403,s.cookies);
     let x;try{x=await companyParse(req,3000);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
