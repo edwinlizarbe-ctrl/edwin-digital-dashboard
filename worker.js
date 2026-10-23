@@ -3,6 +3,7 @@ import { handleAdminLifecycle } from './admin-lifecycle.js';
 import { adminInvite, acceptInvite } from './admin-invites.js';
 import { handleMetaApi } from './meta.js';
 import { handleGoogleAdsApi } from './google-ads.js';
+import { handleSearchConsoleApi } from './search-console.js';
 import { handleGa4OAuthApi, ga4ConnectionForBusiness, ga4OauthToken } from './ga4-oauth.js';
 import { handleLeadsApi } from './leads.js';
 import { handleEmailMarketingApi } from './email-marketing.js';
@@ -174,6 +175,7 @@ async function handleApi(req, env) {
   if (path.startsWith('/api/zernio/')) return handleZernioApi(req, env, s);
   if (path.startsWith('/api/meta/')) return handleMetaApi(req, env, s);
   if (path.startsWith('/api/google-ads/')) return handleGoogleAdsApi(req, env, s);
+  if (path.startsWith('/api/search-console/')) return handleSearchConsoleApi(req, env, s);
   if (path.startsWith('/api/ga4/') && path !== '/api/ga4/report') return handleGa4OAuthApi(req, env, s);
   if (path === '/api/crm/leads') return handleLeadsApi(req, env, s);
   if (path === '/api/email-marketing') return handleEmailMarketingApi(req, env, s);
