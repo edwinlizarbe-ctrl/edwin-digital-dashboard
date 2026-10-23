@@ -44,6 +44,36 @@ export async function handleLeadsApi(req,env,s){
  const url=new URL(req.url),method=req.method.toUpperCase(),businessId=url.searchParams.get('business_id')||'';
  const reply=(data,status)=>result(data,status,s.cookies||[]);
  if(!await authorized(env,s,businessId))return reply({error:'No tienes acceso a esta empresa.'},403);
+ if(url.pathname==='/api/crm/leads/import'){
+  if(method!=='POST')return reply({error:'Método no permitido.'},405);
+  const origin=req.headers.get('Origin');
+  if(origin&&origin!==url.origin)return reply({error:'Origen no permitido.'},403);
+  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return reply({error:'Se requiere JSON.'},415);
+  const length=Number(req.headers.get('Content-Length')||0);
+  if(length>95000)return reply({error:'La importación es demasiado grande (máximo 50 contactos por lote).'},413);
+  const raw=await req.text();
+  if(raw.length>95000)return reply({error:'La importación es demasiado grande (máximo 50 contactos por lote).'},413);
+  let payload;try{payload=JSON.parse(raw)}catch{return reply({error:'Solicitud JSON inválida.'},400);}
+  const input=payload?.rows;
+  if(!Array.isArray(input)||input.length<1||input.length>50)return reply({error:'Importa entre 1 y 50 contactos por lote.'},400);
+  const rows=[];
+  for(let i=0;i<input.length;i++){
+   const data=input[i],invalid=validateCreate(data);
+   if(invalid)return reply({error:'Fila '+(i+1)+': '+invalid},400);
+   rows.push({
+    business_id:businessId,created_by:s.user.id,name:trim(data.name,120),
+    email:trim(data.email,160)||null,phone:trim(data.phone,35)||null,
+    source:data.source,stage:data.stage||'new',campaign:trim(data.campaign,150)||null,
+    notes:trim(data.notes,500)||null,amount:money(data.amount),currency:data.currency||'PEN'
+   });
+  }
+  // A single PostgREST bulk insert is transactional. No user-supplied tenant IDs or author IDs are trusted.
+  try{
+   const saved=await query(env,'','POST',rows);
+   if(saved.length!==rows.length)return reply({error:'No se pudo confirmar el lote completo. Verifica los registros antes de repetirlo.'},503);
+   return reply({ok:true,inserted:saved.length},201);
+  }catch(e){return reply({error:e.message},503);}
+ }
  if(!['GET','POST','PATCH'].includes(method))return reply({error:'Método no permitido.'},405);
  if(method!=='GET'){
   const origin=req.headers.get('Origin');
