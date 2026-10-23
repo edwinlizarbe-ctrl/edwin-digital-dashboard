@@ -235,7 +235,7 @@ async function handleApi(req, env) {
     let input;try{input=await companyParse(req);}catch{return json({error:'Perfil inválido.'},400,s.cookies);}
     const id=input?.business_id;
     if(s.user.role==='admin'||!isUuid(id))return json({error:'Empresa no autorizada.'},403,s.cookies);
-    const businesses=await supaRest(env,'businesses?select=id&id=eq.'+id+'&limit=1',s.access);
+    const businesses=await supaRest(env,'businesses?select=id,name&id=eq.'+id+'&limit=1',s.access);
     if(!businesses.length)return json({error:'No tienes acceso a esta empresa.'},403,s.cookies);
     const display_name=businesses[0].name,
       category=String(input.category||'').trim(),country=String(input.country||'').trim();
