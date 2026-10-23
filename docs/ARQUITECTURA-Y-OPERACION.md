@@ -47,9 +47,8 @@ No se desplegó nada, no se tocaron tablas, políticas RLS, secretos ni usuarios
 
 ## 3. Pruebas
 
-- 122 pruebas existentes: **117 pasan y 5 fallan en `main` antes de este PR** (todas del generador Blog: `tests/brasper-blog.test.js` y `tests/brasper-blog-formatting.test.js`). [Comprobado]
-  Causa: el generador actual emite `<h1>` con el título y las pruebas siguen esperando que no exista, además de diferencias de saltos de línea/escape en `\n`. El #70 cambió el generador sin actualizar esas pruebas. **No se modificó el generador ni sus pruebas**: el issue exige conservar el título y el HTML copiable idéntico, así que decidir cuál de los dos lados es la verdad corresponde a quien mantiene el Blog.
-  Consecuencia: `crm-ci.yml` (`node --test tests/*.test.js`) está en rojo en `main`.
+- Tras fusionar el PR #71 el 2026-10-23, las **122 pruebas existentes pasan en CI**. Ese PR actualizó las aserciones del Blog para el título `<h1>`, los enlaces internos de PIX y el CTA localizado. [Comprobado mediante GitHub Actions]
+- Este PR añade 3 pruebas simuladas para `company/preferences`; deben ejecutarse en CI antes de fusionarlo.
 - Nuevo: `tests/company-preferences.test.js` (3 pruebas con Supabase simulado; sin red ni credenciales).
 
 ## 4. Entornos, secretos, despliegue y rollback
@@ -78,16 +77,16 @@ No se desplegó nada, no se tocaron tablas, políticas RLS, secretos ni usuarios
 
 ## 5. Brasper Blog (preservación)
 
-No se tocó `brasper-blog-generator.js`, `public/brasper-blog.*` ni `public/brasper/`. Requisitos a conservar y su respaldo en pruebas [Comprobado]: título (`<h1>`), HTML copiable, subtítulos sin barra lateral (`border-left:none`), enlaces sin subrayado (`text-decoration:none!important`) y solo a Brasper, PIX sin enlaces bancarios, ES/PT, CTA `/es` o `/br`. Ver §3 sobre las 5 pruebas desactualizadas: hay que reconciliarlas antes de que sirvan como red de seguridad.
+No se tocó `brasper-blog-generator.js`, `public/brasper-blog.*` ni `public/brasper/`. Requisitos a conservar y su respaldo en pruebas [Comprobado]: título (`<h1>`), HTML copiable, subtítulos sin barra lateral (`border-left:none`), enlaces sin subrayado (`text-decoration:none!important`) y solo a Brasper, PIX sin enlaces bancarios, ES/PT, CTA `/es` o `/br`. Las aserciones previamente desactualizadas se conciliaron en el PR #71; mantener pruebas de regresión para el HTML copiado, diseño y enlaces permitidos.
 
 ## 6. Backlog priorizado
 
 | P | Tarea | Criterio de aceptación | Dependencias |
 |---|---|---|---|
-| P0 | Reconciliar las 5 pruebas del Blog con el generador actual | `node --test tests/*.test.js` en verde; el HTML de ejemplo del usuario no cambia byte a byte | Decisión del responsable del Blog |
+| P0 | Comprobar HTML de Blog frente al diseño de referencia y botón de copiar | Vista previa y HTML copiado idénticos; enlaces y H1 correctos en ES/PT | Prueba con navegador autenticado |
 | P0 | Verificar RLS en producción con dos usuarios de empresas distintas | Usuario A obtiene 0 filas de empresa B en `businesses`, `sites`, `crm_leads`, conexiones, email; `blog_editor` obtiene 0 filas de datos de clientes | Acceso de lectura a Supabase de producción |
 | P0 | Auditoría línea a línea de módulos con service_role (H4) | Cada consulta service_role filtra por `business_id` validado contra `business_members` | Ninguna |
-| P1 | Integrar con PR #71 (ampliación de CI): añadir `tests/**` ya cubierto y `*.js` raíz al `paths` | CI se dispara al cambiar cualquier módulo | PR #71 mergeado (no se tocó `crm-ci.yml` para evitar conflicto) |
+| P1 | Mantener CI ampliado del PR #71 y vigilar regresiones | CI se dispara al cambiar cualquier módulo JavaScript o asset público | PR #71 fusionado |
 | P1 | Staging con Supabase separado | Login y Blog funcionando en staging sin tocar datos de producción | Nuevo proyecto Supabase y Worker |
 | P1 | `observability` y `PUBLIC_ORIGIN` (H8) | Logs visibles; ningún enlace de staging apunta a producción | Staging |
 | P2 | Paginar directorio/cuentas admin (H9) | Más de 200 usuarios listados completos | Ninguna |
@@ -97,5 +96,5 @@ No se tocó `brasper-blog-generator.js`, `public/brasper-blog.*` ni `public/bras
 ## 7. Limitaciones de esta auditoría
 
 - No se leyó el estado real de Cloudflare ni Supabase (políticas, secretos, versiones, logs).
-- No se pudo consultar el PR #71 desde este entorno (el comando `gh` requirió aprobación); por eso `crm-ci.yml` no se modificó. Los cambios sugeridos para CI van como backlog P1 para integrarlos tras el merge de #71.
+- Este documento se actualizó tras fusionar el PR #71. No se modificó `crm-ci.yml` en esta rama para evitar conflictos.
 - Los módulos de conectores y email se revisaron por patrones (uso de claves, variables), no línea a línea.
