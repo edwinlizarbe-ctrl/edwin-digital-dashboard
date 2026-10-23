@@ -80,7 +80,18 @@ export async function acceptInvite(req,env){
  const profile=await fetch(base+'/rest/v1/profiles?select=id,role&id=eq.'+encodeURIComponent(user.id)+'&limit=1',{headers});
  if(!profile.ok)return respond({error:'No se pudo verificar el perfil.'},502);
  const rows=await profile.json();
- if(rows.length!==1||rows[0].role!=='client')return respond({error:'La invitación no corresponde a una cuenta de cliente.'},403);
+ if(rows.length!==1||!['client','blog_editor'].includes(rows[0].role))return respond({error:'La invitación no corresponde a una cuenta autorizada.'},403);
+ if(rows[0].role==='blog_editor'){
+  if(String(user.email||'').toLowerCase()!=='marketing.brasper@gmail.com')return respond({error:'Identidad editorial no autorizada.'},403);
+  const members=await fetch(base+'/rest/v1/business_members?select=business_id&user_id=eq.'+encodeURIComponent(user.id)+'&limit=2',{headers});
+  if(!members.ok)return respond({error:'No se pudo comprobar el acceso editorial.'},502);
+  const memberships=await members.json();
+  if(!Array.isArray(memberships)||memberships.length!==1)return respond({error:'El acceso editorial todavía no está configurado.'},403);
+  const company=await fetch(base+'/rest/v1/businesses?select=id,slug&id=eq.'+encodeURIComponent(memberships[0].business_id)+'&limit=1',{headers});
+  if(!company.ok)return respond({error:'No se pudo comprobar Brásper.'},502);
+  const businesses=await company.json();
+  if(businesses.length!==1||businesses[0].slug!=='brasper')return respond({error:'Membresía editorial no autorizada.'},403);
+ }
  const changed=await fetch(base+'/auth/v1/user',{method:'PUT',headers,body:JSON.stringify({password})});
  if(!changed.ok)return respond({error:'No se pudo configurar la contraseña. Prueba otra contraseña segura.'},400);
  const secureCookie=(name,value,age)=>name+'='+encodeURIComponent(value)+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age='+age;
@@ -88,4 +99,63 @@ export async function acceptInvite(req,env){
   secureCookie('ed_access',access,3600),
   secureCookie('ed_refresh',refresh,60*60*24*14)
  ]);
+}
+
+/**
+ * One-purpose Brásper Blog invitation. The email and business are selected on
+ * the server, never trusted from the client. No passwords are sent or created.
+ */
+export async function adminInviteBlogEditor(req,env,session){
+ const output=(body,status=200)=>respond(body,status,session.cookies||[]);
+ if(session.user.role!=='admin')return output({error:'Acceso exclusivo del administrador.'},403);
+ if(req.method!=='POST')return output({error:'Método no permitido.'},405);
+ if(req.headers.get('Origin')!==new URL(req.url).origin)return output({error:'Origen no autorizado.'},403);
+ if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return output({error:'Se requiere JSON.'},415);
+ let body;try{const raw=await req.text();if(raw.length>200)throw Error();body=JSON.parse(raw)}catch{return output({error:'Solicitud inválida.'},400)}
+ if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)return output({error:'Solicitud inválida.'},400);
+ const key=env.SUPABASE_SERVICE_ROLE_KEY;
+ if(!key)return output({error:'La conexión administrativa no está configurada.'},503);
+ const base=String(env.SUPABASE_URL||'').replace(/\/$/,'');
+ const headers={apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',Accept:'application/json'};
+ const email='marketing.brasper@gmail.com';
+ const get=async route=>{const r=await fetch(base+'/rest/v1/'+route,{headers});if(!r.ok)throw Error('Error al comprobar permisos.');return r.json()};
+ try{
+  const [companies,existing]=await Promise.all([
+   get('businesses?select=id,slug&slug=eq.brasper&limit=2'),
+   get('profiles?select=id&email=eq.'+encodeURIComponent(email)+'&limit=1')
+  ]);
+  if(companies.length!==1||!UUID.test(String(companies[0].id||'')))return output({error:'Brásper no está configurado.'},409);
+  if(existing.length)return output({error:'El correo ya tiene una cuenta. No se duplicó la invitación.'},409);
+  const businessId=companies[0].id;
+  const blocked=await get('ed_business_lifecycle?select=suspended_at&business_id=eq.'+businessId+'&limit=1');
+  if(blocked[0]?.suspended_at)return output({error:'La empresa está suspendida.'},409);
+  const redirect=new URL(req.url).origin+'/?invite=1';
+  const sent=await fetch(base+'/auth/v1/invite?redirect_to='+encodeURIComponent(redirect),{
+   method:'POST',headers,body:JSON.stringify({email})
+  });
+  const payload=await sent.json().catch(()=>({}));
+  if(!sent.ok)return output({error:sent.status===429?'Límite temporal de invitaciones.':'Supabase no aceptó la invitación. Comprueba correo y configuración.'},sent.status===429?429:502);
+  const person=payload.user||payload;
+  if(!UUID.test(String(person?.id||''))||String(person?.email||'').toLowerCase()!==email)
+   return output({error:'Invitación enviada, pero no se confirmó la identidad. Revisa Supabase.'},502);
+  // Set the restricted role BEFORE linking a business; never grant ordinary client access.
+  const role=await fetch(base+'/rest/v1/profiles?id=eq.'+person.id,{
+   method:'PATCH',headers:{...headers,Prefer:'return=representation'},body:JSON.stringify({role:'blog_editor'})
+  });
+  if(!role.ok)return output({error:'La invitación se generó, pero falta aplicar el rol editorial. Revisa Supabase antes de iniciar sesión.'},502);
+  const profiles=await role.json().catch(()=>[]);
+  if(profiles.length!==1||profiles[0].role!=='blog_editor')
+   return output({error:'No se pudo verificar el rol restringido.'},502);
+  const oldMembers=await get('business_members?select=business_id&user_id=eq.'+person.id+'&limit=2');
+  if(oldMembers.length)return output({error:'El usuario ya tiene membresías. No se modificaron.'},409);
+  const joined=await fetch(base+'/rest/v1/business_members',{
+   method:'POST',headers:{...headers,Prefer:'return=representation'},
+   body:JSON.stringify({business_id:businessId,user_id:person.id})
+  });
+  if(!joined.ok)return output({error:'Rol limitado asignado, pero no pudo enlazarse a Brásper. Revisa Supabase.'},502);
+  const check=await get('business_members?select=business_id&user_id=eq.'+person.id+'&limit=2');
+  if(check.length!==1||check[0].business_id!==businessId)
+   return output({error:'No se confirmó la membresía de Brásper.'},502);
+  return output({ok:true,email,scope:'brasper.blog',message:'Invitación solicitada. La entrega del correo depende de Supabase.'});
+ }catch(error){console.error('Blog invite failed',String(error?.message||error));return output({error:'No se pudo confirmar el acceso de Ana. Revisa Supabase antes de reintentar.'},502)}
 }

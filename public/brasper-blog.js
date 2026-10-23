@@ -7,9 +7,10 @@
   const node=$('bp-generator-status');if(node){node.textContent=msg;node.dataset.error=error?'true':'false';}
  };
  window.edwinBrasperBlog={
-  page:businessId=>{
+  page:(businessId,isAdmin=false)=>{
    result='';lastBusiness=businessId||'';
    return '<div class="bp-tool"><div class="bp-tool-hero"><div><span class="bp-tool-eyebrow">BRÁSPER · ESTUDIO EDITORIAL</span><h1>Tu artículo, con un formato impecable.</h1><p>Convierte textos de Brásper en HTML listo para revisar, copiar y pegar. Sin reescribir tus palabras ni utilizar inteligencia artificial de pago.</p></div><span class="bp-tool-label">GENERADOR HTML</span></div>'+
+   (isAdmin?'<div class="bp-invite-admin"><div><b>Acceso editorial de Ana</b><p>Invitación segura a marketing.brasper@gmail.com · únicamente Blog de Brásper.</p></div><button type="button" class="button button-outline" id="bp-invite-ana">Invitar a Ana</button><span id="bp-invite-feedback" role="status" aria-live="polite"></span></div>':'')+
    '<div class="bp-tool-grid"><section class="card bp-tool-editor"><div class="bp-tool-head"><span class="bp-tool-index">01</span><div><h2>Prepara el contenido</h2><p>Solo tú decides el texto, los enlaces y el idioma.</p></div></div>'+
    '<form id="bp-blog-form" data-business-id="'+clean(businessId)+'"><div class="bp-form-dual"><label>Idioma<select name="language" class="simple-input"><option value="es">Español · Perú</option><option value="pt">Português · Brasil</option></select></label><label>Fecha editorial (opcional)<input class="simple-input" type="month" name="date"></label></div>'+
    '<label>Título del artículo<input name="title" class="simple-input" maxlength="200" required placeholder="Escribe el título tal como irá en la web"></label>'+
@@ -51,6 +52,18 @@
   finally{if(submit.isConnected){submit.disabled=false;submit.textContent='Generar mi HTML →';}}
  });
  document.addEventListener('click',async e=>{
+  const invite=e.target.closest('#bp-invite-ana');
+  if(invite){
+   invite.disabled=true;const feedback=$('bp-invite-feedback');
+   try{
+    const response=await fetch('/api/admin/invite-blog-editor',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'});
+    const data=await response.json();
+    if(!response.ok||!data.ok)throw Error(data.error||'No se completó la invitación.');
+    if(feedback)feedback.textContent='Invitación solicitada. Comprueba la entrega en el correo de Ana.';
+   }catch(err){if(feedback)feedback.textContent=err.message||'No se pudo invitar.'}
+   finally{invite.disabled=false}
+   return;
+  }
   const act=e.target.closest('[data-bp-action]')?.dataset.bpAction;if(!act||!result)return;
   if(act==='copy'){
    try{await navigator.clipboard.writeText(result);show('HTML copiado. Puedes pegarlo en el editor de Brásper.')}
