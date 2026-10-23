@@ -116,6 +116,7 @@ export async function handleOnboardingBusiness(req, env, s) {
     const msg = String(detail.message || '');
     if (/reserved_name/.test(msg)) return reply({ error: 'Ese nombre está reservado. Elige otro nombre para tu empresa.' }, 400, s.cookies);
     if (/invalid_name/.test(msg)) return reply({ error: 'El nombre debe tener entre 2 y 80 caracteres.' }, 400, s.cookies);
+    if (/email_unverified/.test(msg)) return reply({ error: 'Confirma tu correo electrónico antes de crear tu empresa.' }, 403, s.cookies);
     if (/not_allowed/.test(msg)) return reply({ error: 'Tu cuenta no puede crear empresas.' }, 403, s.cookies);
     return reply({ error: 'No se pudo crear la empresa. Inténtalo de nuevo.' }, 502, s.cookies);
   }
