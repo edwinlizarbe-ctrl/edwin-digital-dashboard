@@ -177,7 +177,7 @@ async function handleApi(req, env) {
   if (path.startsWith('/api/google-ads/')) return handleGoogleAdsApi(req, env, s);
   if (path.startsWith('/api/search-console/')) return handleSearchConsoleApi(req, env, s);
   if (path.startsWith('/api/ga4/') && path !== '/api/ga4/report') return handleGa4OAuthApi(req, env, s);
-  if (path === '/api/crm/leads') return handleLeadsApi(req, env, s);
+  if (path === '/api/crm/leads' || path === '/api/crm/leads/import') return handleLeadsApi(req, env, s);
   if (path === '/api/email-marketing') return handleEmailMarketingApi(req, env, s);
   if (path.startsWith('/api/assistant/')) return handleAssistantApi(req, env, s);
   if (path === '/api/onboarding/business') return handleOnboardingBusiness(req, env, s);
