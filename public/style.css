@@ -1868,3 +1868,34 @@ input,select,textarea{max-width:100%}
 @media(max-width:860px){.premium-auth{grid-template-columns:1fr}.premium-auth .login-side{display:none}.premium-auth .login-form-side{min-height:100dvh;justify-content:center;padding:75px 20px 64px}.premium-auth .login-panel{max-width:490px;margin:auto;padding:30px 26px}.premium-auth .login-contact{bottom:17px}.premium-auth .login-theme{top:20px;right:20px}}
 @media(max-width:420px){.premium-auth .login-form-side{padding:64px 12px 48px}.premium-auth .login-panel{border-radius:18px;padding:26px 18px}.premium-auth .login-panel h2{font-size:28px}.premium-auth .login-contact{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.premium-auth .sign-in:hover{transform:none}}
+
+/* Importador CSV seguro para Oportunidades — estilos aislados */
+.crm-import-card{margin:16px 0 22px;padding:24px;border:1px solid #d9e4f7;border-radius:20px;background:linear-gradient(125deg,#fafdff,#edf4ff)}
+.crm-import-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.crm-import-heading h2{font-size:19px;font-weight:800;letter-spacing:-.45px;color:#19325a;margin:5px 0 8px}
+.crm-import-heading p{max-width:810px;color:#61718b;font-size:13px;line-height:1.6}
+.crm-import-kicker{font-weight:800;font-size:10px;letter-spacing:1.25px;color:#2761bd}
+.crm-import-pill{background:#e1ebff;border:1px solid #c9d9f7;color:#255bb0;border-radius:50px;padding:7px 11px;font-size:11px;font-weight:800;white-space:nowrap}
+.crm-import-controls{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;margin:20px 0 12px}
+.crm-import-controls>label{display:grid;gap:8px;font-size:12px;font-weight:750;color:#344a6d;min-width:0}
+.crm-import-controls input[type=file]{max-width:100%;font-size:12px;background:#fff;border:1px solid #d1dff1;border-radius:10px;padding:11px;color:#2e4367}
+.crm-import-controls input[type=file]::file-selector-button{margin-right:12px;background:#e9f0ff;color:#2056b0;font-weight:750;padding:8px 10px;border:0;border-radius:7px;cursor:pointer}
+.crm-import-controls select{width:100%;height:45px;background:#fff}
+.crm-import-preview{background:#fff;border:1px solid #dce6f4;border-radius:12px;padding:12px 14px;margin:15px 0}
+.crm-import-preview>strong{display:block;margin-bottom:9px;color:#224272;font-size:12px}
+.crm-import-preview table{width:100%;font-size:12px}
+.crm-import-preview th{text-align:left;font-weight:800;color:#4d6283;padding:8px}
+.crm-import-preview td{padding:8px;color:#304b72;border-top:1px solid #e7ecf5;overflow-wrap:anywhere}
+.crm-import-warning{font-size:12px;color:#aa6411;margin:10px 0}
+.crm-import-file{font-size:12px;font-weight:750;color:#24599b;display:flex;align-items:center;gap:6px;margin:10px 0}
+.crm-import-footer{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:15px}
+.crm-import-footer>span{font-size:12px;color:#65728b}
+.crm-import-footer .button{white-space:nowrap;min-height:42px}
+[data-theme="dark"] .crm-import-card{background:linear-gradient(125deg,#1b2b49,#15243c);border-color:#354c70}
+[data-theme="dark"] .crm-import-heading h2,[data-theme="dark"] .crm-import-preview>strong{color:#e1eaff}
+[data-theme="dark"] .crm-import-heading p,[data-theme="dark"] .crm-import-footer>span{color:#b3c5dc}
+[data-theme="dark"] .crm-import-controls>label{color:#d0ddf4}
+[data-theme="dark"] .crm-import-controls input[type=file],[data-theme="dark"] .crm-import-controls select,[data-theme="dark"] .crm-import-preview{background:#182740;border-color:#395174;color:#e2ebfa}
+[data-theme="dark"] .crm-import-preview td{color:#cfdef3;border-color:#385073}
+[data-theme="dark"] .crm-import-preview th{color:#b4c7e5}
+@media(max-width:680px){.crm-import-controls{grid-template-columns:1fr}.crm-import-heading{flex-direction:column}.crm-import-footer{flex-direction:column;align-items:stretch}.crm-import-footer .button{width:100%}}
