@@ -1724,3 +1724,31 @@ input,select,textarea{max-width:100%}
   .google-config-guide{padding:13px}
   .google-config-keys code{font-size:10px}
 }
+
+/* UX-02A: refinamientos de la pantalla de inicio de sesión (solo selectores .login-*, .form-input, .sign-in) */
+.login-form-side{background:radial-gradient(900px 420px at 100% 0,var(--accent-soft),transparent 60%),var(--surface)}
+.login-panel{animation:login-in .45s cubic-bezier(.2,.7,.2,1) both}
+@keyframes login-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.login-panel h2{font-size:clamp(26px,3vw,34px);letter-spacing:-.9px;line-height:1.15}
+.login-sub{font-size:14px;line-height:1.65;color:var(--muted2)}
+.login-panel .form-label{display:block;margin:16px 0 7px;font-size:12px;font-weight:700;color:var(--text)}
+.form-input{height:52px;transition:border-color .15s,box-shadow .15s,background .15s}
+.form-input:hover{border-color:var(--muted)}
+.form-input input{font-size:14px}
+.form-input:has(input[aria-invalid="true"]){border-color:#dc2626}
+.form-input:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.form-input input:focus-visible{outline:none}
+.password-toggle{border-radius:8px;min-width:32px;min-height:32px;display:grid;place-items:center;cursor:pointer}
+.password-toggle:hover{color:var(--text)}
+.password-toggle:focus-visible,.sign-in:focus-visible,.login-theme .icon-button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sign-in{height:52px;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;transition:transform .15s,filter .15s}
+.sign-in:not(:disabled):hover{transform:translateY(-1px);filter:brightness(1.05)}
+.sign-in:not(:disabled):active{transform:none}
+.sign-in:disabled{cursor:not-allowed;opacity:.75}
+.login-help,.login-contact{font-size:12px;color:var(--muted2)}
+.login-center p{line-height:1.7;color:#DBEAFE}
+.login-feature-row{font-size:12px}
+.login-copyright{color:#b4b2dc;font-size:11px}
+[data-theme="dark"] #password-caps-warning{color:#fbbf24!important}
+@media(prefers-reduced-motion:reduce){.login-panel{animation:none}.form-input,.sign-in{transition:none}}
+@media(max-width:560px){.login-panel h2{font-size:clamp(24px,7.5vw,28px)}}
