@@ -96,7 +96,7 @@ export function generateBlogHtml(input){
  const dateHtml=input.include_date===true&&date?'<p class="bp-meta">Brásper · '+esc(date)+'</p>':'';
  const callToAction=pt?'Faça seu envio agora →':'Haz tu envío ahora →';
  const note=pt?'Este conteúdo é informativo. Tarifas, câmbio e prazos podem variar. Confira as condições vigentes antes de enviar.':'Este contenido es informativo. Las tarifas, el tipo de cambio y los plazos pueden variar. Revisa las condiciones vigentes antes de enviar.';
- const body=article.replace(/^\\s*([^\\n]+)\\n?/, (match,line)=>line.replace(/^#{1,3}\\s*/,'').replace(/^\\*\\*(.*?)\\*\\*$/,'$1').trim().toLocaleLowerCase()===title.toLocaleLowerCase()?'':match);\n return CSS+'\n<article class="bp-blog" lang="'+lang+'">'+headline+dateHtml+articleToHtml(body,{title})+rel+'<div class="bp-action"><a class="bp-cta" href="https://brasper.com/" target="_blank" rel="noopener noreferrer">'+callToAction+'</a></div><p class="bp-note">'+note+'</p></article>';
+ const body=article.replace(/^\s*([^\n]+)\n?/, (match,line)=>line.replace(/^#{1,3}\s*/,'').replace(/^\*\*(.*?)\*\*$/,'$1').trim().toLocaleLowerCase()===title.toLocaleLowerCase()?'':match);\n return CSS+'\n<article class="bp-blog" lang="'+lang+'">'+headline+dateHtml+articleToHtml(body,{title})+rel+'<div class="bp-action"><a class="bp-cta" href="https://brasper.com/" target="_blank" rel="noopener noreferrer">'+callToAction+'</a></div><p class="bp-note">'+note+'</p></article>';
 }
 
 /** Resolve access with the caller JWT + RLS, never with an admin token. */
