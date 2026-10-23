@@ -127,7 +127,7 @@ export function generateBlogHtml(input){
  let pastedMeta='';
  if(metaIndex!==-1){
   const raw=bodyLines[metaIndex];
-  const plain=raw.replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g,'$1').replace(/[\u002a_#]/g,'').replace(/&\#x20;|&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
+  const plain=raw.replace(/&#x20;|&nbsp;/gi,' ').replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g,'$1').replace(/[\u002a_#]/g,'').replace(/\s+/g,' ').trim();
   if(/^(?:Brasper|Brásper)\b/i.test(plain)){
    pastedMeta=plain.replace(/^Brásper\b/i,'Brasper').replace(/^Brasper\s*/i,'Brasper · ');
    bodyLines.splice(metaIndex,1);
