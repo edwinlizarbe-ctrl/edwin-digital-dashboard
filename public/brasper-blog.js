@@ -14,6 +14,9 @@
    '<div class="bp-tool-grid"><section class="card bp-tool-editor"><div class="bp-tool-head"><span class="bp-tool-index">01</span><div><h2>Pega tu blog completo</h2><p>Un solo campo. Conservamos el texto y detectamos automáticamente español o portugués.</p></div></div>'+
    '<form id="bp-blog-form" data-business-id="'+clean(businessId)+'">'+
    '<label>Artículo completo<textarea name="article" class="simple-input bp-article-input" maxlength="60000" required placeholder="Pega aquí TODO el artículo, incluido el título, los subtítulos y las listas."></textarea></label>'+
+   '<label>Idioma de publicación<select name="language" class="simple-input"><option value="auto">Detectar automáticamente</option><option value="es">Español (Perú)</option><option value="pt">Português (Brasil)</option></select></label>'+
+   '<label>Artículos relacionados (opcional, hasta 7)<textarea name="related" class="simple-input" rows="4" maxlength="4500" placeholder="Título del artículo | https://brasper.com/es/blog/ejemplo"></textarea></label>'+
+   '<p class="bp-tool-detail">Si no agregas enlaces relacionados, se mostrarán artículos reales de Brasper. Cada línea personalizada lleva un título y su URL separados por |.</p>'+
    '<p class="bp-tool-detail">Solo convertimos el texto al formato editorial de Brásper: azul y morado, con enlaces de Brásper y PIX; nunca enlazamos bancos. No cambiamos el idioma ni reescribimos el contenido.</p>'+
    '<button type="submit" class="button button-primary bp-generate-button">Generar HTML →</button></form></section>'+
    '<section class="card bp-tool-preview"><div class="bp-tool-head"><span class="bp-tool-index">02</span><div><h2>Revisa el resultado</h2><p>El diseño azul y morado oficial de Brásper.</p></div></div>'+
@@ -36,7 +39,19 @@
   if(title.length<2){show('Pega un artículo que empiece con el título.',true);submit.disabled=false;submit.textContent='Generar HTML →';return;}
   const lower=' '+article.toLowerCase()+' ';
   const pt=/(\b(você|vocês|não|também|saiba|envio|dinheiro|reais|cotação|brasileiro|transferências|artigos)\b|\b(para o|para a|com o|do brasil|no brasil)\b)/i.test(lower);
-  const data={business_id:id,title,article,language:pt?'pt':'es',related:[],include_title:true,include_date:false};
+  const requestedLanguage=String(d.get('language')||'auto');
+  const relatedText=String(d.get('related')||'').trim();
+  const related=[];
+  if(relatedText){
+   const rows=relatedText.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+   if(rows.length>7){show('Agrega un máximo de siete artículos relacionados.',true);submit.disabled=false;submit.textContent='Generar HTML →';return;}
+   for(const row of rows){
+    const separator=row.indexOf('|');
+    if(separator<2){show('Cada enlace relacionado debe tener el formato: Título | URL.',true);submit.disabled=false;submit.textContent='Generar HTML →';return;}
+    related.push({title:row.slice(0,separator).trim(),url:row.slice(separator+1).trim()});
+   }
+  }
+  const data={business_id:id,title,article,language:['es','pt'].includes(requestedLanguage)?requestedLanguage:pt?'pt':'es',related,include_title:true,include_date:false};
   result='';
   const output=$('bp-html-output');if(output)output.value='';
   document.querySelectorAll('[data-bp-action]').forEach(x=>x.disabled=true);
