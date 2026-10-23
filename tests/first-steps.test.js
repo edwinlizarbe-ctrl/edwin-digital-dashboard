@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm';
 
 const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const start = app.indexOf('  function firstRunPanel(){');
-const end = app.indexOf('  function salesOverview(){', start);
+const end = app.indexOf('  function salesOverview(', start);
 assert.ok(start >= 0 && end > start, 'El módulo de inicio guiado debe existir');
 const isolated = app.slice(start, end);
 

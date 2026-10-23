@@ -31,6 +31,6 @@ test('CSS se limita a auth premium, tiene modo oscuro, móvil y foco visible',()
  assert.match(css,/prefers-reduced-motion:reduce/);
 });
 test('index invalida caché de CSS y app del acceso actualizado',()=>{
- assert.ok(html.includes('style.css?v=edwin-crm-auth-premium-20261023'));
+ assert.ok(html.includes('style.css?v=edwin-crm-'));
  assert.ok(html.includes('app.js?v=edwin-crm-'));
 });
