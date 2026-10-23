@@ -1753,7 +1753,7 @@ function sidebar(){
     if(state.loading){root.innerHTML=`<div class="initial-load"><span class="spinner"></span><strong>Preparando Edwin CRM…</strong></div>`;return;}
     if(!state.user){login();return;}
     if(!isAdmin()&&!state.businesses.length){onboarding();return;}
-    if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','settings'].includes(state.page))state.page='adminHome';
+    if(isAdmin()&&!['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations','blog','settings'].includes(state.page))state.page='adminHome';
     if(!isAdmin()&&['adminHome','clients','accounts','clientDetail','adminOperations','adminIntegrations'].includes(state.page))state.page='overview';
     if(state.page==='mailing'&&!/^brasper$|^bras-per$/.test(String(business()?.slug||'').toLowerCase()))state.page='overview';
     if(state.page==='blog'&&!isAdmin()&&!/^brasper$|^bras-per$/.test(String(business()?.slug||'').toLowerCase()))state.page='overview';
