@@ -1026,6 +1026,21 @@ input,select,textarea{max-width:100%}
 
 /* Personalized overview greeting */
 .welcome-banner{position:relative;display:flex;align-items:center;justify-content:space-between;overflow:hidden;padding:22px 26px;margin:0 0 19px;border-radius:17px;background:linear-gradient(110deg,#194bba,#2474e5);color:#fff;min-height:142px}
+.first-run-panel{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px 28px;margin:0 0 19px;padding:22px 26px;border-radius:17px;border:1px solid #c9d8f5;background:linear-gradient(120deg,#f3f7ff,#e8f0ff);color:#13264d}
+.first-run-copy{flex:1 1 380px;max-width:680px}
+.first-run-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1d4ed8}
+.first-run-panel h2{margin:8px 0 8px;font-size:clamp(20px,2.2vw,26px);line-height:1.2;font-weight:800;color:#0f1f44}
+.first-run-panel p{margin:0 0 12px;font-size:14px;line-height:1.55;color:#33466f}
+.first-run-badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;background:#fff;border:1px solid #b7c9ef;color:#1e3a8a}
+.first-run-actions{display:flex;flex-wrap:wrap;gap:10px}
+.first-run-actions .button:focus-visible{outline:3px solid #1d4ed8;outline-offset:2px}
+@media(max-width:768px){.first-run-panel{padding:18px}.first-run-actions{width:100%}.first-run-actions .button{flex:1 1 100%}}
+[data-theme=dark] .first-run-panel{background:linear-gradient(120deg,#16213d,#1a2a52);border-color:#2f4a86;color:#e5ecff}
+[data-theme=dark] .first-run-panel h2{color:#fff}
+[data-theme=dark] .first-run-panel p{color:#c3d0ee}
+[data-theme=dark] .first-run-eyebrow{color:#93b4ff}
+[data-theme=dark] .first-run-badge{background:#0f1830;border-color:#38568f;color:#cfdcff}
+[data-theme=dark] .first-run-actions .button:focus-visible{outline-color:#93b4ff}
 .welcome-banner-content{position:relative;z-index:1;max-width:85%}
 .welcome-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.5px;color:#d7e8ff}
 .welcome-banner h2{font-size:clamp(20px,2.2vw,27px);line-height:1.2;margin:8px 0 9px;font-weight:800;color:#fff}
