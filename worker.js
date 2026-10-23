@@ -4,6 +4,7 @@ import { adminInvite, acceptInvite } from './admin-invites.js';
 import { handleMetaApi } from './meta.js';
 import { handleGoogleAdsApi } from './google-ads.js';
 import { handleGa4OAuthApi, ga4ConnectionForBusiness, ga4OauthToken } from './ga4-oauth.js';
+import { handleAdminGa4 } from './admin-ga4.js';
 import { handleLeadsApi } from './leads.js';
 import { handleEmailMarketingApi } from './email-marketing.js';
 import { publicMailRoute,processEmailQueue } from './email-delivery.js';
@@ -162,6 +163,7 @@ async function handleApi(req, env) {
   }
   const s = await session(req, env);
   if (!s || s.invalid) return json({ error: 'Necesitas iniciar sesión.' }, 401, s?.cookies || []);
+  if(path==='/api/admin/ga4/manual')return handleAdminGa4(req,env,s,googleAccessToken);
   if(path==='/api/admin/accounts/suspension')return manageSuspension(req,env,s);
   if(path==='/api/admin/lifecycle')return handleAdminLifecycle(req,env,s);
   if(path==='/api/admin/invite')return adminInvite(req,env,s);

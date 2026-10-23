@@ -18,7 +18,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', adminGa4BusinessId:'', adminGa4Data:null, adminGa4Loading:false, adminGa4Busy:false, adminGa4Error:'', adminGa4Notice:'', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -1237,11 +1237,51 @@ async function loadAccounts(){
       <div class="client-grid admin-rich-grid">${cards||empty('No se encontraron empresas con ese nombre o correo.')}</div>`;
   }
   
+
+  // Admin-only GA4 provisioning: a client's website and property can be linked
+  // without impersonating the client or handling their Google credentials.
+  async function loadAdminGa4(id){
+    if(!isAdmin()||!id||!state.businesses.some(x=>x.id===id))return;
+    state.adminGa4Loading=true;state.adminGa4Error='';render();
+    try{
+      const data=await api('/api/admin/ga4/manual?business_id='+encodeURIComponent(id));
+      if(id!==state.businessId)return;
+      state.adminGa4Data=data;state.adminGa4BusinessId=id;
+    }catch(error){if(id===state.businessId){state.adminGa4Data=null;state.adminGa4Error=error.message;}}
+    finally{if(id===state.businessId){state.adminGa4Loading=false;render();}}
+  }
+  function adminGa4Panel(client){
+    const data=state.adminGa4BusinessId===client.id?state.adminGa4Data:null;
+    const list=data?.sites||[],selected=list[0]?.id||'',configured=!!data?.service_account_configured;
+    const options=list.map(site=>'<option value="'+clean(site.id)+'">'+clean(site.name)+' · '+(site.ga4_property_id?'GA4 '+clean(site.ga4_property_id):'Sin propiedad GA4')+'</option>').join('');
+    const hint=data?.oauth_property_id?'<p class="fine-print">Esta empresa ya tiene una propiedad GA4 por OAuth ('+clean(data.oauth_property_id)+'). Primero debe resolverse esa conexión; la asignación manual no la reemplazará.</p>':'';
+    const status=state.adminGa4Loading?'<p class="fine-print">Consultando sitios y permisos…</p>':
+      !data?'<p class="fine-print">Pulsa Actualizar configuración para comprobar el acceso administrativo.</p>':
+      !configured?'<p class="fine-print">Primero configura GOOGLE_SERVICE_ACCOUNT_JSON en Cloudflare Production. No compartas secretos ni descargues las credenciales aquí.</p>':
+      '<p class="fine-print">1. En Google Analytics → Administrar → Gestión de accesos a la propiedad, agrega como Lector el correo de servicio indicado. 2. Selecciona el sitio, escribe el ID numérico de propiedad (no el ID G- de medición) y guarda.</p>'+
+      '<p class="fine-print">Cuenta de servicio (solo correo): <strong>'+clean(data.service_account_email||'No disponible')+'</strong></p>';
+    const form=!data||!configured||!!data.oauth_property_id?'':(
+      '<form id="admin-ga4-manual-form" class="security-form" autocomplete="off" style="display:grid;gap:12px;max-width:700px">'+
+      '<label class="form-label">Sitio del cliente<select name="site_id" class="simple-input" id="admin-ga4-site" style="display:block;width:100%;margin-top:6px">'+options+'<option value="" '+(!selected?'selected':'')+'>+ Registrar un nuevo sitio web</option></select></label>'+
+      '<div id="admin-ga4-new-site-fields" '+(selected?'hidden':'')+' style="margin-top:10px">'+
+      '<label class="form-label">Nombre del sitio<input id="admin-ga4-site-name" name="site_name" class="simple-input" placeholder="Tienda principal" minlength="2" maxlength="100" '+(!selected?'required':'')+' style="display:block;width:100%;margin-top:6px"/></label>'+
+      '<label class="form-label">URL del sitio (HTTPS)<input id="admin-ga4-site-url" name="site_url" type="url" class="simple-input" placeholder="https://cliente.com" maxlength="300" '+(!selected?'required':'')+' style="display:block;width:100%;margin-top:6px"/></label></div>'+
+      '<label class="form-label">ID de propiedad Google Analytics 4<input name="property_id" class="simple-input" inputmode="numeric" pattern="[0-9]{1,30}" placeholder="Ej. 123456789" required style="display:block;width:100%;margin-top:6px"/></label>'+
+      '<p class="fine-print">La propiedad solo se guardará si Google confirma acceso real de lectura. No se modifica la cuenta de Google ni se comparten credenciales.</p>'+
+      '<button class="button button-primary" type="submit" '+(state.adminGa4Busy?'disabled':'')+'>'+(state.adminGa4Busy?'Verificando acceso…':'Verificar acceso y guardar GA4')+'</button></form>'
+    );
+    return card('Google Analytics 4 · conexión manual','Configura una propiedad exclusiva de esta empresa desde el superadministrador.',
+      (state.adminGa4Error?alertBlock(state.adminGa4Error):'')+
+      (state.adminGa4Notice?alertBlock(state.adminGa4Notice,'info'):'')+
+      status+hint+form+
+      '<button type="button" class="button button-outline" data-act="admin-ga4-refresh" '+(state.adminGa4Loading?'disabled':'')+' style="margin-top:12px">Actualizar configuración GA4</button>');
+  }
   function clientDetail(){
     if(!isAdmin())return overview();
     const b=business();if(!b)return clients();
     const users=directoryUsersFor(b.id);
-    const sites=state.sites.map(site=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(site.name)}</strong><small>${clean(site.url||'URL no registrada')}</small></div><span class="client-site-badge">${site.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
+    const displaySites=(state.adminGa4BusinessId===b.id&&state.adminGa4Data?.sites)||state.sites;
+    const sites=displaySites.map(site=>`<div class="client-site-row"><div class="client-avatar compact">${icon('globe',19)}</div><div><strong>${clean(site.name)}</strong><small>${clean(site.url||'URL no registrada')}</small></div><span class="client-site-badge">${site.ga4_property_id?'GA4 asignado':'GA4 pendiente'}</span></div>`).join('');
     const accounts=users.map(u=>`<div class="admin-linked-user"><div class="client-avatar compact">${icon('user',18)}</div><div><strong>${clean(u.email||'Correo no registrado')}</strong><small>Rol: ${clean(u.role)} · Alta: ${clean(adminDate(u.created_at))}</small><small>Último acceso: ${clean(adminDate(u.last_sign_in_at))} · Email verificado: ${u.confirmed_at?'Sí':'No confirmado / sin datos'}</small></div></div>`).join('');
     return `${heading('Ficha del cliente',b.name,'Información administrativa real, relaciones autorizadas y datos disponibles de la empresa.')}
       <div class="client-detail-actions"><button class="button button-outline" data-act="nav" data-page="clients">Volver a mis clientes</button><button class="button button-primary" data-act="admin-manage-features" data-id="${clean(b.id)}">Configurar plan y permisos</button><button class="button button-outline" data-act="admin-rename-business" data-id="${clean(b.id)}" data-name="${clean(b.name)}">Cambiar nombre (administrador)</button><button class="button button-outline" data-act="business-lifecycle" data-id="${clean(b.id)}" data-name="${clean(b.name)}" data-status="${state.adminLifecycle.businesses[b.id]?.suspended_at?'suspended':'active'}">${state.adminLifecycle.businesses[b.id]?.suspended_at?'Reactivar empresa':'Suspender empresa'}</button><button class="button button-outline" data-act="directory-refresh">${icon('refresh',15)} Actualizar datos</button></div>
@@ -1254,12 +1294,13 @@ async function loadAccounts(){
         '<div class="admin-detail-line"><span>Creación</span><strong>'+clean(adminDate(b.created_at))+'</strong></div>'+
         '<div class="admin-detail-line"><span>Plan</span><strong>'+clean(state.adminPlans[b.id]||'No registrado')+'</strong></div>')}</div>
       <div class="col-6">${card('Usuarios asociados',users.length+' usuario(s) vinculados según business_members',accounts||(state.adminDirectory?empty('No hay usuarios vinculados en business_members.'):empty('Pulsa Actualizar datos para consultar usuarios.')))}</div>
-      <div class="col-6">${card('Sitios web autorizados',state.sites.length+' sitios visibles',sites||empty('No hay sitios disponibles con tu rol actual.'))}</div>
+      <div class="col-6">${card('Sitios web autorizados',displaySites.length+' sitios visibles',sites||empty('No hay sitios disponibles con tu rol actual.'))}</div>
       <div class="col-6">${card('Actividad y control','Indicadores comprobables y permisos',`
         <div class="admin-detail-line"><span>Último acceso de un usuario</span><strong>${clean(adminDate(users.map(u=>u.last_sign_in_at).filter(Boolean).sort().at(-1)))}</strong></div>
         <div class="admin-detail-line"><span>Usuarios registrados en la empresa</span><strong>${state.adminDirectory?fmt(users.length):'Por consultar'}</strong></div>
         <div class="admin-detail-line"><span>Estado de suscripción</span><strong>Sin facturación conectada</strong></div>
-        <p class="fine-print">No se inventan estados de actividad ni fechas. Los cambios administrativos y accesos históricos requieren un registro de auditoría independiente.</p>`)}</div></div>`;
+        <p class="fine-print">No se inventan estados de actividad ni fechas. Los cambios administrativos y accesos históricos requieren un registro de auditoría independiente.</p>`)}</div>
+       <div class="col-12">${adminGa4Panel(b)}</div></div>`;
   }
   
     function metaPilotEligible() { return !isAdmin() && !!business()?.id && featureEnabled('meta_ads'); }
@@ -1437,12 +1478,8 @@ async function loadAccounts(){
         const list=await api('/api/ga4/properties?business_id='+encodeURIComponent(id));
         if(id!==state.businessId)return;
         state.ga4Properties=list.properties||[];
-        if(state.ga4Properties.length===1&&!info.selected_property_id){
-          const only=state.ga4Properties[0];
-          await api('/api/ga4/select?business_id='+encodeURIComponent(id),{method:'POST',body:JSON.stringify({property_id:only.id})});
-          if(id!==state.businessId)return;
-          state.ga4Connection={...info,selected_property_id:only.id,selected_property_name:only.name};
-          state.ga4Notice='Propiedad de Analytics vinculada automáticamente.';
+        if(state.ga4Properties.length===1&&!info.selected_property_id&&!state.ga4Notice){
+          state.ga4Notice='Hay una propiedad de Google Analytics disponible. Selecciónala y pulsa «Guardar propiedad» para confirmarla.';
         }
       }
     }catch(e){if(id===state.businessId)state.ga4ConnectionError=e.message;}
@@ -1702,7 +1739,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.adminGa4Data=null;state.adminGa4BusinessId='';state.adminGa4Error='';state.adminGa4Notice='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await loadClientEntitlements(id);await Promise.all([loadGa4Connection(),loadGoogleAds()]);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
@@ -2109,7 +2146,8 @@ function sidebar(){
       }catch(e){if(state.businessId===current){state.metaError=e.message;render();}}
     }
     else if(action==='choose'){state.page='overview';await chooseBusiness(b.dataset.id);}
-    else if(action==='client-detail'){if(isAdmin()){state.page='clientDetail';await chooseBusiness(b.dataset.id);if(!state.adminDirectory)await loadAdminDirectory();window.scrollTo(0,0);}}
+    else if(action==='client-detail'){if(isAdmin()){state.page='clientDetail';await chooseBusiness(b.dataset.id);await loadAdminGa4(b.dataset.id);if(!state.adminDirectory)await loadAdminDirectory();window.scrollTo(0,0);}}
+    else if(action==='admin-ga4-refresh'&&isAdmin()){await loadAdminGa4(state.businessId);}
     else if(action==='client-site'){if(isAdmin()&&state.sites.some(s=>s.id===b.dataset.id)){state.siteId=b.dataset.id;state.page='analytics';await refresh();window.scrollTo(0,0);}}
     else if(action==='csv')doCsv();
     else if(action==='download')doCsv(b.dataset.report);
@@ -2137,6 +2175,14 @@ function sidebar(){
     }
   });
   document.addEventListener('change', async e=>{
+    if(e.target.id==='admin-ga4-site'&&isAdmin()){
+      const fields=document.getElementById('admin-ga4-new-site-fields'),creating=!e.target.value;
+      if(fields)fields.hidden=!creating;
+      for(const name of ['admin-ga4-site-name','admin-ga4-site-url']){
+        const input=document.getElementById(name);if(input)input.required=creating;
+      }
+      return;
+    }
     if(e.target.id==='company-logo-file'){
       const file=e.target.files?.[0];if(!file)return;
       try{
@@ -2307,6 +2353,27 @@ function sidebar(){
         state.profileNotice='No se pudo guardar el nombre en este navegador.';
       }
       render();return;
+    }
+    if(e.target.id==='admin-ga4-manual-form'&&isAdmin()){
+      e.preventDefault();if(state.adminGa4Busy||!state.businessId)return;
+      const id=state.businessId,data=new FormData(e.target);
+      const siteId=String(data.get('site_id')||''),propertyId=String(data.get('property_id')||'').trim();
+      if(!/^[0-9]{1,30}$/.test(propertyId)){state.adminGa4Error='Escribe el ID numérico de la propiedad GA4.';render();return;}
+      const existing=state.adminGa4Data?.sites?.find(site=>site.id===siteId);
+      if(existing?.ga4_property_id&&existing.ga4_property_id!==propertyId&&!confirm('¿Reemplazar la propiedad GA4 asignada a '+existing.name+'?'))return;
+      state.adminGa4Busy=true;state.adminGa4Error='';state.adminGa4Notice='';render();
+      try{
+        const result=await api('/api/admin/ga4/manual',{method:'POST',body:JSON.stringify({
+          business_id:id,site_id:siteId,site_name:String(data.get('site_name')||'').trim(),
+          site_url:String(data.get('site_url')||'').trim(),property_id:propertyId
+        })});
+        if(id===state.businessId){
+          state.adminGa4Notice='Acceso a Google Analytics verificado. Propiedad '+result.site.ga4_property_id+' guardada para '+result.site.name+'.';
+          await loadAdminGa4(id);
+        }
+      }catch(error){if(id===state.businessId){state.adminGa4Error=error.message;render();}}
+      finally{state.adminGa4Busy=false;if(id===state.businessId)render();}
+      return;
     }
     if(e.target.id==='company-profile-form'){e.preventDefault();await saveCompany(e.target);return;}
     if(e.target.id==='site-edit-form'){e.preventDefault();await saveSite(e.target);return;}
