@@ -47,7 +47,7 @@ export function generateBlogHtml(input){
 /** Resolve access with the caller JWT + RLS, never with an admin token. */
 async function blogEditorBusinessId(env,s){
  if(s.user.role!=='blog_editor'||String(s.user.email||'').toLowerCase()!=='marketing.brasper@gmail.com')return null;
- const root=String(env.SUPABASE_URL||'').replace(/\\/$/,'');
+ const root=String(env.SUPABASE_URL||'').replace(/\/$/,'');
  const headers={apikey:env.SUPABASE_ANON_KEY,Authorization:'Bearer '+s.access,Accept:'application/json'};
  const members=await fetch(root+'/rest/v1/business_members?select=business_id&user_id=eq.'+encodeURIComponent(s.user.id)+'&limit=2',{headers});
  if(!members.ok)throw Error('No se pudo validar la membresía editorial.');
