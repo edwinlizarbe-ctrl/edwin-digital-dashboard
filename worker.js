@@ -268,7 +268,7 @@ async function handleApi(req, env) {
   if(path==='/api/sites/create' && method==='POST') {
     if(!companyJsonRequest(req,3000))return json({error:'Solicitud no autorizada o demasiado grande.'},403,s.cookies);
     let input;try{input=await companyParse(req,3000);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
-    const id=input?.business_id,name=typeof input?.name==='string'?input.name.trim().replace(/\\s+/g,' '):'',rawUrl=typeof input?.url==='string'?input.url.trim():'';
+    const id=input?.business_id,name=typeof input?.name==='string'?input.name.trim().replace(/\s+/g,' '):'',rawUrl=typeof input?.url==='string'?input.url.trim():'';
     if(s.user.role==='admin'||!isUuid(id))return json({error:'Empresa no autorizada.'},403,s.cookies);
     let website;
     try{
@@ -283,7 +283,7 @@ async function handleApi(req, env) {
     const existing=await supaRest(env,'sites?select=id&business_id=eq.'+encodeURIComponent(id)+'&limit=11',s.access);
     if(existing.length>=10)return json({error:'Has alcanzado el límite inicial de 10 sitios por empresa.'},409,s.cookies);
     const key=env.SUPABASE_SERVICE_ROLE_KEY;
-    const created=await fetch(String(env.SUPABASE_URL).replace(/\\/$/,'')+'/rest/v1/sites',{
+    const created=await fetch(String(env.SUPABASE_URL).replace(/\/$/,'')+'/rest/v1/sites',{
       method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',Accept:'application/json',Prefer:'return=representation'},
       body:JSON.stringify({business_id:id,name,url:website,ga4_property_id:null})
     });
