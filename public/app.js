@@ -19,7 +19,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, crmImportRows:[], crmImportFile:'', crmImportSkipped:0, crmImportWarnings:[], crmImportError:'', crmImportBusy:false, crmImportSource:'other', crmImportBusinessId:'', zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -858,6 +858,19 @@ function campaigns(){
     }catch(error){if(businessId===state.businessId){state.leads=[];state.leadsError=error.message;}}
     finally{if(businessId===state.businessId){state.leadsLoading=false;render();}}
   }
+  function crmImportPanel(){
+    const records=state.crmImportRows||[],valid=records.length;
+    const options=Object.entries(leadSources).map(([key,label])=>'<option value="'+key+'" '+(key===state.crmImportSource?'selected':'')+'>'+clean(label)+'</option>').join('');
+    const preview=valid?'<div class="crm-import-preview"><strong>Vista previa · '+valid+' contacto'+(valid===1?'':'s')+' listo'+(valid===1?'':'s')+'</strong><div class="table-scroll"><table><thead><tr><th>Contacto</th><th>Correo / teléfono</th><th>Campaña</th></tr></thead><tbody>'+
+      records.slice(0,5).map(r=>'<tr><td>'+clean(r.name)+'</td><td>'+clean(r.email||r.phone||'—')+'</td><td>'+clean(r.campaign||'—')+'</td></tr>').join('')+'</tbody></table></div></div>':'';
+    const skipped=state.crmImportSkipped?'<p class="crm-import-warning">'+fmt(state.crmImportSkipped)+' fila(s) omitida(s). '+clean((state.crmImportWarnings||[]).join(' '))+'</p>':'';
+    return '<section class="card crm-import-card" aria-labelledby="crm-import-title"><div class="crm-import-heading"><div><span class="crm-import-kicker">IMPORTACIÓN SIN API EXTERNA</span><h2 id="crm-import-title">Trae tus contactos desde otra plataforma</h2><p>Exporta los contactos a CSV desde WhatsApp, una tienda, una plataforma de anuncios o tu antiguo CRM y cárgalos aquí. No necesitas credenciales de esa plataforma.</p></div><span class="crm-import-pill">CSV / TSV</span></div>'+
+      '<div class="crm-import-controls"><label for="crm-import-file">Archivo de contactos (máximo 500 filas y 2 MB)<input id="crm-import-file" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" '+(state.crmImportBusy?'disabled':'')+' /></label><label for="crm-import-source">Origen declarado para estos registros<select id="crm-import-source" class="simple-input" '+(state.crmImportBusy?'disabled':'')+'>'+options+'</select></label></div>'+
+      '<p class="fine-print">Se reconocen columnas en español, portugués e inglés: Nombre/Name, Email/Correo, Teléfono/Phone, Campaña/Campaign, entre otras. Solo importamos contactos y oportunidades, no estadísticas publicitarias ni mensajes. Repetir una importación puede crear duplicados.</p>'+
+      (state.crmImportFile?'<p class="crm-import-file">'+icon('file',15)+' '+clean(state.crmImportFile)+'</p>':'')+
+      (state.crmImportError?'<div role="alert">'+alertBlock(state.crmImportError)+'</div>':'')+skipped+preview+
+      '<div class="crm-import-footer"><span>'+ (state.crmImportBusy?'Guardando por lotes en esta empresa…':valid?'Revisa la vista previa y confirma la importación.':'Selecciona un archivo para ver la vista previa.')+'</span><button type="button" class="button button-primary" data-act="crm-import-run" '+(!valid||state.crmImportBusy?'disabled':'')+'>'+icon('upload',16)+' '+(state.crmImportBusy?'Importando…':'Importar '+valid+' contactos')+'</button></div></section>';
+  }
   function leads(){
     const data=state.leads||[],counts=Object.fromEntries(Object.keys(leadStages).map(s=>[s,data.filter(l=>l.stage===s).length]));
     const won=data.filter(l=>l.stage==='won'&&l.amount!==null&&l.amount!==undefined);
@@ -880,7 +893,7 @@ function campaigns(){
     ).join('')+'</tbody></table></div>':'<p class="crm-empty">Todavía no hay oportunidades registradas. Añade el primer contacto para empezar a medir el seguimiento comercial.</p>';
     return heading('Ventas y contactos','Oportunidades comerciales','Registra contactos reales, su origen declarado y su avance hasta la venta.')+
       (state.leadsError?alertBlock(state.leadsError):'')+(state.leadsNotice?alertBlock(state.leadsNotice,'info'):'')+
-      kpis+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+data.length+' registros en la empresa seleccionada</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
+      kpis+crmImportPanel()+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+data.length+' registros en la empresa seleccionada</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
   }
 
 
@@ -1786,7 +1799,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.sc=null;state.scSites=null;state.scReport=null;state.scError='';state.scNotice='';state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.sc=null;state.scSites=null;state.scReport=null;state.scError='';state.scNotice='';state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.crmImportRows=[];state.crmImportFile='';state.crmImportError='';state.crmImportSkipped=0;state.crmImportWarnings=[];state.crmImportBusinessId='';state.crmImportBusy=false;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await loadClientEntitlements(id);await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole()]);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
@@ -2212,6 +2225,29 @@ function sidebar(){
     else if(action==='choose'){state.page='overview';await chooseBusiness(b.dataset.id);}
     else if(action==='client-detail'){if(isAdmin()){state.page='clientDetail';await chooseBusiness(b.dataset.id);if(!state.adminDirectory)await loadAdminDirectory();window.scrollTo(0,0);}}
     else if(action==='client-site'){if(isAdmin()&&state.sites.some(s=>s.id===b.dataset.id)){state.siteId=b.dataset.id;state.page='analytics';await refresh();window.scrollTo(0,0);}}
+    else if(action==='crm-import-run'){
+      if(isAdmin()||state.crmImportBusy||!state.crmImportRows?.length||state.crmImportBusinessId!==state.businessId)return;
+      const businessId=state.businessId;let inserted=0;
+      state.crmImportBusy=true;state.crmImportError='';state.leadsNotice='';render();
+      try{
+        while(state.crmImportRows.length&&state.businessId===businessId){
+          const chunk=state.crmImportRows.slice(0,50).map(x=>({...x,source:state.crmImportSource}));
+          const result=await api('/api/crm/leads/import?business_id='+encodeURIComponent(businessId),{method:'POST',body:JSON.stringify({rows:chunk})});
+          if(result.inserted!==chunk.length)throw new Error('El servidor no confirmó la importación completa. Revisa el historial antes de repetirla.');
+          inserted+=result.inserted;
+          state.crmImportRows=state.crmImportRows.slice(chunk.length);
+        }
+        if(businessId===state.businessId){
+          state.crmImportFile='';state.crmImportSkipped=0;state.crmImportWarnings=[];
+          state.leadsNotice=inserted+' contacto'+(inserted===1?'':'s')+' importado'+(inserted===1?'':'s')+' correctamente para esta empresa.';
+          await loadLeads();
+        }
+      }catch(err){
+        if(state.businessId===businessId)state.crmImportError=(inserted?inserted+' guardados. ':'')+err.message+' Los registros restantes siguen listos para reintentar.';
+      }finally{
+        if(state.businessId===businessId){state.crmImportBusy=false;render();}
+      }
+    }
     else if(action==='csv')doCsv();
     else if(action==='download')doCsv(b.dataset.report);
     else if(action==='sort'){state.tableDesc=state.tableSort===b.dataset.key?!state.tableDesc:true;state.tableSort=b.dataset.key;render();}
@@ -2242,6 +2278,25 @@ function sidebar(){
     }
   });
   document.addEventListener('change', async e=>{
+    if(e.target.id==='crm-import-source'){
+      if(Object.hasOwn(leadSources,e.target.value))state.crmImportSource=e.target.value;
+      render();return;
+    }
+    if(e.target.id==='crm-import-file'){
+      const file=e.target.files?.[0];
+      state.crmImportRows=[];state.crmImportFile='';state.crmImportError='';state.crmImportWarnings=[];state.crmImportSkipped=0;
+      const businessId=state.businessId;
+      if(!file){render();return;}
+      try{
+        if(!/\.(csv|tsv|txt)$/i.test(file.name)||file.size>2_000_000)throw new Error('Selecciona un CSV o TSV de hasta 2 MB. Para Excel, exporta primero como CSV UTF-8.');
+        if(!globalThis.edwinCsvImport?.parseLeadsCsv)throw new Error('El lector de archivos no está disponible. Actualiza la página e inténtalo nuevamente.');
+        const parsed=globalThis.edwinCsvImport.parseLeadsCsv(await file.text());
+        if(businessId!==state.businessId)return;
+        state.crmImportRows=parsed.rows;state.crmImportSkipped=parsed.skipped;state.crmImportWarnings=parsed.warnings;
+        state.crmImportFile=file.name;state.crmImportBusinessId=businessId;
+      }catch(err){if(businessId===state.businessId)state.crmImportError=err.message;}
+      if(businessId===state.businessId)render();return;
+    }
     if(e.target.id==='company-logo-file'){
       const file=e.target.files?.[0];if(!file)return;
       try{
