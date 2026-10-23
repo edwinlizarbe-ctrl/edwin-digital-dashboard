@@ -16,16 +16,16 @@ const HEADERS = {
 const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: new Headers(HEADERS) });
 const EMAIL_RE = /^[^\s@<>()[\]\\,;:"]+@[^\s@<>()[\]\\,;:"]+\.[^\s@<>()[\]\\,;:"]{2,}$/;
 export const RESET_REDIRECT_PATH = '/?reset=1';
-export const RESET_LIMIT = 2048;
+export const RESET_LIMIT = 8192;
 export const RESET_OK = 'Si el correo está registrado, te enviamos instrucciones para restablecer tu contraseña. Revisa tu bandeja y la carpeta de spam.';
 
 const foreignOrigin = (req) => { const o = req.headers.get('Origin'); return !!o && o !== new URL(req.url).origin; };
-async function readJson(req) {
+async function readJson(req, limit = RESET_LIMIT) {
   if (!(req.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) return { status: 415, error: 'Se requiere JSON.' };
   const declared = req.headers.get('Content-Length');
-  if (declared && Number(declared) > RESET_LIMIT) return { status: 413, error: 'Solicitud demasiado grande.' };
+  if (declared && Number(declared) > limit) return { status: 413, error: 'Solicitud demasiado grande.' };
   const text = await req.text();
-  if (text.length > RESET_LIMIT) return { status: 413, error: 'Solicitud demasiado grande.' };
+  if (text.length > limit) return { status: 413, error: 'Solicitud demasiado grande.' };
   try { return { body: JSON.parse(text) }; } catch { return { status: 400, error: 'Solicitud no válida.' }; }
 }
 const base = (env) => String(env.SUPABASE_URL).replace(/\/$/, '');
@@ -39,7 +39,7 @@ export function validateResetEmail(email) {
 export async function handleRequestReset(req, env) {
   if (req.method.toUpperCase() !== 'POST') return reply({ error: 'Método no permitido.' }, 405);
   if (foreignOrigin(req)) return reply({ error: 'Origen no autorizado.' }, 403);
-  const parsed = await readJson(req);
+  const parsed = await readJson(req, 2048);
   if (parsed.error) return reply({ error: parsed.error }, parsed.status);
   if (!parsed.body || typeof parsed.body !== 'object' || Array.isArray(parsed.body)) return reply({ error: 'Solicitud no válida.' }, 400);
   const email = validateResetEmail(parsed.body.email);
