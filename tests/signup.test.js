@@ -65,6 +65,7 @@ test('signup response is identical for new and existing emails (anti-enumeration
   await withFetch(() => json({ access_token: 'tok', refresh_token: 'r', user: {} }), async () => {
     const r = await handleSignup(req('/api/auth/signup', good), env);
     const text = JSON.stringify(await r.json());
+    assert.equal(r.status, 503, 'Si confirm email está desactivado, el registro NO debe informar éxito');
     assert.equal(r.headers.get('Set-Cookie'), null);
     assert.equal(text.includes('tok'), false);
   });
@@ -74,6 +75,8 @@ test('signup maps rate limits and upstream failures', async () => {
   await withFetch(() => json({}, 429), async () => assert.equal((await handleSignup(req('/api/auth/signup', good), env)).status, 429));
   await withFetch(() => json({}, 500), async () => assert.equal((await handleSignup(req('/api/auth/signup', good), env)).status, 502));
   await withFetch(() => json({ error_code: 'weak_password' }, 422), async () => assert.equal((await handleSignup(req('/api/auth/signup', good), env)).status, 400));
+  await withFetch(() => json({ error_code: 'email_exists' }, 422), async () => assert.equal((await handleSignup(req('/api/auth/signup', good), env)).status, 200));
+  await withFetch(() => json({ error_code: 'user_already_exists' }, 400), async () => assert.equal((await handleSignup(req('/api/auth/signup', good), env)).status, 200));
 });
 
 test('business names: length, characters and reserved names', () => {
@@ -127,6 +130,7 @@ test('onboarding is idempotent from the API point of view and maps RPC errors', 
   });
   await withFetch(() => json({ message: 'reserved_name' }, 400), async () => assert.equal((await handleOnboardingBusiness(req('/api/onboarding/business', { name: 'Mi Tienda' }), env, session)).status, 400));
   await withFetch(() => json({ message: 'not_allowed' }, 403), async () => assert.equal((await handleOnboardingBusiness(req('/api/onboarding/business', { name: 'Mi Tienda' }), env, session)).status, 403));
+  await withFetch(() => json({ message: 'email_unverified' }, 403), async () => assert.equal((await handleOnboardingBusiness(req('/api/onboarding/business', { name: 'Mi Tienda' }), env, session)).status, 403));
   await withFetch(() => json({}, 404), async () => assert.equal((await handleOnboardingBusiness(req('/api/onboarding/business', { name: 'Mi Tienda' }), env, session)).status, 503));
   await withFetch(() => json({ message: 'boom' }, 500), async () => assert.equal((await handleOnboardingBusiness(req('/api/onboarding/business', { name: 'Mi Tienda' }), env, session)).status, 502));
 });
@@ -136,6 +140,7 @@ test('migration keeps RLS on, restricts privileges and derives the user from aut
   assert.match(sql, /security definer/i);
   assert.match(sql, /set search_path = pg_catalog, public/i);
   assert.match(sql, /auth\.uid\(\)/);
+  assert.match(sql, /auth\.users u where u\.id = v_uid and u\.email_confirmed_at is not null/i);
   assert.match(sql, /p\.role = 'client'/);
   assert.match(sql, /user_id uuid primary key/i);
   assert.match(sql, /revoke all on function public\.ed_onboard_business\(text\) from public, anon/i);
