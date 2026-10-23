@@ -1772,3 +1772,31 @@ input,select,textarea{max-width:100%}
 .link-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 
 .crm-text-logo{display:inline-block;color:#fff;font-size:26px;line-height:1;font-weight:850;letter-spacing:-.8px}
+
+/* Inicio guiado de Edwin CRM: no afecta a otras páginas ni a los gráficos GA4 */
+.start-guide{display:block;padding:24px 26px;background:linear-gradient(125deg,#f7faff 0%,#edf4ff 100%);border-color:#d6e2f7}
+.start-guide-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
+.start-guide-heading h2{color:#142b51;font-size:24px;line-height:1.22;letter-spacing:-.6px;margin:12px 0 8px;font-weight:800}
+.start-guide-heading p{font-size:14px;line-height:1.6;color:#526684;max-width:665px;margin:0}
+.start-guide-label{white-space:nowrap;background:#e1eafa;color:#2c54a3;border:1px solid #c6d7f5;border-radius:99px;padding:7px 12px;font-size:11px;font-weight:750}
+.start-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));list-style:none;gap:12px;margin:0;padding:0}
+.start-step{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-width:0;padding:17px;border:1px solid #e1e8f3;background:#fff;border-radius:15px;box-shadow:0 2px 8px rgba(20,50,105,.035)}
+.start-number{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border-radius:10px;background:#e8f0ff;color:#2461c9;font-weight:850;font-size:12px}
+.start-step-body{flex:1;min-width:0}
+.start-step-head{display:flex;align-items:flex-start;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.start-step-head h3{font-size:14px;line-height:1.35;letter-spacing:-.2px;font-weight:750;color:#192f52;margin:0}
+.start-step-state{font-size:10px;white-space:nowrap;font-weight:700;color:#526785;background:#eef2f8;padding:4px 8px;border-radius:100px}
+.start-step-state.is-done{color:#17694d;background:#e5f8ee}
+.start-step-body p{color:#61718a;font-size:12px;line-height:1.58;margin:9px 0 0}
+.start-step-action{width:100%;min-height:38px;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:auto;font-size:12px}
+.start-step-action:focus-visible{outline:3px solid #2b63e6;outline-offset:3px}
+[data-theme="dark"] .start-guide{background:linear-gradient(125deg,#162345,#141c34);border-color:#344462}
+[data-theme="dark"] .start-guide-heading h2,[data-theme="dark"] .start-step-head h3{color:#f2f6ff}
+[data-theme="dark"] .start-guide-heading p,[data-theme="dark"] .start-step-body p{color:#b5c4de}
+[data-theme="dark"] .start-guide-label{background:#27395f;border-color:#3d547e;color:#bed3ff}
+[data-theme="dark"] .start-step{background:#1a2946;border-color:#354667}
+[data-theme="dark"] .start-number{background:#304875;color:#d3e3ff}
+[data-theme="dark"] .start-step-state{background:#31405d;color:#d4e0fa}
+[data-theme="dark"] .start-step-state.is-done{background:#1b493d;color:#b8f2d3}
+@media (max-width:950px){.start-steps{grid-template-columns:1fr}.start-step{flex-direction:row;align-items:center;gap:12px}.start-step-action{width:auto;min-width:150px;margin:0}.start-step-body{flex:1}}
+@media (max-width:560px){.start-guide{padding:18px}.start-guide-heading{flex-direction:column}.start-guide-heading h2{font-size:21px}.start-guide-label{display:none}.start-step{display:flex;flex-direction:column;align-items:stretch}.start-number{align-self:flex-start}.start-step-action{width:100%;min-width:0}}
