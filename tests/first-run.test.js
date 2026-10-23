@@ -13,9 +13,11 @@ test('visible branding says Edwin CRM in login, signup and onboarding', () => {
 test('first-run panel uses real nav actions and is skipped with GA4 or loading', () => {
   const fn = src.slice(src.indexOf('function firstRunPanel'), src.indexOf('function salesOverview'));
   assert.match(fn, /if\(gaReady\(\)\|\|state\.gaLoading\)return ''/);
-  assert.match(fn, /data-act="nav" data-page="integrations"/);
-  assert.match(fn, /data-act="nav" data-page="leads"/);
-  assert.match(fn, /Sin datos de prueba/);
+  // Los botones se renderizan desde la lista de pasos, no se codifican por separado.
+  assert.match(fn, /data-act="nav" data-page="\\$\\{step\\.page\\}"/);
+  assert.match(fn, /page:'integrations'/);
+  assert.match(fn, /page:'leads'/);
+  assert.match(fn, /No mostramos datos de prueba/);
   assert.match(fn, /featureEnabled\('ga4'\)/);
 });
 
