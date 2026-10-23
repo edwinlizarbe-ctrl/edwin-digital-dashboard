@@ -83,7 +83,6 @@ const RELATED_CATALOG={
   {title:'Cómo usar el sistema PIX para enviar dinero rápido a Brasil',url:'https://brasper.com/blog/como-usar-el-sistema-pix-para-enviar-dinero-rapido-a-brasil'},
   {title:'Tipo de cambio sol a real: envío de remesas',url:'https://brasper.com/es/blog/tipo-de-cambio-sol-a-real-envio-de-remesas-en-abril'},
   {title:'Cómo recargar una cuenta de Mercado Pago Brasil desde Perú',url:'https://brasper.com/es/blog/como-recargar-una-cuenta-de-mercado-pago-brasil-desde-peru'},
-  {title:'PIX para peruanos: cómo enviar dinero a Brasil',url:'https://brasper.com/br/blog/pix-para-peruanos-como-enviar-dinero-a-brasil'}
  ],
  pt:[
   {title:'Guia de remessas para o Peru: pague com Pix na plataforma',url:'https://brasper.com/blog/guia-de-remessas-para-o-peru-pague-com-pix-na-plataforma'},
@@ -93,6 +92,22 @@ const RELATED_CATALOG={
  ]
 };
 const canonicalTitle=v=>String(v||'').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+const stopWords=new Set('como para desde sobre entre cuando porque guia guia de del los las una unos unas que con por entre este esta estos estas el la lo un o e y a en ao aos as os um uma uma pelo pelos pela pelas do da dos das na no nas nos seu sua seus suas'.split(' '));
+function relevance(title,candidate){
+ const words=x=>new Set(canonicalTitle(x).split(' ').filter(w=>w.length>2&&!stopWords.has(w)));
+ const source=words(title),related=words(candidate);
+ let common=0;for(const w of related)if(source.has(w))common++;
+ return common;
+}
+function languageMatches(lang,row){
+ const link=String(row.url||'').toLowerCase();
+ if(lang==='es'&&link.includes('/br/'))return false;
+ if(lang==='pt'&&link.includes('/es/'))return false;
+ const t=canonicalTitle(row.title);
+ return lang==='es'
+  ?!/\b(cotacao|remessas|dinheiro|envio|transferencia bancaria|soles para|voce)\b/.test(t)
+  :!/\b(cambio|envios|dinero|peruanos|transferencias internacionales)\b/.test(t);
+}
 export function generateBlogHtml(input){
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Completa el artículo.');
  const lang=input.language==='pt'?'pt':input.language==='es'?'es':null;
@@ -102,7 +117,8 @@ export function generateBlogHtml(input){
  if(!article.trim()||article.length>60000)throw Error('El artículo debe tener texto y como máximo 60 000 caracteres.');
  const date=String(input.date||'').trim();
  if(date&&!/^\d{4}-\d{2}$/.test(date))throw Error('La fecha no tiene un formato válido.');
- const related=Array.isArray(input.related)&&input.related.length?input.related:RELATED_CATALOG[lang];
+ const customRelated=Array.isArray(input.related)&&input.related.length>0;
+ const related=customRelated?input.related:RELATED_CATALOG[lang].filter(row=>languageMatches(lang,row)).sort((a,b)=>relevance(title,b.title)-relevance(title,a.title));
  if(related.length>7)throw Error('Se permiten máximo siete artículos relacionados.');
  const links=[];
  for(const row of related){
@@ -110,6 +126,7 @@ export function generateBlogHtml(input){
   const name=String(row.title||'').trim(),link=validUrl(row.url);
   if(name.length<2||name.length>220||!link)throw Error('Revisa el título y la URL de los artículos relacionados.');
   if(canonicalTitle(name)===canonicalTitle(title))continue;
+  if(!languageMatches(lang,row))continue;
   if(links.some(item=>item.includes('href="'+esc(link)+'"')))continue;
   links.push('<li><a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">'+esc(name)+'</a></li>');
  }
