@@ -22,6 +22,19 @@ async function ownsBusiness(env,s,id){
  const list=await r.json().catch(()=>[]);
  return Array.isArray(list)&&list.some(x=>x.id===id);
 }
+// ED_FEATURES_STRICT=1|true: never fall back to the legacy GA4/Meta defaults when
+// the service key or migration is missing; deny everything instead. Off by default.
+export const strictMode=env=>['1','true'].includes(String(env?.ED_FEATURES_STRICT||'').trim().toLowerCase());
+const warned=new Set();
+export const resetFeatureWarnings=()=>warned.clear();
+// One log line per reason and isolate; never includes ids, tokens or URLs.
+function warnOnce(reason,strict){
+ const key=reason+(strict?':strict':':legacy');
+ if(warned.has(key))return;warned.add(key);
+ console.warn(strict
+  ?'[feature-access] SECURITY: entitlements unavailable ('+reason+'); ED_FEATURES_STRICT is on, all features are denied.'
+  :'[feature-access] SECURITY: entitlements unavailable ('+reason+'); legacy defaults grant GA4 and Meta Ads to every business. Provision the migration and set ED_FEATURES_STRICT=1.');
+}
 const ALL_DENIED=Object.freeze(Object.fromEntries(ED_FEATURES.map(feature=>[feature,false])));
 const isPlainObject=x=>!!x&&typeof x==='object'&&!Array.isArray(x);
 // Keep only known switches with boolean values so malformed stored data can neither
@@ -31,7 +44,10 @@ const knownFlags=raw=>isPlainObject(raw)?Object.fromEntries(ED_FEATURES.filter(k
 //         {configured:true,available:true}   -> table readable
 //         {configured:true,available:false}  -> table exists but could not be read: fail closed
 async function featureRow(env,id){
- if(!env.SUPABASE_SERVICE_ROLE_KEY)return {configured:false,available:true,row:null};
+ const strict=strictMode(env);
+ // Legacy fallback: allowed only outside strict mode; strict denies and reports it.
+ const legacy=reason=>{warnOnce(reason,strict);return {configured:false,available:!strict,strictBlocked:strict,row:null};};
+ if(!env.SUPABASE_SERVICE_ROLE_KEY)return legacy('service key missing');
  const key=env.SUPABASE_SERVICE_ROLE_KEY;
  let r;
  try{
@@ -42,7 +58,7 @@ async function featureRow(env,id){
  if(!r.ok){
   // Only a missing table (migration not applied) keeps the legacy behavior.
   const err=r.status===404?await r.json().catch(()=>null):null;
-  if(err&&(err.code==='PGRST205'||err.code==='42P01'))return {configured:false,available:true,row:null};
+  if(err&&(err.code==='PGRST205'||err.code==='42P01'))return legacy('migration not applied');
   return {configured:true,available:false,row:null};
  }
  const rows=await r.json().catch(()=>null);
@@ -52,7 +68,7 @@ async function featureRow(env,id){
 export async function readBusinessEntitlements(env,s,id){
  if(!validId(id)||!await ownsBusiness(env,s,id))return null;
  const data=await featureRow(env,id);
- if(!data.available)return {configured:true,unavailable:true,business_id:id,plan:null,features:{...ALL_DENIED},updated_at:null,provisioned:false};
+ if(!data.available)return {configured:!data.strictBlocked,unavailable:true,strict_blocked:!!data.strictBlocked,business_id:id,plan:null,features:{...ALL_DENIED},updated_at:null,provisioned:false};
  const plan=data.row?.plan||null;
  const features=plan==='premium'
   ?Object.fromEntries(ED_FEATURES.map(feature=>[feature,true]))
@@ -79,17 +95,25 @@ export async function handleFeaturesApi(req,env,s){
  if(!path.startsWith('/api/admin/business-features'))return response({error:'Ruta inexistente.'},404,s.cookies);
  if(s.user.role!=='admin')return response({error:'Acceso exclusivo del administrador.'},403,s.cookies);
  if(path==='/api/admin/business-features/health'&&method==='GET'){
+  const strict=strictMode(env);
+  const legacyWarning='Modo heredado activo: GA4 y Meta Ads quedan habilitados para todas las empresas. Aplica la migración y configura ED_FEATURES_STRICT=1.';
+  const strictWarning='Modo estricto activo: los permisos no están disponibles y se deniegan todas las integraciones.';
+  const report=(base,legacyActive)=>response({...base,strict_mode:strict,legacy_fallback_active:legacyActive&&!strict,
+   ...(legacyActive?{security_warning:strict?strictWarning:legacyWarning}:{})},200,s.cookies);
   const serviceRoleConfigured=!!env.SUPABASE_SERVICE_ROLE_KEY;
-  if(!serviceRoleConfigured)return response({configured:false,service_role_configured:false,migration_applied:null,reason:'Falta SUPABASE_SERVICE_ROLE_KEY en Cloudflare.'},200,s.cookies);
+  if(!serviceRoleConfigured){warnOnce('service key missing',strict);return report({configured:false,service_role_configured:false,migration_applied:null,reason:'Falta SUPABASE_SERVICE_ROLE_KEY en Cloudflare.'},true);}
   const key=env.SUPABASE_SERVICE_ROLE_KEY;
   try{
    const check=await fetch(supaBase(env)+'/rest/v1/ed_business_features?select=business_id&limit=0',{
     headers:{apikey:key,Authorization:'Bearer '+key,Accept:'application/json'}
    });
-   return response({configured:check.ok,service_role_configured:true,migration_applied:check.ok,
-    ...(!check.ok?{reason:'No se puede consultar la tabla de permisos. Verifica la migración y la credencial del servidor.'}:{})},200,s.cookies);
+   if(check.ok)return report({configured:true,service_role_configured:true,migration_applied:true},false);
+   const err=check.status===404?await check.json().catch(()=>null):null;
+   const missing=!!err&&(err.code==='PGRST205'||err.code==='42P01');
+   if(missing)warnOnce('migration not applied',strict);
+   return report({configured:false,service_role_configured:true,migration_applied:false,reason:'No se puede consultar la tabla de permisos. Verifica la migración y la credencial del servidor.'},missing);
   }catch{
-   return response({configured:false,service_role_configured:true,migration_applied:null,reason:'No se pudo comprobar la conexión con Supabase.'},200,s.cookies);
+   return report({configured:false,service_role_configured:true,migration_applied:null,reason:'No se pudo comprobar la conexión con Supabase.'},false);
   }
  }
  if(method==='GET'&&url.searchParams.get('list')==='1'){

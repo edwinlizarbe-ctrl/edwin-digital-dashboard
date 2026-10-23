@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handleFeaturesApi,ensureBusinessFeature,readBusinessEntitlements,ED_FEATURES} from '../feature-access.js';
+import {handleFeaturesApi,ensureBusinessFeature,readBusinessEntitlements,resetFeatureWarnings,strictMode,ED_FEATURES} from '../feature-access.js';
 const base='https://crm.example.workers.dev';
 const business='00000000-0000-4000-8000-000000000001';
 const other='00000000-0000-4000-8000-000000000002';
@@ -151,5 +151,88 @@ test('only admins can write and the other tenant row is untouched',async()=>{
   const res=await handleFeaturesApi(post(JSON.stringify({business_id:business,feature:'ga4',enabled:true})),env,client);
   assert.equal(res.status,403);
   assert.ok(!calls.some(c=>c.method!=='GET'));
+ });
+});
+
+// ED_FEATURES_STRICT: legacy fallback vs fail-closed, warnings and health reporting.
+const strictEnv={...env,ED_FEATURES_STRICT:'1'};
+const noKey={...env,SUPABASE_SERVICE_ROLE_KEY:''};
+const noMigration={featureStatus:json({code:'PGRST205'},404)};
+async function captureWarnings(fn){
+ const original=console.warn,logs=[];resetFeatureWarnings();
+ console.warn=(...a)=>logs.push(a.join(' '));
+ try{await fn(logs);}finally{console.warn=original;resetFeatureWarnings();}
+}
+test('strict flag only accepts 1 or true and is off by default',()=>{
+ assert.equal(strictMode({}),false);
+ assert.equal(strictMode({ED_FEATURES_STRICT:'0'}),false);
+ assert.equal(strictMode({ED_FEATURES_STRICT:'yes'}),false);
+ assert.equal(strictMode({ED_FEATURES_STRICT:'1'}),true);
+ assert.equal(strictMode({ED_FEATURES_STRICT:' TRUE '}),true);
+});
+test('legacy mode (default) keeps GA4 and Meta for existing clients and warns once',async()=>{
+ await captureWarnings(async logs=>{
+  await inServer(async()=>{
+   for(const e of [noKey,env])for(let i=0;i<2;i++){
+    const data=await readBusinessEntitlements(e,client,business);
+    assert.equal(data.features.ga4,true);assert.equal(data.features.meta_ads,true);assert.equal(data.features.google_ads,false);
+    assert.equal(data.unavailable,undefined);
+   }
+   assert.equal(await ensureBusinessFeature(noKey,client,business,'ga4'),true);
+  },noMigration);
+  assert.equal(logs.length,2,'one warning per reason, not per request');
+  assert.ok(logs.every(l=>l.includes('SECURITY')&&l.includes('legacy')&&!l.includes(business)&&!l.includes('service-test')));
+ });
+});
+test('strict mode denies everything when the key or migration is missing',async()=>{
+ await captureWarnings(async logs=>{
+  for(const [e,opts] of [[{...strictEnv,SUPABASE_SERVICE_ROLE_KEY:''},{}],[strictEnv,noMigration]]){
+   await inServer(async()=>{
+    const data=await readBusinessEntitlements(e,client,business);
+    assert.equal(data.unavailable,true);assert.equal(data.strict_blocked,true);
+    assert.ok(ED_FEATURES.every(k=>data.features[k]===false));
+    for(const f of ['ga4','meta_ads'])assert.equal(await ensureBusinessFeature(e,client,business,f),false);
+   },opts);
+  }
+  assert.ok(logs.length>=2&&logs.every(l=>l.includes('ED_FEATURES_STRICT is on')));
+ });
+});
+test('strict mode does not change a provisioned business',async()=>{
+ await inServer(async()=>{
+  const data=await readBusinessEntitlements(strictEnv,client,business);
+  assert.equal(data.features.ga4,true);assert.equal(data.features.google_ads,true);assert.equal(data.provisioned,true);
+  assert.equal(await ensureBusinessFeature(strictEnv,client,business,'meta_ads'),false);
+ });
+});
+test('strict mode still isolates tenants',async()=>{
+ await inServer(async()=>{
+  assert.equal(await readBusinessEntitlements(strictEnv,client,other),null);
+  assert.equal(await ensureBusinessFeature(strictEnv,client,other,'ga4'),false);
+ });
+});
+test('health reports legacy fallback with a security warning (admin only)',async()=>{
+ await captureWarnings(async()=>{
+  const health=(e,s=admin)=>handleFeaturesApi(get('/api/admin/business-features/health'),e,s);
+  await inServer(async()=>{
+   let body=await(await health(noKey)).json();
+   assert.equal(body.legacy_fallback_active,true);assert.equal(body.strict_mode,false);
+   assert.match(body.security_warning,/ED_FEATURES_STRICT=1/);
+   body=await(await health(env)).json();
+   assert.equal(body.migration_applied,false);assert.equal(body.legacy_fallback_active,true);
+   body=await(await health({...noKey,ED_FEATURES_STRICT:'1'})).json();
+   assert.equal(body.strict_mode,true);assert.equal(body.legacy_fallback_active,false);
+   assert.match(body.security_warning,/estricto/);
+   assert.equal((await health(env,client)).status,403);
+  },noMigration);
+  await inServer(async()=>{
+   const body=await(await health(env)).json();
+   assert.equal(body.configured,true);assert.equal(body.migration_applied,true);
+   assert.equal(body.legacy_fallback_active,false);assert.equal(body.security_warning,undefined);
+  });
+  await inServer(async()=>{
+   const body=await(await health(env)).json();
+   assert.equal(body.migration_applied,false);
+   assert.equal(body.legacy_fallback_active,false,'a transient outage is not the legacy fallback');
+  },{featureStatus:500});
  });
 });
