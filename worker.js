@@ -13,6 +13,7 @@ import { handleFeaturesApi, ensureBusinessFeature } from './feature-access.js';
 import { handleZernioApi } from './zernio.js';
 import { handleSignup, handleOnboardingBusiness } from './signup.js';
 import { handleRequestReset, handleResetPassword } from './password-reset.js';
+import { handleSiteCreate } from './site-registration.js';
 /**
  * Edwin Digital Dashboard · Cloudflare Workers
  * Credentials stay in Cloudflare runtime secrets; browser never gets these values.
@@ -265,6 +266,7 @@ async function handleApi(req, env) {
     if(rows.length!==1)return json({error:'Supabase no confirmó el cambio.'},502,s.cookies);
     return json({ok:true,name:rows[0].name},200,s.cookies);
   }
+  if(path==='/api/sites/create') return handleSiteCreate(req,env,s);
   if(path==='/api/sites/edit' && method==='PATCH') {
     if(!companyJsonRequest(req,3000))return json({error:'Solicitud no permitida.'},403,s.cookies);
     let x;try{x=await companyParse(req,3000);}catch{return json({error:'Datos inválidos.'},400,s.cookies);}
