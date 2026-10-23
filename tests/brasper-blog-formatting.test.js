@@ -5,7 +5,7 @@ const base={language:'pt',title:'Como enviar dinheiro para o Peru',article:'# Co
 test('Markdown pasted directly: title deduplicated, bold, italics, links, h2/h3 and bullets',()=>{
  const html=generateBlogHtml(base);
  assert.equal((html.match(/<h1>/g)||[]).length,1);
- assert.match(html,/<h1>Como enviar dinero para o Peru<\/h1>/);
+ assert.match(html,/<h1>Como enviar dinheiro para o Peru<\/h1>/);
  assert.doesNotMatch(html,/<p># Como/);
  assert.match(html,/<strong>outubro<\/strong>/);
  assert.match(html,/<em>compare<\/em>/);
