@@ -18,7 +18,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadDraft:null, leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -838,6 +838,13 @@ function campaigns(){
     }catch(error){if(businessId===state.businessId){state.leads=[];state.leadsError=error.message;}}
     finally{if(businessId===state.businessId){state.leadsLoading=false;render();}}
   }
+  document.addEventListener('edwin:whatsapp-create-lead',async e=>{
+    const {businessId,draft}=e.detail||{};
+    // Solo la empresa activa; el servidor vuelve a validar el negocio al guardar.
+    if(isAdmin()||!businessId||businessId!==state.businessId||!window.edwinWhatsAppLeadDraft?.usable(draft,businessId))return;
+    state.leadDraft=draft;state.page='leads';state.mobileOpen=false;state.search='';render();window.scrollTo(0,0);
+    await loadLeads();
+  });
   function leads(){
     const data=state.leads||[],counts=Object.fromEntries(Object.keys(leadStages).map(s=>[s,data.filter(l=>l.stage===s).length]));
     const won=data.filter(l=>l.stage==='won'&&l.amount!==null&&l.amount!==undefined);
@@ -845,15 +852,17 @@ function campaigns(){
     const kpis='<div class="crm-stats">'+[
       ['Oportunidades',data.length],['Por contactar',counts.new],['En seguimiento',counts.contacted+counts.qualified],['Cerradas',counts.won]
     ].map(([label,value])=>'<div class="crm-stat"><small>'+label+'</small><strong>'+fmt(value)+'</strong></div>').join('')+'</div>';
-    const form='<form id="crm-lead-form" class="crm-lead-form"><div class="crm-form-grid">'+
-      '<label>Nombre del contacto <input class="simple-input" name="name" minlength="2" maxlength="120" autocomplete="name" required placeholder="Nombre y apellido"></label>'+
-      '<label>Correo (opcional) <input class="simple-input" name="email" type="email" maxlength="160" autocomplete="email" placeholder="contacto@empresa.com"></label>'+
-      '<label>Teléfono / WhatsApp <input class="simple-input" name="phone" type="tel" maxlength="35" autocomplete="tel" placeholder="+51 999 999 999"></label>'+
-      '<label>Origen declarado <select class="simple-input" name="source">'+Object.entries(leadSources).map(([id,label])=>'<option value="'+id+'">'+label+'</option>').join('')+'</select></label>'+
+    const dr=window.edwinWhatsAppLeadDraft?.usable(state.leadDraft,state.businessId)?state.leadDraft:null,dv=k=>dr?clean(dr[k]||''):'';
+    const draftBanner=dr?'<div class="alert alert-info" role="status">Oportunidad propuesta desde WhatsApp. Revisa los datos y confirma con «Añadir oportunidad»; no se envió ningún mensaje. <button type="button" class="button button-outline" data-act="lead-draft-cancel">Descartar</button></div>':'';
+    const form=draftBanner+'<form id="crm-lead-form" class="crm-lead-form"><div class="crm-form-grid">'+
+      '<label>Nombre del contacto <input class="simple-input" name="name" value="'+dv('name')+'" minlength="2" maxlength="120" autocomplete="name" required placeholder="Nombre y apellido"></label>'+
+      '<label>Correo (opcional) <input class="simple-input" name="email" value="'+dv('email')+'" type="email" maxlength="160" autocomplete="email" placeholder="contacto@empresa.com"></label>'+
+      '<label>Teléfono / WhatsApp <input class="simple-input" name="phone" value="'+dv('phone')+'" type="tel" maxlength="35" autocomplete="tel" placeholder="+51 999 999 999"></label>'+
+      '<label>Origen declarado <select class="simple-input" name="source">'+Object.entries(leadSources).map(([id,label])=>'<option value="'+id+'" '+(dr&&dr.source===id?'selected':'')+'>'+label+'</option>').join('')+'</select></label>'+
       '<label>Campaña (opcional) <input class="simple-input" name="campaign" maxlength="150" placeholder="Nombre o código de campaña"></label>'+
       '<label>Moneda <select name="currency" class="simple-input"><option>PEN</option><option>BRL</option><option>USD</option></select></label>'+
       '<label>Importe estimado / confirmado <input class="simple-input" name="amount" type="number" min="0" step="0.01" placeholder="Sin importe"></label>'+
-      '<label>Notas <input class="simple-input" name="notes" maxlength="500" placeholder="Necesidad del cliente"></label>'+
+      '<label>Notas <input class="simple-input" name="notes" value="'+dv('notes')+'" maxlength="500" placeholder="Necesidad del cliente"></label>'+
       '</div><div class="crm-form-bottom"><p>El origen y campaña son datos registrados manualmente. No constituyen atribución automática ni una venta confirmada.</p><button class="button button-primary" type="submit" '+(state.leadsBusy?'disabled':'')+'>'+(state.leadsBusy?'Guardando…':'Añadir oportunidad')+'</button></div></form>';
     const records=data.length?'<div class="table-scroll crm-leads-table"><table><thead><tr><th>Contacto</th><th>Origen</th><th>Campaña</th><th>Estado</th><th>Importe</th><th>Registro</th></tr></thead><tbody>'+data.map(l=>
       '<tr><td><strong>'+clean(l.name)+'</strong><small>'+clean(l.email||l.phone||'Sin datos de contacto')+'</small></td><td>'+clean(leadSources[l.source]||l.source)+'</td><td>'+clean(l.campaign||'—')+'</td><td><select class="simple-input crm-stage-select" data-id="'+clean(l.id)+'" aria-label="Estado de '+clean(l.name)+'">'+Object.entries(leadStages).map(([k,v])=>'<option value="'+k+'" '+(l.stage===k?'selected':'')+'>'+v+'</option>').join('')+'</select></td><td>'+ (l.amount==null?'—':money(l.amount,l.currency||'PEN'))+'</td><td>'+clean(String(l.created_at||'').slice(0,10))+'</td></tr>'
@@ -1702,7 +1711,7 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadDraft=null;state.leadsError='';state.leadsNotice='';state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
     if(!isAdmin()){await loadClientEntitlements(id);await Promise.all([loadGa4Connection(),loadGoogleAds()]);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
@@ -1841,6 +1850,7 @@ function sidebar(){
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
+    else if(action==='lead-draft-cancel'){state.leadDraft=null;render();}
     else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin()){await Promise.all([loadGa4Connection(),loadGoogleAds()]);await loadMeta();}if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='whatsapp'&&!isAdmin())await window.edwinWhatsAppInbox?.load(state.businessId);if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='wa-connect-guide'&&!isAdmin()){
       const dialog=document.getElementById('wa-connect-dialog');
@@ -2286,10 +2296,11 @@ function sidebar(){
       e.preventDefault();if(isAdmin()||state.leadsBusy||!state.businessId)return;
       const businessId=state.businessId,data=Object.fromEntries(new FormData(e.target));
       data.amount=data.amount===''?null:Number(data.amount);
+      if(window.edwinWhatsAppLeadDraft?.usable(state.leadDraft,businessId))state.leadDraft={businessId,name:data.name,phone:data.phone||'',email:data.email||'',source:data.source,campaign:data.campaign||'',notes:data.notes||''};
       state.leadsBusy=true;state.leadsError='';state.leadsNotice='';render();
       try{
         await api('/api/crm/leads?business_id='+encodeURIComponent(businessId),{method:'POST',body:JSON.stringify(data)});
-        if(state.businessId===businessId){state.leadsNotice='Oportunidad registrada correctamente.';await loadLeads();}
+        if(state.businessId===businessId){state.leadDraft=null;state.leadsNotice='Oportunidad registrada correctamente. Ya aparece en el seguimiento de oportunidades.';await loadLeads();}
       }catch(err){if(state.businessId===businessId)state.leadsError=err.message;}
       finally{state.leadsBusy=false;if(state.businessId===businessId)render();}
       return;
