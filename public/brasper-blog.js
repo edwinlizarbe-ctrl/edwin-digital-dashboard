@@ -36,7 +36,7 @@
   if(title.length<2){show('Pega un artículo que empiece con el título.',true);submit.disabled=false;submit.textContent='Generar HTML →';return;}
   const lower=' '+article.toLowerCase()+' ';
   const pt=/(\b(você|vocês|não|também|saiba|envio|dinheiro|reais|cotação|brasileiro|transferências|artigos)\b|\b(para o|para a|com o|do brasil|no brasil)\b)/i.test(lower);
-  const data={business_id:id,title,article,language:pt?'pt':'es',related:[],include_title:false,include_date:false};
+  const data={business_id:id,title,article,language:pt?'pt':'es',related:[],include_title:true,include_date:false};
   result='';
   const output=$('bp-html-output');if(output)output.value='';
   document.querySelectorAll('[data-bp-action]').forEach(x=>x.disabled=true);
@@ -66,7 +66,7 @@
   }
   const act=e.target.closest('[data-bp-action]')?.dataset.bpAction;if(!act||!result)return;
   if(act==='copy'){
-   try{await navigator.clipboard.writeText(result);show('HTML copiado. Puedes pegarlo en el editor de Brásper.')}
+   try{await navigator.clipboard.writeText($('bp-html-output')?.value||result);show('HTML copiado. Puedes pegarlo en el editor de Brásper.')}
    catch{const n=$('bp-html-output');if(n){n.focus();n.select()}show('No se pudo copiar automáticamente. Selecciona el código y cópialo manualmente.',true)}
   }else if(act==='download'){
    const file=new Blob([result],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(file),link=document.createElement('a');
