@@ -120,7 +120,22 @@ export function generateBlogHtml(input){
  const callToAction=pt?'Faça sua cotação agora →':'Haz tu envío ahora →';
  const note=pt?'Este conteúdo é informativo. Tarifas, câmbio e prazos podem variar. Confira as condições vigentes antes de enviar.':'Este contenido es informativo. Las tarifas, el tipo de cambio y los plazos pueden variar. Revisa las condiciones vigentes antes de enviar.';
  const body=article.replace(/^\s*([^\n]+)\n?/, (match,line)=>line.replace(/^#{1,3}\s*/,'').replace(/^\*\*(.*?)\*\*$/,'$1').trim().toLocaleLowerCase()===title.toLocaleLowerCase()?'':match);
- return CSS+'\n<article class="bp-blog" lang="'+lang+'">'+headline+dateHtml+articleToHtml(body,{title,language:lang})+rel+'<div class="bp-action"><a class="bp-cta" href="https://brasper.com/'+(pt?'br':'es')+'" target="_blank" rel="noopener noreferrer">'+callToAction+'</a></div><p class="bp-note">'+note+'</p></article>';
+ // The pasted author/month line is metadata, not part of the introductory paragraph.
+ // Normalize Markdown link/emphasis around Brasper and preserve the original month/year.
+ const bodyLines=body.split('\n');
+ const metaIndex=bodyLines.findIndex((line,i)=>i<4&&/(?:Brasper|Brásper)/i.test(line)&&/(?:\b20\d{2}\b)/.test(line)&&line.length<250);
+ let pastedMeta='';
+ if(metaIndex!==-1){
+  const raw=bodyLines[metaIndex];
+  const plain=raw.replace(/&#x20;|&nbsp;/gi,' ').replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g,'$1').replace(/[\u002a_#]/g,'').replace(/\s+/g,' ').trim();
+  if(/^(?:Brasper|Brásper)\b/i.test(plain)){
+   pastedMeta=plain.replace(/^Brásper\b/i,'Brasper').replace(/^Brasper\s*/i,'Brasper · ');
+   bodyLines.splice(metaIndex,1);
+  }
+ }
+ const cleanBody=bodyLines.join('\n');
+ const metadata=pastedMeta?'<p class="bp-meta">'+esc(pastedMeta)+'</p>':dateHtml;
+ return CSS+'\n<article class="bp-blog" lang="'+lang+'">'+headline+metadata+articleToHtml(cleanBody,{title,language:lang})+rel+'<div class="bp-action"><a class="bp-cta" href="https://brasper.com/'+(pt?'br':'es')+'" target="_blank" rel="noopener noreferrer">'+callToAction+'</a></div><p class="bp-note">'+note+'</p></article>';
 }
 
 /** Resolve access with the caller JWT + RLS, never with an admin token. */
