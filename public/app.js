@@ -2361,6 +2361,8 @@ function sidebar(){
       try{
         await api('/api/auth/reset-password',{method:'POST',body:JSON.stringify({access_token:pendingRecovery,password,confirm})});
         pendingRecovery=null;
+        // Una sesión anterior del navegador no debe sobrevivir a la recuperación.
+        await api('/api/auth/logout',{method:'POST',body:'{}'}).catch(()=>{});
         state.authMode='login';await init();state.loginNotice='Contraseña actualizada. Ingresa con tu contraseña nueva.';render();
       }catch(err){
         if(err.status===401){pendingRecovery=null;showResetPasswordPage(err.message,true);}
