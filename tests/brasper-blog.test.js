@@ -17,13 +17,14 @@ async function simulated(fn,visible=true){
  };
  try{await fn(calls)}finally{globalThis.fetch=original;}
 }
-test('genera cuerpo ES con formato corporativo sin duplicar H1 ni fecha',()=>{
+test('genera cuerpo ES con H1 único y sin fecha duplicada',()=>{
  const html=generateBlogHtml(valid);
  assert.match(html,/class="bp-blog" lang="es"/);
  assert.match(html,/<h2>Recomendaciones<\/h2>/);
  assert.match(html,/Ahorra &lt;tiempo&gt; y revisa condiciones\./);
  assert.match(html,/<li>Primer paso<\/li>/);
- assert.doesNotMatch(html,/<h1>/);
+ assert.match(html,/<h1>Cómo enviar dinero<\/h1>/);
+ assert.equal((html.match(/<h1>/g)||[]).length,1);
  assert.doesNotMatch(html,/<p class="bp-meta">/);
  assert.match(html,/Haz tu envío ahora/);
  assert.match(html,/https:\/\/brasper\.com/);
@@ -33,7 +34,8 @@ test('genera portugués y opt-in para título/fecha, con hasta siete relacionado
  assert.match(html,/lang="pt"/);assert.match(html,/<h1>Cómo enviar dinero<\/h1>/);
  assert.match(html,/2026-10/);assert.match(html,/Artigos relacionados/);
  assert.equal((html.match(/rel="noopener noreferrer"/g)||[]).length,8);
- assert.match(html,/Faça seu envio agora/);
+ assert.match(html,/Faça sua cotação agora/);
+ assert.match(html,/href="https:\/\/brasper\.com\/br"/);
 });
 test('rechaza javascript URL, atributos HTML y más de siete relacionados',()=>{
  assert.throws(()=>generateBlogHtml({...valid,related:[{title:'Peligro',url:'javascript:alert(1)'}]}),/URL/);
@@ -90,8 +92,10 @@ test('módulo Blog está presente en sidebar Brásper, separado de otras empresa
 
 test('el HTML enlaza Brásper y PIX, nunca agrega enlaces bancarios',()=>{
  const html=generateBlogHtml({...valid,title:'Transferencias',article:'Transferencias\\n\\nCon Brásper puedes recibir por PIX. Interbank y Nubank se mencionan solo como texto.',related:[]});
- assert.match(html,/href="https:\/\/brasper.com\/"/);
- assert.match(html,/href="https:\/\/www.bcb.gov.br\/estabilidadefinanceira\/pix"/);
+ assert.match(html,/href="https:\/\/brasper.com\/es"/);
+ assert.match(html,/href="https:\/\/brasper.com\/blog\/como-usar-el-sistema-pix-para-enviar-dinero-rapido-a-brasil"/);
+ assert.match(html,/text-decoration:none!important/);
+ assert.match(html,/border-left:none;padding-left:0/);
  assert.doesNotMatch(html,/href="[^"]*(interbank|nubank)/i);
  assert.doesNotMatch(html,/<p>Transferencias<\/p>/);
 });

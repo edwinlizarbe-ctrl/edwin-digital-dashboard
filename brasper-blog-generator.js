@@ -116,7 +116,7 @@ export function generateBlogHtml(input){
  const pt=lang==='pt';
  const rel=links.length?'<section class="bp-related"><h3>'+(pt?'Artigos relacionados':'Artículos relacionados')+'</h3><ul>'+links.join('')+'</ul></section>':'';
  const headline='<h1>'+esc(title)+'</h1>';
- const dateHtml=input.include_date===true&&date?'<p class="bp-meta">Brásper · '+esc(date)+'</p>':'';
+ const dateHtml=input.include_date===true&&date?'<p class="bp-meta">Brasper · '+esc(date)+'</p>':'';
  const callToAction=pt?'Faça sua cotação agora →':'Haz tu envío ahora →';
  const note=pt?'Este conteúdo é informativo. Tarifas, câmbio e prazos podem variar. Confira as condições vigentes antes de enviar.':'Este contenido es informativo. Las tarifas, el tipo de cambio y los plazos pueden variar. Revisa las condiciones vigentes antes de enviar.';
  const body=article.replace(/^\s*([^\n]+)\n?/, (match,line)=>line.replace(/^#{1,3}\s*/,'').replace(/^\*\*(.*?)\*\*$/,'$1').trim().toLocaleLowerCase()===title.toLocaleLowerCase()?'':match);
