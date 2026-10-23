@@ -1899,3 +1899,12 @@ input,select,textarea{max-width:100%}
 [data-theme="dark"] .crm-import-preview td{color:#cfdef3;border-color:#385073}
 [data-theme="dark"] .crm-import-preview th{color:#b4c7e5}
 @media(max-width:680px){.crm-import-controls{grid-template-columns:1fr}.crm-import-heading{flex-direction:column}.crm-import-footer{flex-direction:column;align-items:stretch}.crm-import-footer .button{width:100%}}
+
+.crm-import-gateway{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 25px;margin:18px 0;background:linear-gradient(115deg,#eff5ff,#faffff);border:1px solid #d9e7fb;border-radius:16px}
+.crm-import-gateway h2{color:#17365e;font-size:18px;font-weight:800;margin:7px 0}
+.crm-import-gateway p{color:#556b89;font-size:12px;line-height:1.6;max-width:650px;margin:0}
+.crm-import-gateway .button{white-space:nowrap;min-height:44px}
+[data-theme="dark"] .crm-import-gateway{background:linear-gradient(115deg,#202f4e,#162941);border-color:#354c6f}
+[data-theme="dark"] .crm-import-gateway h2{color:#f0f5ff}
+[data-theme="dark"] .crm-import-gateway p{color:#bed0e9}
+@media(max-width:760px){.crm-import-gateway{flex-direction:column;align-items:stretch}.crm-import-gateway .button{width:100%}}
