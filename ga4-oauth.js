@@ -27,6 +27,15 @@ async function db(env,table,query='',method='GET',body){if(!env.SUPABASE_SERVICE
 async function tokenRequest(env,params){const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.GOOGLE_ANALYTICS_CLIENT_ID,client_secret:env.GOOGLE_ANALYTICS_CLIENT_SECRET,...params})});if(!r.ok)throw Error('Google no autorizó el acceso a Analytics (HTTP '+r.status+').');return r.json();}
 export async function ga4OauthToken(env,row){if(!validConfig(env))throw Error('La conexión de Google Analytics no está configurada.');const saved=await unseal(env,row.refresh_token_cipher);if(!saved?.refresh_token)throw Error('La autorización de Analytics no es válida. Reconecta tu cuenta.');const r=await tokenRequest(env,{grant_type:'refresh_token',refresh_token:saved.refresh_token});if(!r.access_token)throw Error('No se pudo renovar el acceso a Analytics. Reconecta tu cuenta.');return r.access_token;}
 export async function ga4ConnectionForBusiness(env,s,id){if(!validConfig(env)||!await permitted(env,s,id))return null;const rows=await db(env,'ed_ga4_connections','select=business_id,refresh_token_cipher,selected_property_id,selected_property_name&business_id=eq.'+encodeURIComponent(id)+'&limit=1');return rows[0]||null;}
+// Do not allow a client to select a GA4 property already assigned to another CRM business.
+async function propertyBelongsToAnotherBusiness(env,businessId,propertyId){
+ const property=encodeURIComponent(propertyId),other='&business_id=neq.'+encodeURIComponent(businessId)+'&limit=1';
+ const [sites,connections]=await Promise.all([
+  db(env,'sites','select=business_id&ga4_property_id=eq.'+property+other),
+  db(env,'ed_ga4_connections','select=business_id&selected_property_id=eq.'+property+other)
+ ]);
+ return sites.length>0||connections.length>0;
+}
 async function properties(env,row){
  const token=await ga4OauthToken(env,row),all=[],seen=new Set();let next='';
  for(let page=0;page<5;page++){
@@ -107,6 +116,7 @@ export async function handleGa4OAuthApi(req,env,s){
   if(!PROPERTY.test(propertyId))return bad('Selecciona una propiedad válida.');
   const available=await properties(env,row),selected=available.find(x=>x.id===propertyId);
   if(!selected)return bad('Esta propiedad no está autorizada en tu cuenta de Google.',403);
+  if(await propertyBelongsToAnotherBusiness(env,businessId,propertyId))return bad('Esta propiedad de Analytics ya pertenece a otra empresa de Edwin CRM. Selecciona una propiedad diferente para este negocio.',409);
   await db(env,'ed_ga4_connections','business_id=eq.'+encodeURIComponent(businessId),'PATCH',{selected_property_id:selected.id,selected_property_name:selected.name,updated_at:new Date().toISOString()});
   return reply({ok:true,property:selected});
  }
