@@ -159,3 +159,32 @@ export async function adminInviteBlogEditor(req,env,session){
   return output({ok:true,email,scope:'brasper.blog',message:'Invitación solicitada. La entrega del correo depende de Supabase.'});
  }catch(error){console.error('Blog invite failed',String(error?.message||error));return output({error:'No se pudo confirmar el acceso de Ana. Revisa Supabase antes de reintentar.'},502)}
 }
+
+/**
+ * Read-only editorial access status for the admin Blog screen. Returns only a
+ * coarse state; never user IDs, emails or keys. Fails closed on any error.
+ */
+export async function adminBlogEditorStatus(req,env,session){
+ const output=(body,status=200)=>respond(body,status,session.cookies||[]);
+ if(session.user.role!=='admin')return output({error:'Acceso exclusivo del administrador.'},403);
+ if(req.method!=='GET')return output({error:'Método no permitido.'},405);
+ const key=env.SUPABASE_SERVICE_ROLE_KEY;
+ if(!key)return output({error:'La conexión administrativa no está configurada.'},503);
+ const base=String(env.SUPABASE_URL||'').replace(/\/$/,'');
+ const headers={apikey:key,Authorization:'Bearer '+key,Accept:'application/json'};
+ const get=async route=>{const r=await fetch(base+'/rest/v1/'+route,{headers});if(!r.ok)throw Error('status');return r.json()};
+ try{
+  const [companies,profiles]=await Promise.all([
+   get('businesses?select=id,slug&slug=eq.brasper&limit=2'),
+   get('profiles?select=id,role&email=eq.'+encodeURIComponent('marketing.brasper@gmail.com')+'&limit=2')
+  ]);
+  if(!Array.isArray(companies)||companies.length!==1||!UUID.test(String(companies[0].id||'')))throw Error('company');
+  if(!Array.isArray(profiles))throw Error('shape');
+  if(profiles.length===0)return output({ok:true,state:'invite'});
+  if(profiles.length>1||!UUID.test(String(profiles[0].id||'')))return output({ok:true,state:'review'});
+  const members=await get('business_members?select=business_id&user_id=eq.'+profiles[0].id+'&limit=5');
+  if(!Array.isArray(members))throw Error('shape');
+  const active=profiles[0].role==='blog_editor'&&members.length===1&&members[0].business_id===companies[0].id;
+  return output({ok:true,state:active?'active':'review'});
+ }catch(error){console.error('Blog editor status failed',String(error?.message||error));return output({error:'No se pudo verificar el acceso editorial.'},502)}
+}
