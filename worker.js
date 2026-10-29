@@ -1,6 +1,6 @@
 import { manageSuspension, isSuspendedUser } from './admin-suspension.js';
 import { handleAdminLifecycle } from './admin-lifecycle.js';
-import { adminInvite, adminInviteBlogEditor, acceptInvite } from './admin-invites.js';
+import { adminInvite, adminInviteBlogEditor, adminBlogEditorStatus, acceptInvite } from './admin-invites.js';
 import { handleMetaApi } from './meta.js';
 import { handleGoogleAdsApi } from './google-ads.js';
 import { handleSearchConsoleApi } from './search-console.js';
@@ -180,6 +180,7 @@ async function handleApi(req, env) {
     if(path==='/api/brasper/blog/generate')return handleBlogGenerator(req,env,s);
     return json({error:'Este perfil solo puede utilizar Blog de Brásper.'},403,s.cookies);
   }
+  if(path==='/api/admin/blog-editor/status')return adminBlogEditorStatus(req,env,s);
   if(path==='/api/admin/invite-blog-editor')return adminInviteBlogEditor(req,env,s);
   if(path==='/api/admin/accounts/suspension')return manageSuspension(req,env,s);
   if(path==='/api/admin/lifecycle')return handleAdminLifecycle(req,env,s);
