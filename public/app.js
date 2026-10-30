@@ -19,7 +19,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, gbp:null, gbpLocations:[], gbpReport:null, gbpBusy:false, gbpError:'', gbpNotice:'', gbpPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, crmImportRows:[], crmImportFile:'', crmImportSkipped:0, crmImportWarnings:[], crmImportError:'', crmImportBusy:false, crmImportSource:'other', crmImportBusinessId:'', siteCreateBusy:false, siteCreateError:'', zernioBusy:false, zernioNotice:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, gbp:null, gbpLocations:[], gbpReport:null, gbpBusy:false, gbpError:'', gbpNotice:'', gbpPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, crmImportRows:[], crmImportFile:'', crmImportSkipped:0, crmImportWarnings:[], crmImportError:'', crmImportBusy:false, crmImportSource:'other', crmImportBusinessId:'', siteCreateBusy:false, siteCreateError:'', zernioBusy:false, zernioNotice:'', zernioStatus:null, zernioStatusError:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -1620,6 +1620,18 @@ async function loadAccounts(){
     if(gbpMonitor!==null)clearInterval(gbpMonitor);
     gbpMonitor=null;gbpWindow=null;state.gbpPopupActive=false;
   }
+  async function loadZernioStatus(){
+    const id=state.businessId;
+    if(!id||isAdmin())return;
+    state.zernioStatusError='';
+    try{
+      const status=await api('/api/zernio/status?business_id='+encodeURIComponent(id));
+      if(state.businessId===id)state.zernioStatus=status;
+    }catch(e){
+      if(state.businessId===id){state.zernioStatus=null;state.zernioStatusError='No se pudo comprobar la conexión. Intenta actualizar la página.';}
+    }
+    if(state.businessId===id&&state.page==='integrations')render();
+  }
   async function loadBusinessProfile(){
     const id=state.businessId;
     if(!id||isAdmin()||!featureEnabled('business_profile')){state.gbp=null;state.gbpLocations=[];state.gbpReport=null;return;}
@@ -1735,8 +1747,11 @@ async function loadAccounts(){
   if(p.name==='Google Business Profile')return businessProfileCard();
   if(p.name==='Meta Ads')return metaCard();
    if(p.name==='Google Ads')return googleAdsCard();
-   if(p.name==='WhatsApp')return `<article class="integration-card provider-card wa-onboard" data-connected="false" aria-label="Guía para conectar WhatsApp Business">
-    ${integrationHeader('WhatsApp','Disponible','neutral','WhatsApp Business')}
+   if(p.name==='WhatsApp'){
+    const wa=state.zernioStatus;
+    const waLabel=state.zernioStatusError?'No disponible':!wa?'Comprobando':!wa.configured?'Pendiente de activación':wa.connected?'Conectado':'Listo para conectar';
+    return `<article class="integration-card provider-card wa-onboard" data-connected="${wa?.connected?'true':'false'}" aria-label="Conexión de WhatsApp Business">
+    ${integrationHeader('WhatsApp',waLabel,wa?.connected?'success':'neutral','WhatsApp Business')}
     <div class="wa-onboard-intro">
       <div>
         <span class="wa-onboard-eyebrow">CONEXIÓN GUIADA</span>
@@ -1763,15 +1778,19 @@ async function loadAccounts(){
       </div>
     </div>
     ${state.zernioNotice?alertBlock(state.zernioNotice,'info'):''}
+    ${state.zernioStatusError?alertBlock(state.zernioStatusError):''}
+    ${wa&&!wa.configured?alertBlock('WhatsApp todavía no está activado en la plataforma. No necesitas introducir credenciales ni crear una cuenta.','info'):''}
+    ${wa?.connected?alertBlock('Número empresarial vinculado: '+clean(wa.accountName||'WhatsApp Business'),'info'):''}
     <div class="wa-onboard-footer">
       <div class="wa-onboard-footer-text">
-        <strong>¿Listo para empezar?</strong>
-        <span>La autorización del número se realiza fuera de Edwin CRM.</span>
+        <strong>${wa?.connected?'Cuenta conectada':wa?.configured?'¿Listo para empezar?':'Integración pendiente'}</strong>
+        <span>${wa?.connected?'Ya puedes atender las conversaciones de esta empresa.':wa?.configured?'Conecta tu número mediante la autorización segura de Meta.':'La conexión se habilitará cuando Edwin CRM complete la configuración.'}</span>
       </div>
-      <button type="button" class="button button-primary wa-onboard-connect" data-act="wa-connect-guide" ${state.zernioBusy?'disabled':''}>${whatsAppMark(21)} ${state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp'}</button>
+      ${wa?.connected?`<button type="button" class="button button-primary wa-onboard-connect" data-act="nav" data-page="whatsapp">${whatsAppMark(21)} Abrir conversaciones</button>`:`<button type="button" class="button button-primary wa-onboard-connect" data-act="wa-connect-guide" ${state.zernioBusy||!wa?.configured?'disabled':''}>${whatsAppMark(21)} ${state.zernioBusy?'Preparando conexión…':'Conectar WhatsApp'}</button>`}
     </div>
     <p class="wa-onboard-caution"><strong>Importante:</strong> si tu número ya está conectado a otro proveedor, revisa primero los requisitos de migración. No elimines el número ni la cuenta actual.</p>
   </article>`;
+   }
   return `<article class="integration-card provider-card" data-connected="${p.connected?'true':'false'}">
    ${integrationHeader(p.name,p.status||'Pendiente',p.connected?'success':'neutral',subtitle)}<p>${clean(p.info)}</p>
    <div class="integration-status"><span>${clean(p.details||'')}</span>${p.name==='TikTok Ads'?'<button class="button button-outline integration-plug-action" type="button" data-act="campaign-open-installer" data-provider="tiktok">'+adBrandIcon('tiktok')+' Ver disponibilidad</button>':p.connected?'<button class="button button-outline integration-plug-action" data-act="nav" data-page="analytics">'+icon('plug',17)+' Ver datos</button>':plugButton('Próximamente',null,true)}</div>
@@ -1938,10 +1957,10 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.siteCreateBusy=false;state.siteCreateError='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.sc=null;state.scSites=null;state.scReport=null;state.scError='';state.scNotice='';state.gbp=null;state.gbpLocations=[];state.gbpReport=null;state.gbpError='';state.gbpNotice='';state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.crmImportRows=[];state.crmImportFile='';state.crmImportError='';state.crmImportSkipped=0;state.crmImportWarnings=[];state.crmImportBusinessId='';state.crmImportBusy=false;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.siteCreateBusy=false;state.siteCreateError='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.sc=null;state.scSites=null;state.scReport=null;state.scError='';state.scNotice='';state.gbp=null;state.gbpLocations=[];state.gbpReport=null;state.gbpError='';state.gbpNotice='';state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.crmImportRows=[];state.crmImportFile='';state.crmImportError='';state.crmImportSkipped=0;state.crmImportWarnings=[];state.crmImportBusinessId='';state.crmImportBusy=false;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';state.zernioStatus=null;state.zernioStatusError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
-    if(!isAdmin()){await loadClientEntitlements(id);await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole(),loadBusinessProfile()]);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
+    if(!isAdmin()){await loadClientEntitlements(id);await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole(),loadBusinessProfile(),loadZernioStatus()]);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
   }
   async function init(){
     state.loading=true;render();
@@ -1972,7 +1991,7 @@ function sidebar(){
       if(!isAdmin()&&zernioReturn==='return'){
         const params=new URLSearchParams(location.search);
         state.page='integrations';
-        state.zernioNotice=params.get('error')?'Zernio no pudo completar la conexión. Revisa la elegibilidad del número en Meta.':params.get('connected')==='whatsapp'?'Meta terminó la autorización. Confirma en Zernio que el número figure como conectado.':'El registro de WhatsApp regresó a Edwin CRM sin confirmación.';
+        state.zernioNotice=params.get('error')?'No se completó la autorización de WhatsApp. Revisa el número y vuelve a intentarlo.':params.get('accountId')?'Autorización recibida. Comprobaremos el estado de la cuenta.':'La autorización regresó a Edwin CRM; comprueba el estado de WhatsApp.';
         history.replaceState({},'',location.pathname+location.hash);
       }
       state.startupError='';state.loginError='';state.loginNotice='';state.loginEmail='';state.loginBusy=false;state.loading=false;render();
@@ -2102,7 +2121,7 @@ function sidebar(){
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
-    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin()){await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole(),loadBusinessProfile()]);await loadMeta();}if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='whatsapp'&&!isAdmin())await window.edwinWhatsAppInbox?.load(state.businessId);if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin()){await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole(),loadBusinessProfile(),loadZernioStatus()]);await loadMeta();}if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='whatsapp'&&!isAdmin())await window.edwinWhatsAppInbox?.load(state.businessId);if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='wa-connect-guide'&&!isAdmin()){
       const dialog=document.getElementById('wa-connect-dialog');
       if(dialog && !dialog.open) dialog.showModal();
