@@ -24,3 +24,7 @@ Panel privado de analítica con diseño renovado (claro / oscuro), accesible en 
 Las conexiones **no están verificadas en cuentas reales** desde este entorno. Las capturas previas fueron pruebas locales con datos simulados, solo para validar la presentación y navegación.
 
 No incluyas claves de servicio JSON, tokens, correos con contraseñas ni secretos en GitHub ni en mensajes de chat.
+
+## Nota de despliegue — 30/10/2026
+
+El código de Google Business Profile fue integrado en `main` con el PR #82. La función requiere aprobación de Google, autorización OAuth y migración en Supabase antes de usarse. Este cambio de documentación solicita una nueva compilación desde la versión actual de `main` para diagnosticar el acceso de Cloudflare al repositorio.
