@@ -1,0 +1,30 @@
+name: Google Business Profile validation
+on:
+  pull_request:
+    paths:
+      - 'business-profile.js'
+      - 'worker.js'
+      - 'public/app.js'
+      - 'feature-access.js'
+      - 'tests/business-profile.test.js'
+      - 'migrations/20261030_google_business_profile.sql'
+      - '.github/workflows/gbp-validation.yml'
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate syntax
+        run: |
+          node --check worker.js
+          node --check public/app.js
+          node --check business-profile.js
+          node --check feature-access.js
+      - name: Execute Node tests
+        run: node --test tests/*.test.js
