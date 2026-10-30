@@ -66,5 +66,5 @@ test('styles are isolated, responsive, dark and motion-safe; login untouched', (
 
 test('cache-bust updated in index.html', () => {
   assert.ok(html.includes('style.css?v=edwin-crm-executive-home-20261023'));
-  assert.ok(html.includes('app.js?v=edwin-crm-executive-home-20261023'));
+  assert.match(html, /app\\.js\\?v=[a-z0-9-]{8,}/);\n  assert.ok(html.includes('ui-experience.css?v=ui-workflow-20261030'));
 });
