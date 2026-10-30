@@ -1,0 +1,33 @@
+name: WhatsApp integration checks
+on:
+  pull_request:
+    paths:
+      - 'zernio.js'
+      - 'public/app.js'
+      - 'tests/whatsapp-status.test.mjs'
+      - 'package.json'
+      - '.github/workflows/whatsapp-integration.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'zernio.js'
+      - 'public/app.js'
+      - 'tests/whatsapp-status.test.mjs'
+      - 'package.json'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify JavaScript syntax
+        run: |
+          node --check zernio.js
+          node --check public/app.js
+          node --check public/whatsapp-inbox.js
+      - name: Run WhatsApp security checks
+        run: npm run test:whatsapp
