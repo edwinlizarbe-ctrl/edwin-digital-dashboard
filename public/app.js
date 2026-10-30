@@ -19,7 +19,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, crmImportRows:[], crmImportFile:'', crmImportSkipped:0, crmImportWarnings:[], crmImportError:'', crmImportBusy:false, crmImportSource:'other', crmImportBusinessId:'', siteCreateBusy:false, siteCreateError:'', zernioBusy:false, zernioNotice:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, gbp:null, gbpLocations:[], gbpReport:null, gbpBusy:false, gbpError:'', gbpNotice:'', gbpPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, crmImportRows:[], crmImportFile:'', crmImportSkipped:0, crmImportWarnings:[], crmImportError:'', crmImportBusy:false, crmImportSource:'other', crmImportBusinessId:'', siteCreateBusy:false, siteCreateError:'', zernioBusy:false, zernioNotice:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -1062,12 +1062,12 @@ function reportExtras(){
 
 
 const businessFeatureLabels=[
- ['ga4','Google Analytics 4'],['search_console','Google Search Console'],
+ ['ga4','Google Analytics 4'],['search_console','Google Search Console'],['business_profile','Google Business Profile'],
  ['social_organic','Facebook / Instagram orgánico'],['hotmart','Hotmart'],['shopify','Shopify'],
  ['meta_ads','Meta Ads'],['google_ads','Google Ads'],['tiktok_ads','TikTok Ads']
 ];
 const businessFeatureKey=name=>({
- 'Google Analytics 4':'ga4','Google Search Console':'search_console',
+ 'Google Analytics 4':'ga4','Google Search Console':'search_console','Google Business Profile':'business_profile',
  'Facebook / Instagram orgánico':'social_organic','Facebook':'social_organic','Instagram':'social_organic','TikTok':'social_organic','YouTube':'social_organic','Hotmart':'hotmart','Shopify':'shopify',
  'Meta Ads':'meta_ads','Google Ads':'google_ads','TikTok Ads':'tiktok_ads','LinkedIn Ads':'linkedin_ads'
 })[name]||'';
@@ -1128,7 +1128,7 @@ function adminPermissionsPanel(){
    const editable=ready&&free&&!state.adminFeatureBusy;
    return '<div class="admin-feature-row">'+providerLogo(name)+
     '<div class="admin-feature-name"><strong>'+clean(name)+'</strong><small>'+
-    (unavailable?'En desarrollo · permiso para cuando se habilite la conexión.':
+    (key==='business_profile'?'Requiere aprobación Google, autorización OAuth y ficha empresarial verificable.':unavailable?'En desarrollo · permiso para cuando se habilite la conexión.':
      premium?'Incluido en Premium · '+(key==='ga4'?'requiere propiedad GA4 autorizada.':'requiere una cuenta Meta autorizada.'):
      'Disponible según permisos y conexión de la empresa.')+'</small></div>'+
     '<label class="admin-feature-switch" title="'+(editable?'Cambiar permiso: ':'Permiso: ')+clean(name)+'"><input type="checkbox" class="admin-feature-toggle" data-feature="'+key+'" '+(on?'checked':'')+' '+(!editable?'disabled':'')+' aria-label="'+clean(name)+' '+(on?'activado':'desactivado')+'"/><span></span></label>'+
@@ -1183,7 +1183,7 @@ function adminPermissionsPanel(){
  `);
  const services=[['Analítica y contenidos',[
   ['Google Analytics 4','Consultas disponibles si existe propiedad y cuenta de servicio autorizada.'],
-  ['Google Search Console','Autorización oficial pendiente.'],['Facebook / Instagram orgánico','Autorización de páginas y perfiles pendiente.']]],
+  ['Google Search Console','Autorización oficial por empresa.'],['Google Business Profile','API de Google pendiente de aprobación y autorización por empresa.'],['Facebook / Instagram orgánico','Autorización de páginas y perfiles pendiente.']]],
   ['Ventas y e-commerce', [['Hotmart','Autorización individual pendiente.'],['Shopify','Conexión de tienda pendiente.']]],
   ['Publicidad', [['Meta Ads','Conexión piloto directa con Meta for Developers; los clientes requieren acceso autorizado en la app.'],
   ['Google Ads','OAuth y permisos oficiales pendientes.'],['TikTok Ads','API pendiente.']]]];
@@ -1613,6 +1613,87 @@ async function loadAccounts(){
       '<div class="ga-connect-panel"><button type="button" class="button button-primary ga-connect-button" data-act="sc-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+icon('plug',18)+(pending?'Esperando Google…':'Conectar Search Console')+'</button><p class="ga-help">'+icon('lock',14)+' Permiso de solo lectura, independiente de Google Analytics.</p>'+(g.configured?'':'<button type="button" class="button button-outline" data-act="sc-check-status" '+(busy?'disabled':'')+'>Comprobar configuración</button>')+'</div>';
     return '<article class="integration-card provider-card ga-card" data-connected="'+verified+'">'+integrationHeader('Google Search Console',status,verified?'success':'neutral','Analítica SEO')+'<p class="ga-caption">'+caption+'</p>'+(state.scNotice?alertBlock(state.scNotice,'info'):'')+(state.scError?alertBlock(state.scError):'')+panel+'</article>';
   }
+
+  // Business Profile API: no provider writes. Google OAuth scope itself is broad.
+  let gbpWindow=null,gbpMonitor=null;
+  function stopGBP(){
+    if(gbpMonitor!==null)clearInterval(gbpMonitor);
+    gbpMonitor=null;gbpWindow=null;state.gbpPopupActive=false;
+  }
+  async function loadBusinessProfile(){
+    const id=state.businessId;
+    if(!id||isAdmin()||!featureEnabled('business_profile')){state.gbp=null;state.gbpLocations=[];state.gbpReport=null;return;}
+    state.gbpBusy=true;state.gbpError='';render();
+    try{
+      const info=await api('/api/business-profile/status?business_id='+encodeURIComponent(id));
+      if(id!==state.businessId)return;
+      state.gbp=info;state.gbpLocations=[];state.gbpReport=null;
+      if(info.connected){
+        const places=await api('/api/business-profile/locations?business_id='+encodeURIComponent(id));
+        if(id!==state.businessId)return;
+        state.gbpLocations=places.locations||[];
+        if(info.selected_location){
+          const report=await api('/api/business-profile/report?business_id='+encodeURIComponent(id)+'&period=28d');
+          if(id===state.businessId)state.gbpReport=report;
+        }
+      }
+    }catch(e){if(id===state.businessId)state.gbpError=e.message;}
+    finally{if(id===state.businessId){state.gbpBusy=false;render();}}
+  }
+  function startGBPPopup(){
+    const g=state.gbp||{};
+    if(isAdmin()||!state.businessId||!featureEnabled('business_profile')||!g.configured)return;
+    if(gbpWindow&&!gbpWindow.closed){gbpWindow.focus();return;}
+    const id=state.businessId,link='/api/business-profile/connect?business_id='+encodeURIComponent(id);
+    const popup=window.open(link+'&popup=1','edwinGBPOAuth','popup=yes,width=580,height=720,resizable=yes,scrollbars=yes');
+    if(!popup){window.location.assign(link);return;}
+    gbpWindow=popup;state.gbpPopupActive=true;state.gbpNotice='Google solicitará un permiso amplio; Edwin CRM solo consultará datos.';render();
+    popup.focus();
+    if(gbpMonitor!==null)clearInterval(gbpMonitor);
+    gbpMonitor=setInterval(()=>{if(gbpWindow===popup&&popup.closed){stopGBP();loadBusinessProfile();}},650);
+  }
+  window.addEventListener('message',event=>{
+    const x=event.data;
+    if(event.origin!==location.origin||!gbpWindow||event.source!==gbpWindow||x?.type!=='edwin-gbp-oauth')return;
+    if(x.business_id!==state.businessId||!['connected','cancelled','failed'].includes(x.result))return;
+    stopGBP();
+    state.gbpNotice=x.result==='connected'?'Google autorizó la cuenta. Selecciona una ficha de negocio.':x.result==='cancelled'?'Se canceló la autorización.':'Google no confirmó el acceso. Revisa permisos y aprobación de API.';
+    loadBusinessProfile();
+  });
+  function businessProfileCard(){
+    const g=state.gbp||{},on=!!g.connected,busy=state.gbpBusy,pending=state.gbpPopupActive,
+      list=state.gbpLocations||[],report=state.gbpReport,selected=g.selected_location;
+    const verified=on&&!!selected&&!!report&&!state.gbpError;
+    const label=verified?'Conectado':on?'Elegir ficha':g.needs_reauthorization?'Reautorizar':g.configured?'Disponible':'Configuración pendiente';
+    const names={
+      BUSINESS_IMPRESSIONS_DESKTOP_MAPS:'Impresiones en Maps · escritorio',
+      BUSINESS_IMPRESSIONS_MOBILE_MAPS:'Impresiones en Maps · celular',
+      BUSINESS_IMPRESSIONS_DESKTOP_SEARCH:'Impresiones en Búsqueda · escritorio',
+      BUSINESS_IMPRESSIONS_MOBILE_SEARCH:'Impresiones en Búsqueda · celular',
+      WEBSITE_CLICKS:'Clics al sitio web',CALL_CLICKS:'Clics para llamar',
+      BUSINESS_DIRECTION_REQUESTS:'Solicitudes de indicaciones'
+    };
+    const opts=list.map(x=>'<option value="'+clean(x.name)+'" '+(selected===x.name?'selected':'')+'>'+clean(x.title)+(x.address?' · '+clean(x.address):'')+'</option>').join('');
+    const metrics=verified?'<div class="gbp-report"><strong>Rendimiento real · últimos 28 días</strong><div class="meta-kpi-grid">'+Object.entries(names).map(([key,title])=>'<div><small>'+title+'</small><strong>'+(report.totals?.[key]===undefined?'—':fmt(report.totals[key]))+'</strong></div>').join('')+'</div><p class="fine-print">'+clean(report.note||'Datos proporcionados por Google.')+'</p></div>':'';
+    const setup=(g.missing_config||[]).length?'<p class="fine-print">Pendiente: '+clean(g.missing_config.join(', '))+'.</p>':'';
+    const actions=on?
+      '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('plug',15)+' Cuenta Google autorizada</span>'+
+      '<label class="form-label">Perfil empresarial<select id="gbp-location" class="meta-select"><option value="">Selecciona una ficha</option>'+opts+'</select></label>'+
+      '<div class="ga-buttons"><button class="button button-primary" type="button" data-act="gbp-select" '+(busy||!list.length?'disabled':'')+'>Guardar ficha</button>'+
+      '<button class="button button-outline" type="button" data-act="gbp-refresh" '+(busy||!selected?'disabled':'')+'>Actualizar estadísticas</button>'+
+      '<button class="button button-soft" type="button" data-act="gbp-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>'+
+      (!list.length?'<p class="fine-print">Google no devolvió fichas empresariales. Comprueba los permisos de esta cuenta.</p>':'')+metrics+'</div>':
+      '<div class="ga-connect-panel"><button class="button button-primary ga-connect-button" type="button" data-act="gbp-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+icon('plug',18)+(pending?'Esperando a Google…':'Conectar con Google')+'</button>'+
+      '<p class="fine-print">Google solicita el permiso business.manage, que también permitiría modificar fichas. Edwin CRM únicamente utilizará consultas de lectura.</p>'+setup+
+      (!g.configured?'<button type="button" class="button button-outline" data-act="gbp-refresh">Comprobar configuración</button>':'')+'</div>';
+    return '<article class="integration-card provider-card ga-card" data-connected="'+verified+'">'+
+      integrationHeader('Google Business Profile',label,verified?'success':'neutral','Búsquedas locales y Maps')+
+      '<p class="ga-caption">'+(verified?'Ficha conectada: '+clean(g.selected_title||selected):on?'Selecciona la ficha que deseas analizar.':g.configured?'Autoriza tu perfil empresarial y consulta sus datos oficiales.':'La API de Google Business Profile requiere aprobación y OAuth configurado por el administrador.')+'</p>'+
+      (state.gbpNotice?alertBlock(state.gbpNotice,'info'):'')+
+      (state.gbpError?alertBlock(state.gbpError):'')+actions+
+      '<p class="fine-print">Sin publicaciones ni cambios de fichas desde el CRM. No se muestran métricas estimadas.</p></article>';
+  }
+
   function integrations(){
  const ga=gaReady(),lookup=[
   ['Analítica',[
@@ -1641,6 +1722,7 @@ async function loadAccounts(){
   if(feature&&!featureEnabled(feature))return `<article class="integration-card provider-card" data-connected="false">${integrationHeader(p.name,'No incluida','neutral',subtitle)}<p>${clean(p.info)}</p><div class="integration-status"><span>Esta integración está desactivada para tu empresa.</span>${plugButton('No incluida',null,true,p.name==='TikTok Ads'?'tiktok':'plug')}</div></article>`;
   if(p.name==='Google Analytics 4')return ga4Card();
   if(p.name==='Google Search Console')return searchConsoleCard();
+  if(p.name==='Google Business Profile')return businessProfileCard();
   if(p.name==='Meta Ads')return metaCard();
    if(p.name==='Google Ads')return googleAdsCard();
    if(p.name==='WhatsApp')return `<article class="integration-card provider-card wa-onboard" data-connected="false" aria-label="Guía para conectar WhatsApp Business">
@@ -1846,10 +1928,10 @@ function sidebar(){
   }
   async function chooseBusiness(id){
     if(!state.businesses.some(b=>b.id===id))return;
-    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.siteCreateBusy=false;state.siteCreateError='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.sc=null;state.scSites=null;state.scReport=null;state.scError='';state.scNotice='';state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.crmImportRows=[];state.crmImportFile='';state.crmImportError='';state.crmImportSkipped=0;state.crmImportWarnings=[];state.crmImportBusinessId='';state.crmImportBusy=false;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
+    ++state.requestId; state.businessId=id;state.adsPeriod=state.period;state.adsCustomStart='';state.adsCustomEnd='';state.adsFilterError='';state.campaignConnectionOpen=false;state.campaignWizardSelectedIds=null;state.campaignWizardStage='accounts';state.campaignAccountNotice='';state.companyLogoDraft=null;state.companyLogoClear=false;state.sites=[];state.siteId='';state.siteCreateBusy=false;state.siteCreateError='';state.ga=null;state.hm=null;state.clientEntitlements=null;state.googleAds=null;state.googleAdsAccounts=[];state.googleAdsReport=null;state.ga4Connection=null;state.ga4Properties=[];state.sc=null;state.scSites=null;state.scReport=null;state.scError='';state.scNotice='';state.gbp=null;state.gbpLocations=[];state.gbpReport=null;state.gbpError='';state.gbpNotice='';state.ga4ConnectionError='';state.ga4Notice='';state.googleAdsError='';state.googleAdsReturnMessage='';state.leads=[];state.leadsError='';state.leadsNotice='';state.crmImportRows=[];state.crmImportFile='';state.crmImportError='';state.crmImportSkipped=0;state.crmImportWarnings=[];state.crmImportBusinessId='';state.crmImportBusy=false;state.meta=null;state.metaReport=null;state.metaCampaigns=null;state.adsAccount='';state.adsSearch='';state.adsStatus='';state.adsObjective='';state.metaError='';state.search='';state.gaError='';state.hmError='';render();
     try{const result=await api(`/api/sites?business_id=${encodeURIComponent(id)}`);if(state.businessId!==id)return;state.sites=result.sites||[];state.siteId=state.sites.find(s=>!!s.ga4_property_id)?.id||state.sites[0]?.id||'';}
     catch(e){state.gaError=e.message;}
-    if(!isAdmin()){await loadClientEntitlements(id);await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole()]);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
+    if(!isAdmin()){await loadClientEntitlements(id);await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole(),loadBusinessProfile()]);await refresh();await loadLeads();if(metaPilotEligible()&&featureEnabled('meta_ads'))await loadMeta();}
   }
   async function init(){
     state.loading=true;render();
@@ -1868,6 +1950,7 @@ function sidebar(){
       const googleAuthOutcome=new URLSearchParams(location.search).get('google_ads');
       const ga4AuthOutcome=new URLSearchParams(location.search).get('ga4');
       const zernioReturn=new URLSearchParams(location.search).get('zernio');
+      const gbpOutcome=new URLSearchParams(location.search).get('gbp');
       state.user=user.user;state.businesses=companies.businesses||[];state.page=isAdmin()?'adminHome':'overview';if(!isAdmin()&&new URLSearchParams(location.search).has('meta')){
         const parameters=new URLSearchParams(location.search),campaignReturn=parameters.get('return_to')==='campaigns';
         state.page=campaignReturn?'campaigns':'integrations';
@@ -1875,7 +1958,7 @@ function sidebar(){
         if(parameters.get('meta')==='cancelled')state.metaError='Se canceló la autorización con Facebook.';
         history.replaceState({},'',location.pathname+location.hash);
       }
-      if(!isAdmin()&&(googleAuthOutcome||ga4AuthOutcome)){state.page='integrations';history.replaceState({},'',location.pathname+location.hash);}
+      if(!isAdmin()&&(googleAuthOutcome||ga4AuthOutcome||gbpOutcome)){state.page='integrations';history.replaceState({},'',location.pathname+location.hash);}
       if(!isAdmin()&&zernioReturn==='return'){
         const params=new URLSearchParams(location.search);
         state.page='integrations';
@@ -1889,6 +1972,7 @@ function sidebar(){
         await chooseBusiness(targetBusiness);
         if(ga4AuthOutcome){state.ga4Notice=ga4AuthOutcome==='connected'?'Cuenta autorizada. Comprueba la propiedad de Analytics.':ga4AuthOutcome==='cancelled'?'Autorización cancelada.':'No se completó la autorización de Analytics.';render();}
         if(googleAuthOutcome){state.googleAdsReturnMessage=googleAuthOutcome==='connected'?'Autorización recibida. Selecciona la cuenta publicitaria que deseas consultar.':googleAuthOutcome==='cancelled'?'Se canceló la autorización con Google.':googleAuthOutcome==='no_refresh_token'?'Google no devolvió acceso persistente. Desconecta el acceso anterior en tu cuenta de Google y vuelve a autorizar.':'No fue posible terminar la autorización con Google.';render();}
+        if(gbpOutcome){state.gbpNotice=gbpOutcome==='connected'?'Autorización recibida; selecciona una ficha.':gbpOutcome==='cancelled'?'Se canceló la autorización.':'Google no confirmó el acceso a Business Profile.';render();}
         if(state.page==='campaigns')await loadAds();
       }
     }catch(e){state.loading=false;state.user=null;state.loginBusy=false;if(e.status!==401)state.startupError=e.message;render();}
@@ -2008,7 +2092,7 @@ function sidebar(){
     else if(action==='campaign-select'){const platform=b.dataset.platform;if(!['meta','google','tiktok'].includes(platform))return;state.adsPlatform=platform;state.page='campaigns';state.mobileOpen=false;state.campaignConnectionOpen=false;render();window.scrollTo(0,0);await loadMeta();if(platform==='meta')await loadAds();else if(platform==='google')await loadGoogleAds();}
     else if(action==='analytic-select'&&!isAdmin()){const allowed=['totalUsers','sessions','screenPageViews','keyEvents','activeUsers','newUsers','engagedSessions','engagementRate','bounceRate','eventCount','averageSessionDuration','sessionKeyEventRate'];if(allowed.includes(b.dataset.metric)){if(state.page==='overview')state.overviewMetric=b.dataset.metric;else state.analyticMetric=b.dataset.metric;render();}}
     else if(action==='page-detail'){state.page='content';state.search=b.dataset.path||'';state.tableSort='';state.mobileOpen=false;render();window.scrollTo(0,0);}
-    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin()){await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole()]);await loadMeta();}if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='whatsapp'&&!isAdmin())await window.edwinWhatsAppInbox?.load(state.businessId);if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
+    else if(action==='nav'){state.page=b.dataset.page;state.campaignConnectionOpen=false;state.temporaryAccess=null;state.mobileOpen=false;state.search='';state.tableSort='';render();window.scrollTo(0,0);if(state.page==='integrations'&&!isAdmin()){await Promise.all([loadGa4Connection(),loadGoogleAds(),loadSearchConsole(),loadBusinessProfile()]);await loadMeta();}if(state.page==='leads'&&!isAdmin())await loadLeads();if(state.page==='whatsapp'&&!isAdmin())await window.edwinWhatsAppInbox?.load(state.businessId);if(state.page==='mailing'&&!isAdmin())await window.brasperEmailMarketing?.load(state.businessId);if(state.page==='adminIntegrations'&&isAdmin()){await loadAdminHealth();await loadAdminEntitlements(state.adminFeatureBusiness||state.businesses[0]?.id||'');}if(state.page==='accounts'&&isAdmin()){await loadAccounts();if(!state.adminDirectory)await loadAdminDirectory();}if(['clients','clientDetail'].includes(state.page)&&isAdmin())await loadAdminDirectory();if(state.page==='campaigns'&&!isAdmin()){await loadMeta();await loadAds();}}
     else if(action==='wa-connect-guide'&&!isAdmin()){
       const dialog=document.getElementById('wa-connect-dialog');
       if(dialog && !dialog.open) dialog.showModal();
@@ -2225,6 +2309,29 @@ function sidebar(){
       }catch(e){if(id===state.businessId)state.ga4ConnectionError=e.message;}
       finally{if(id===state.businessId){state.ga4ConnectionBusy=false;render();}}
     }
+
+    else if(action==='gbp-refresh'&&!isAdmin()&&featureEnabled('business_profile'))await loadBusinessProfile();
+    else if(action==='gbp-connect'&&!isAdmin()&&featureEnabled('business_profile'))startGBPPopup();
+    else if(action==='gbp-select'&&!isAdmin()&&featureEnabled('business_profile')){
+      const id=state.businessId,locationName=document.getElementById('gbp-location')?.value||'';
+      if(!locationName){state.gbpError='Selecciona una ficha empresarial.';render();return;}
+      state.gbpBusy=true;state.gbpError='';render();
+      try{
+        await api('/api/business-profile/select-location?business_id='+encodeURIComponent(id),{method:'POST',body:JSON.stringify({location:locationName})});
+        if(id===state.businessId){state.gbpNotice='Ficha empresarial guardada.';await loadBusinessProfile();}
+      }catch(e){if(id===state.businessId)state.gbpError=e.message;}
+      finally{if(id===state.businessId){state.gbpBusy=false;render();}}
+    }
+    else if(action==='gbp-disconnect'&&!isAdmin()&&featureEnabled('business_profile')){
+      if(!confirm('¿Desconectar Google Business Profile? No se modificará tu ficha de Google.'))return;
+      const id=state.businessId;state.gbpBusy=true;state.gbpError='';render();
+      try{
+        await api('/api/business-profile/disconnect?business_id='+encodeURIComponent(id),{method:'POST',body:'{}'});
+        if(id===state.businessId){state.gbpNotice='Google Business Profile desconectado.';await loadBusinessProfile();}
+      }catch(e){if(id===state.businessId)state.gbpError=e.message;}
+      finally{if(id===state.businessId){state.gbpBusy=false;render();}}
+    }
+
     else if(action==='sc-check-status'&&!isAdmin()&&featureEnabled('search_console'))await loadSearchConsole();
     else if(action==='sc-connect'&&!isAdmin()&&featureEnabled('search_console'))startScPopup();
     else if(action==='sc-select'&&!isAdmin()&&featureEnabled('search_console')){
