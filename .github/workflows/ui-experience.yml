@@ -1,0 +1,37 @@
+name: Edwin CRM - pruebas de experiencia visual
+on:
+  pull_request:
+    paths:
+      - 'public/**'
+      - 'tests/ui/**'
+      - 'playwright.config.mjs'
+      - 'package.json'
+      - '.github/workflows/ui-experience.yml'
+      - '.claude/skills/**'
+  workflow_dispatch:
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+        env:
+          CI: 'true'
+      - name: Guardar capturas, trazas y reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edwin-crm-ui-playwright
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
