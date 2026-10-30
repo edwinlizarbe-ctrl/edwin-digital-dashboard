@@ -32,11 +32,12 @@ async function authorisedBusiness(env,session,businessId) {
 export async function handleZernioApi(request,env,session) {
   const url=new URL(request.url);
   const cookies=session?.cookies||[];
+  const status=url.pathname==='/api/zernio/status'&&request.method==='GET';
   const connect=url.pathname==='/api/zernio/connect'&&request.method==='POST';
   const inbox=url.pathname==='/api/zernio/inbox'&&request.method==='GET';
   const messages=url.pathname==='/api/zernio/messages'&&request.method==='GET';
   const send=url.pathname==='/api/zernio/messages'&&request.method==='POST';
-  if(!connect&&!inbox&&!messages&&!send)return json({error:'Ruta no disponible.'},404,cookies);
+  if(!status&&!connect&&!inbox&&!messages&&!send)return json({error:'Ruta no disponible.'},404,cookies);
   const origin=request.headers.get('Origin');
   if(origin&&origin!==url.origin)return json({error:'Origen no autorizado.'},403,cookies);
   if((connect||send)&&!(request.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
@@ -46,11 +47,30 @@ export async function handleZernioApi(request,env,session) {
   if(connect||send){try {body=await request.json();} catch {return json({error:'Datos no válidos.'},400,cookies);}}
   const businessId=connect||send?body?.business_id:url.searchParams.get('business_id');
   if(!UUID.test(String(businessId||'')))return json({error:'Selecciona una empresa válida.'},400,cookies);
-  if(!env.ZERNIO_API_KEY)return json({error:'Falta configurar ZERNIO_API_KEY como secreto en Cloudflare.'},503,cookies);
   const business=await authorisedBusiness(env,session,businessId);
   if(!business)return json({error:'No tienes acceso a esta empresa.'},403,cookies);
+  // The readiness check never provisions profiles or reveals API credentials.
+  if(!env.ZERNIO_API_KEY)return status?json({configured:false,connected:false},200,cookies):json({error:'WhatsApp todavía no está habilitado para tu empresa.'},503,cookies);
   try {
     const id=business.id;
+    if(status){
+      const profileName='EdwinCRM-'+id;
+      const {response:pr,data:pd}=await zernioRequest(env,'/profiles?'+new URLSearchParams({name:profileName,limit:'20'}));
+      if(!pr.ok)return json({error:'No pudimos comprobar el estado de WhatsApp.'},502,cookies);
+      const profiles=Array.isArray(pd.profiles)?pd.profiles:Array.isArray(pd.data)?pd.data:null;
+      if(!profiles)return json({error:'El proveedor devolvió un estado no reconocido.'},502,cookies);
+      const profile=profiles.find(p=>p.name===profileName);
+      if(!profile)return json({configured:true,connected:false},200,cookies);
+      const profileId=String(profile._id||profile.id||'');
+      if(!profileId)return json({error:'No se pudo identificar la conexión.'},502,cookies);
+      const {response:ar,data:ad}=await zernioRequest(env,'/accounts?'+new URLSearchParams({profileId}));
+      if(!ar.ok||!Array.isArray(ad.accounts))return json({error:'No pudimos comprobar la cuenta conectada.'},502,cookies);
+      const linked=ad.accounts.find(a=>{
+        const owningProfile=String(a.profileId?._id||a.profileId?.id||a.profileId||'');
+        return a.platform==='whatsapp'&&a.isActive===true&&owningProfile===profileId;
+      });
+      return json({configured:true,connected:!!linked,accountName:linked?String(linked.displayName||linked.username||'WhatsApp Business').slice(0,100):null},200,cookies);
+    }
     // Idempotent account provisioning: clicking twice cannot create two profiles.
     const {response:created,data:profileResponse}=await zernioRequest(env,'/profiles',{
       method:'POST',
