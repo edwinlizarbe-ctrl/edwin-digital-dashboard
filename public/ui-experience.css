@@ -1,0 +1,55 @@
+/* Edwin CRM · Refinamiento visual reversible y sin cambios de lógica. */
+:root {
+  --ed-motion-fast: 160ms;
+  --ed-motion-medium: 260ms;
+  --ed-ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+::selection { background: color-mix(in srgb, var(--accent) 23%, transparent); color: var(--text); }
+#app :is(.button, .nav-link, .ed-action, .integration-card, .icon-button) {
+  transition: transform var(--ed-motion-fast) var(--ed-ease-out),
+    box-shadow var(--ed-motion-medium) var(--ed-ease-out),
+    border-color var(--ed-motion-fast) ease,
+    background-color var(--ed-motion-fast) ease, color var(--ed-motion-fast) ease;
+}
+#app .button:not(:disabled):hover { transform: translateY(-1px); }
+#app .button:not(:disabled):active { transform: translateY(0); }
+#app :is(.integration-card, .ed-action):hover {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+  box-shadow: 0 16px 36px -24px rgba(16, 37, 83, .34);
+}
+#app :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 23%, transparent);
+}
+#app .login-panel .sign-in { min-height: 46px; }
+#app .login-panel .form-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 23%, transparent);
+}
+#app :is(.page-title h1, .ed-hero h1) { text-wrap: balance; }
+#app :is(.ed-hero .ed-hero-main, .ed-hero .ed-hero-focus, .card, .integration-card) { min-width: 0; }
+#app :is(.integration-card p, .ed-hero p) { overflow-wrap: break-word; }
+@keyframes ed-ui-enter {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #app .main-content > .ed-home,
+  #app .main-content > .page-title,
+  #app .login-panel {
+    animation: ed-ui-enter 340ms var(--ed-ease-out) both;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #app *, #app *::before, #app *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+@media (max-width: 600px) {
+  #app .main-content > .page-title { align-items: flex-start; }
+  #app .integration-card .button { white-space: normal; text-align: center; }
+}
