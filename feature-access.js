@@ -4,9 +4,9 @@
  * Read paths verify tenant membership through its RLS-protected businesses table.
  * Before the migration is applied, existing GA4/Meta behavior is preserved.
  */
-export const ED_FEATURES=Object.freeze(['ga4','search_console','social_organic','hotmart','shopify','meta_ads','google_ads','tiktok_ads','linkedin_ads']);
+export const ED_FEATURES=Object.freeze(['ga4','search_console','business_profile','social_organic','hotmart','shopify','meta_ads','google_ads','tiktok_ads','linkedin_ads']);
 export const DEFAULT_FEATURES=Object.freeze({
- ga4:true,search_console:false,social_organic:false,hotmart:false,shopify:false,
+ ga4:true,search_console:false,business_profile:false,social_organic:false,hotmart:false,shopify:false,
  meta_ads:true,google_ads:false,tiktok_ads:false,linkedin_ads:false
 });
 const validId=x=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x||'');
