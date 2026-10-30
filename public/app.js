@@ -1664,34 +1664,44 @@ async function loadAccounts(){
     const g=state.gbp||{},on=!!g.connected,busy=state.gbpBusy,pending=state.gbpPopupActive,
       list=state.gbpLocations||[],report=state.gbpReport,selected=g.selected_location;
     const verified=on&&!!selected&&!!report&&!state.gbpError;
-    const label=verified?'Conectado':on?'Elegir ficha':g.needs_reauthorization?'Reautorizar':g.configured?'Disponible':'Configuración pendiente';
+    const label=busy&&!state.gbp?'Comprobando':verified?'Conectado':on?'Elegir ficha':
+      g.needs_reauthorization?'Reautorizar':g.configured?'Disponible':'Pendiente de activación';
     const names={
-      BUSINESS_IMPRESSIONS_DESKTOP_MAPS:'Impresiones en Maps · escritorio',
-      BUSINESS_IMPRESSIONS_MOBILE_MAPS:'Impresiones en Maps · celular',
-      BUSINESS_IMPRESSIONS_DESKTOP_SEARCH:'Impresiones en Búsqueda · escritorio',
-      BUSINESS_IMPRESSIONS_MOBILE_SEARCH:'Impresiones en Búsqueda · celular',
+      BUSINESS_IMPRESSIONS_DESKTOP_MAPS:'Maps · escritorio',
+      BUSINESS_IMPRESSIONS_MOBILE_MAPS:'Maps · celular',
+      BUSINESS_IMPRESSIONS_DESKTOP_SEARCH:'Búsqueda · escritorio',
+      BUSINESS_IMPRESSIONS_MOBILE_SEARCH:'Búsqueda · celular',
       WEBSITE_CLICKS:'Clics al sitio web',CALL_CLICKS:'Clics para llamar',
       BUSINESS_DIRECTION_REQUESTS:'Solicitudes de indicaciones'
     };
     const opts=list.map(x=>'<option value="'+clean(x.name)+'" '+(selected===x.name?'selected':'')+'>'+clean(x.title)+(x.address?' · '+clean(x.address):'')+'</option>').join('');
-    const metrics=verified?'<div class="gbp-report"><strong>Rendimiento real · últimos 28 días</strong><div class="meta-kpi-grid">'+Object.entries(names).map(([key,title])=>'<div><small>'+title+'</small><strong>'+(report.totals?.[key]===undefined?'—':fmt(report.totals[key]))+'</strong></div>').join('')+'</div><p class="fine-print">'+clean(report.note||'Datos proporcionados por Google.')+'</p></div>':'';
-    const setup=(g.missing_config||[]).length?'<p class="fine-print">Pendiente: '+clean(g.missing_config.join(', '))+'.</p>':'';
-    const actions=on?
-      '<div class="ga-connect-panel"><span class="ga-success-mark">'+icon('plug',15)+' Cuenta Google autorizada</span>'+
-      '<label class="form-label">Perfil empresarial<select id="gbp-location" class="meta-select"><option value="">Selecciona una ficha</option>'+opts+'</select></label>'+
+    const metrics=verified?'<div class="gbp-report"><strong>Estadísticas reales · últimos 28 días</strong><div class="meta-kpi-grid">'+Object.entries(names).map(([key,title])=>'<div><small>'+title+'</small><strong>'+(report.totals?.[key]===undefined?'—':fmt(report.totals[key]))+'</strong></div>').join('')+'</div><p class="fine-print">'+clean(report.note||'Información proporcionada por Google.')+'</p></div>':'';
+    const panel=on?
+      '<div class="gbp-controls"><span class="ga-success-mark">'+icon('check',15)+' Cuenta de Google autorizada</span>'+
+      '<label class="form-label">Ficha de negocio<select id="gbp-location" class="meta-select"><option value="">Selecciona una ficha</option>'+opts+'</select></label>'+
       '<div class="ga-buttons"><button class="button button-primary" type="button" data-act="gbp-select" '+(busy||!list.length?'disabled':'')+'>Guardar ficha</button>'+
-      '<button class="button button-outline" type="button" data-act="gbp-refresh" '+(busy||!selected?'disabled':'')+'>Actualizar estadísticas</button>'+
+      '<button class="button button-outline" type="button" data-act="gbp-refresh" '+(busy||!selected?'disabled':'')+'>Actualizar datos</button>'+
       '<button class="button button-soft" type="button" data-act="gbp-disconnect" '+(busy?'disabled':'')+'>Desconectar</button></div>'+
-      (!list.length?'<p class="fine-print">Google no devolvió fichas empresariales. Comprueba los permisos de esta cuenta.</p>':'')+metrics+'</div>':
-      '<div class="ga-connect-panel"><button class="button button-primary ga-connect-button" type="button" data-act="gbp-connect" '+(!g.configured||busy||pending?'disabled':'')+'>'+icon('plug',18)+(pending?'Esperando a Google…':'Conectar con Google')+'</button>'+
-      '<p class="fine-print">Google solicita el permiso business.manage, que también permitiría modificar fichas. Edwin CRM únicamente utilizará consultas de lectura.</p>'+setup+
-      (!g.configured?'<button type="button" class="button button-outline" data-act="gbp-refresh">Comprobar configuración</button>':'')+'</div>';
-    return '<article class="integration-card provider-card ga-card" data-connected="'+verified+'">'+
-      integrationHeader('Google Business Profile',label,verified?'success':'neutral','Búsquedas locales y Maps')+
-      '<p class="ga-caption">'+(verified?'Ficha conectada: '+clean(g.selected_title||selected):on?'Selecciona la ficha que deseas analizar.':g.configured?'Autoriza tu perfil empresarial y consulta sus datos oficiales.':'La API de Google Business Profile requiere aprobación y OAuth configurado por el administrador.')+'</p>'+
+      (!list.length?'<p class="fine-print">Esta cuenta no tiene fichas disponibles. Revisa los permisos desde Google.</p>':'')+metrics+'</div>':
+      g.configured?
+      '<div class="gbp-controls"><p class="gbp-status-text">Conecta tu Perfil de Empresa para consultar su rendimiento en Google.</p>'+
+      '<button class="button button-primary gbp-connect-button" type="button" data-act="gbp-connect" '+(busy||pending?'disabled':'')+'>'+icon('plug',17)+(pending?'Esperando autorización…':'Conectar con Google')+'</button>'+
+      '<p class="gbp-legal">Google solicita el permiso para administrar fichas; el CRM únicamente consultará estadísticas.</p></div>':
+      '<div class="gbp-controls gbp-pending"><p class="gbp-status-text">Estamos preparando la conexión con Google para tu empresa.</p>'+
+      '<button class="button button-primary gbp-connect-button" type="button" disabled aria-label="Conectar con Google no disponible hasta activar la integración">'+icon('plug',17)+' Conectar con Google</button>'+
+      '<p class="gbp-assist">El administrador del CRM debe habilitar el acceso antes de que puedas conectar tu ficha.</p>'+
+      '<a class="gbp-help-link" href="https://business.google.com/" target="_blank" rel="noopener noreferrer">Ver mi Perfil de Empresa en Google '+icon('external-link',14)+'</a></div>';
+    return '<article class="integration-card provider-card gbp-card" data-connected="'+verified+'">'+
+      '<div class="gbp-head"><div class="gbp-identity">'+providerLogo('Google Business Profile')+
+      '<div class="gbp-name"><h3>Google Business Profile</h3><small>Tu negocio en Google Maps y Búsqueda</small></div></div>'+
+      tag(label,verified?'success':'neutral')+'</div>'+
+      '<p class="gbp-description">'+(verified?'Ficha conectada: '+clean(g.selected_title||selected):
+        on?'Selecciona la ficha empresarial que deseas consultar.':
+        g.configured?'Consulta clics, visualizaciones y acciones de tu negocio en Google.':
+        'Consulta las estadísticas de tu negocio en Google cuando la conexión esté habilitada.')+'</p>'+
       (state.gbpNotice?alertBlock(state.gbpNotice,'info'):'')+
-      (state.gbpError?alertBlock(state.gbpError):'')+actions+
-      '<p class="fine-print">Sin publicaciones ni cambios de fichas desde el CRM. No se muestran métricas estimadas.</p></article>';
+      (state.gbpError?alertBlock(state.gbpError):'')+
+      panel+'</article>';
   }
 
   function integrations(){
