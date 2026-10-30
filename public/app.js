@@ -1690,7 +1690,7 @@ async function loadAccounts(){
       '<div class="gbp-controls gbp-pending"><p class="gbp-status-text">Estamos preparando la conexión con Google para tu empresa.</p>'+
       '<button class="button button-primary gbp-connect-button" type="button" disabled aria-label="Conectar con Google no disponible hasta activar la integración">'+icon('plug',17)+' Conectar con Google</button>'+
       '<p class="gbp-assist">El administrador del CRM debe habilitar el acceso antes de que puedas conectar tu ficha.</p>'+
-      '<a class="gbp-help-link" href="https://business.google.com/" target="_blank" rel="noopener noreferrer">Ver mi Perfil de Empresa en Google '+icon('external-link',14)+'</a></div>';
+      '<a class="gbp-help-link" href="https://business.google.com/" target="_blank" rel="noopener noreferrer">Ver mi Perfil de Empresa en Google '+icon('chevron',14)+'</a></div>';
     return '<article class="integration-card provider-card gbp-card" data-connected="'+verified+'">'+
       '<div class="gbp-head"><div class="gbp-identity">'+providerLogo('Google Business Profile')+
       '<div class="gbp-name"><h3>Google Business Profile</h3><small>Tu negocio en Google Maps y Búsqueda</small></div></div>'+
