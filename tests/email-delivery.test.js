@@ -52,3 +52,41 @@ test('webhooks reject unsigned requests and never change recipient data',async()
   assert.equal(calls.length,0);
  });
 });
+
+test('pause and cancel remain available while sending is disabled',async()=>{
+ const old=globalThis.fetch;
+ try{
+  for(const cancel of [false,true]){
+   const calls=[];
+   globalThis.fetch=async(url,options={})=>{
+    assert(String(url).includes('/ed_email_campaigns?'));
+    assert(String(url).includes('business_id=eq.'+id));
+    calls.push(options);
+    return json([{id:contact,status:'scheduled'}]);
+   };
+   const result=await broadcastAction(new Request(origin),env,{user:{id:contact}},id,'stop_campaign',{campaign_id:contact,cancel});
+   assert.equal(result.status,200);
+   assert.equal(calls.length,2);
+   assert.equal(JSON.parse(calls[1].body).status,cancel?'cancelled':'paused');
+  }
+  globalThis.fetch=async()=>{throw Error('Resume must not access database');};
+  const resume=await broadcastAction(new Request(origin),env,{user:{id:contact}},id,'resume_campaign',{campaign_id:contact});
+  assert.equal(resume.status,503);
+ }finally{globalThis.fetch=old;}
+});
+
+test('even correctly signed webhooks reject invalid and expired timestamps',async()=>{
+ const bytes=new TextEncoder().encode('webhook-test-key');
+ const key=await crypto.subtle.importKey('raw',bytes,{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const webhookEnv={...env,RESEND_WEBHOOK_SECRET:'whsec_'+btoa(String.fromCharCode(...bytes))};
+ const body=JSON.stringify({type:'email.bounced',data:{email_id:'test-message'}});
+ await mocked(async calls=>{
+  for(const timestamp of ['NaN','Infinity','1e9',String(Math.floor(Date.now()/1000)-600)]){
+   const digest=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode('test-id.'+timestamp+'.'+body));
+   const signature=btoa(String.fromCharCode(...new Uint8Array(digest)));
+   const response=await publicMailRoute(new Request(origin+'/api/email-marketing/webhook',{method:'POST',body,headers:{'svix-id':'test-id','svix-timestamp':timestamp,'svix-signature':'v1,'+signature}}),webhookEnv);
+   assert.equal(response.status,401);
+  }
+  assert.equal(calls.length,0);
+ });
+});

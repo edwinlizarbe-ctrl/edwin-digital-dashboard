@@ -79,7 +79,7 @@ export async function publicMailRoute(req,env){
 }
 async function verifySvix(req,raw,env){
  const secret=String(env.RESEND_WEBHOOK_SECRET||''),id=req.headers.get('svix-id')||'',timestamp=req.headers.get('svix-timestamp')||'',sig=req.headers.get('svix-signature')||'';
- if(!secret.startsWith('whsec_')||!id||!timestamp||!sig||Math.abs(Date.now()/1000-Number(timestamp))>300)return false;
+ if(!secret.startsWith('whsec_')||!id||!/^\d+$/.test(timestamp)||!sig||!Number.isSafeInteger(Number(timestamp))||Math.abs(Date.now()/1000-Number(timestamp))>300)return false;
  const rawKey=Uint8Array.from(atob(secret.slice(6)),c=>c.charCodeAt(0));
  const key=await crypto.subtle.importKey('raw',rawKey,{name:'HMAC',hash:'SHA-256'},false,['sign']);
  const digest=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(id+'.'+timestamp+'.'+raw));
@@ -114,7 +114,9 @@ async function handleWebhook(req,env){
  return resp({ok:true});
 }
 export async function broadcastAction(req,env,s,id,action,data){
- if(!operational(env))return resp({error:'Envíos deshabilitados. Verifica dominio, proveedor y secretos en Cloudflare.'},503);
+ // Stopping is a safety action: it must remain available when sending is disabled.
+ // Tenant authorization is enforced by handleEmailMarketingApi before this call.
+ if(action!=='stop_campaign'&&!operational(env))return resp({error:'Envíos deshabilitados. Verifica dominio, proveedor y secretos en Cloudflare.'},503);
  const cid=String(data.campaign_id||'');
  if(!uuid(cid))return resp({error:'Campaña inválida'},400);
  if(action==='schedule_campaign'){
