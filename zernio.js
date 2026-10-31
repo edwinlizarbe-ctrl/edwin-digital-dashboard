@@ -71,16 +71,31 @@ export async function handleZernioApi(request,env,session) {
       });
       return json({configured:true,connected:!!linked,accountName:linked?String(linked.displayName||linked.username||'WhatsApp Business').slice(0,100):null},200,cookies);
     }
-    // Idempotent account provisioning: clicking twice cannot create two profiles.
-    const {response:created,data:profileResponse}=await zernioRequest(env,'/profiles',{
-      method:'POST',
-      headers:{'Idempotency-Key':'edwin-crm-whatsapp-'+id},
-      body:JSON.stringify({name:'EdwinCRM-'+id})
-    });
-    const profileId=profileResponse?.profile?._id ||
-      (created.status===409?profileResponse?.details?.existingProfileId:null);
-    if(!profileId||!(created.ok||created.status===409)){
-      return json({error:created.status===402?'Zernio solicita activar la facturación antes de conectar WhatsApp.':'Zernio no permitió crear el perfil. Revisa la clave API, el plan y los permisos.'},502,cookies);
+    // Only explicit "Connect WhatsApp" may provision an external profile.
+    // Reading an inbox or sending a message must never create a new profile
+    // (which could incur provider charges or consume a free connection slot).
+    let profileId='';
+    if(connect){
+      const {response:created,data:profileResponse}=await zernioRequest(env,'/profiles',{
+        method:'POST',
+        headers:{'Idempotency-Key':'edwin-crm-whatsapp-'+id},
+        body:JSON.stringify({name:'EdwinCRM-'+id})
+      });
+      profileId=String(profileResponse?.profile?._id ||
+        (created.status===409?profileResponse?.details?.existingProfileId:null)||'');
+      if(!profileId||!(created.ok||created.status===409)){
+        return json({error:created.status===402?'Zernio solicita activar la facturación antes de conectar WhatsApp.':'Zernio no permitió crear el perfil. Revisa la clave API, el plan y los permisos.'},502,cookies);
+      }
+    }else{
+      const name='EdwinCRM-'+id;
+      const {response:pr,data:pd}=await zernioRequest(env,'/profiles?'+new URLSearchParams({name,limit:'20'}));
+      if(!pr.ok)return json({error:'No pudimos comprobar la conexión de WhatsApp.'},502,cookies);
+      const profiles=Array.isArray(pd.profiles)?pd.profiles:Array.isArray(pd.data)?pd.data:null;
+      if(!profiles)return json({error:'El proveedor devolvió un estado no reconocido.'},502,cookies);
+      const profile=profiles.find(p=>p.name===name);
+      if(!profile)return json({error:'Conecta WhatsApp desde Integraciones antes de consultar o enviar mensajes.'},409,cookies);
+      profileId=String(profile._id||profile.id||'');
+      if(!profileId)return json({error:'No se pudo identificar la conexión.'},502,cookies);
     }
 
     if(inbox||messages||send){
