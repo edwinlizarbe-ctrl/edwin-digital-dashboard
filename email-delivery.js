@@ -34,18 +34,22 @@ async function sign(secret,payload){
  return [...new Uint8Array(signature)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 function equal(a,b){if(a.length!==b.length)return false;let diff=0;for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);return diff===0;}
-export async function unsubscribeLink(req,env,businessId,contactId){
+export async function unsubscribeLink(req,env,businessId,contactId,language='es'){
  if(!uuid(businessId)||!uuid(contactId))throw Error('Invalid unsubscribe identifiers');
  const payload=businessId+'.'+contactId+'.'+Math.floor(Date.now()/1000+366*86400);
  const signature=await sign(hmacKey(env),payload);
  const u=new URL('/api/email-marketing/unsubscribe',new URL(req.url).origin);
- u.searchParams.set('token',payload+'.'+signature);return u.toString();
+ u.searchParams.set('token',payload+'.'+signature);
+ if(language==='pt')u.searchParams.set('lang','pt');
+ return u.toString();
 }
-function unsubPage(valid,token=''){
- const safeToken=escape(token);
- const heading=valid?'Cancelar mi suscripción':'Enlace no válido';
- const body=valid?'<p>Si no deseas recibir noticias de Brásper, confirma la baja.</p><form method="POST"><input type="hidden" name="token" value="'+safeToken+'"><button type="submit">Confirmar baja</button></form>':'<p>Este enlace no es válido o ha caducado.</p>';
- return '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brásper · Preferencias</title><body style="font-family:Arial,sans-serif;max-width:540px;padding:40px 18px;margin:auto;color:#183c65"><h1>'+heading+'</h1>'+body+'</body></html>';
+function unsubPage(valid,token='',language='es'){
+ const pt=language==='pt',safeToken=escape(token);
+ const heading=valid?(pt?'Cancelar minha inscrição':'Cancelar mi suscripción'):(pt?'Link inválido':'Enlace no válido');
+ const body=valid
+  ?'<p>'+(pt?'Se não deseja mais receber notícias da Brásper, confirme o cancelamento.':'Si no deseas recibir noticias de Brásper, confirma la baja.')+'</p><form method="POST"><input type="hidden" name="token" value="'+safeToken+'"><button type="submit">'+(pt?'Confirmar cancelamento':'Confirmar baja')+'</button></form>'
+  :'<p>'+(pt?'Este link é inválido ou expirou.':'Este enlace no es válido o ha caducado.')+'</p>';
+ return '<!doctype html><html lang="'+(pt?'pt-BR':'es')+'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brásper · Preferências</title><body style="font-family:Arial,sans-serif;max-width:540px;padding:40px 18px;margin:auto;color:#183c65"><h1>'+heading+'</h1>'+body+'</body></html>';
 }
 async function decodeToken(env,token){
  const items=String(token||'').split('.');if(items.length!==4)return null;
@@ -58,7 +62,7 @@ async function decodeToken(env,token){
 export async function publicMailRoute(req,env){
  const url=new URL(req.url);
  if(url.pathname==='/api/email-marketing/unsubscribe'){
-  const isPost=req.method==='POST';
+  const isPost=req.method==='POST',language=url.searchParams.get('lang')==='pt'?'pt':'es';
   const headers={'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex,nofollow',
    'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"};
   let token=url.searchParams.get('token')||'';
@@ -68,19 +72,21 @@ export async function publicMailRoute(req,env){
     let raw;
     try{raw=await readLimitedBody(req,4096);}
     catch(e){
-     return new Response(unsubPage(false),{status:e.code==='BODY_TOO_LARGE'?413:400,headers});
+     return new Response(unsubPage(false,'',language),{status:e.code==='BODY_TOO_LARGE'?413:400,headers});
     }
     token=new URLSearchParams(raw).get('token')||token;
    }
   }
   let parsed=null;
   try{parsed=await decodeToken(env,token);}catch{}
-  if(!parsed)return new Response(unsubPage(false),{status:400,headers});
-  if(!isPost)return new Response(unsubPage(true,token),{headers});
+  if(!parsed)return new Response(unsubPage(false,'',language),{status:400,headers});
+  if(!isPost)return new Response(unsubPage(true,token,language),{headers});
   // The token is the proof of control of the unsubscribe link. No login required.
   await db(env,'ed_email_contacts','id=eq.'+parsed.contactId+'&business_id=eq.'+parsed.businessId,'PATCH',{unsubscribed_at:now()});
   await db(env,'ed_email_deliveries','business_id=eq.'+parsed.businessId+'&contact_id=eq.'+parsed.contactId+'&status=eq.pending','PATCH',{status:'suppressed'});
-  return new Response('<!doctype html><html lang="es"><meta charset="utf-8"><h1>Tu baja se registró correctamente</h1><p>No recibirás más newsletters de Brásper.</p></html>',{headers});
+  return new Response(language==='pt'
+   ?'<!doctype html><html lang="pt-BR"><meta charset="utf-8"><h1>Seu cancelamento foi registrado</h1><p>Você não receberá mais newsletters da Brásper.</p></html>'
+   :'<!doctype html><html lang="es"><meta charset="utf-8"><h1>Tu baja se registró correctamente</h1><p>No recibirás más newsletters de Brásper.</p></html>',{headers});
  }
  if(url.pathname==='/api/email-marketing/webhook')return handleWebhook(req,env);
  return resp({error:'Not found'},404);
@@ -173,7 +179,7 @@ export async function processEmailQueue(env,reqBase='https://edwin-digital-dashb
    if(!campaign||!['scheduled','sending'].includes(campaign.status)||!contact||contact.unsubscribed_at||!contact.consented_at||contact.language!==campaign.language){
     await db(env,'ed_email_deliveries','id=eq.'+item.id+'&business_id=eq.'+id,'PATCH',{status:'suppressed'});continue;
    }
-   const url=await unsubscribeLink(new Request(reqBase),env,id,contact.id);
+   const url=await unsubscribeLink(new Request(reqBase),env,id,contact.id,campaign.language);
    const html=renderNewsletter(campaign,{name:contact.name,company:contact.company||'Brásper'}).replace('</footer>',
     '<p><a style="color:#176ad5" href="'+escape(url)+'">'+(campaign.language==='pt'?'Cancelar inscrição':'Cancelar suscripción')+'</a></p></footer>');
    const subject=String(campaign.subject||'').replace(/\{\{\s*nombre\s*\}\}/gi,contact.name).replace(/\{\{\s*empresa\s*\}\}/gi,contact.company||'Brásper');
