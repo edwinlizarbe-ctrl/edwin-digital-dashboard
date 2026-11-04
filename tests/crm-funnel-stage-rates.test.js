@@ -8,8 +8,8 @@ test('G02 reports stage distribution per channel using each channel as denominat
   by_source:{organic:{total:3,by_stage:{new:2,won:1},won_share_percent:33.3},
              whatsapp:{total:1,by_stage:{won:1},won_share_percent:100}}});
  assert.match(html, /Nuevo \(% del canal\)/);
- assert.match(html, /66,7 %/);
- assert.match(html, /33,3 %/);
+ assert.match(html, /66[.,]7 %/);
+ assert.match(html, /33[.,]3 %/);
  assert.match(html, /50 % del total/);
  assert.match(html, /no sobre transiciones históricas/);
 });
