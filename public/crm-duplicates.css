@@ -1,0 +1,6 @@
+/* G09 · Tenant-local potential duplicate review; informational, no record changes. */
+#app .ed-duplicates{margin:18px 0;}
+#app .ed-duplicates h2{margin:0 0 7px;}
+#app .ed-duplicates p{color:var(--muted);line-height:1.5;margin:8px 0;}
+#app .ed-duplicates strong{font-variant-numeric:tabular-nums;color:var(--text);}
+#app .ed-dupe-flag{display:inline-block;margin:6px 0 0;padding:3px 7px;border:1px solid var(--border);border-radius:7px;background:color-mix(in srgb,var(--accent) 9%,transparent);color:var(--text);font-size:.77rem;font-weight:600;}
