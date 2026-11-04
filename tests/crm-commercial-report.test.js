@@ -96,7 +96,9 @@ test('C45 states data source, UTC date range, universe and limits in the visible
  assert.match(html,/registros cargados/);
  assert.match(html,/Orígenes declarados manualmente/);
  assert.match(html,/etapas reflejan el estado actual/);
- assert.match(html,/Período anterior:/);
+ assert.match(html,/Comparación porcentual no disponible/);
+ const complete=render({leads:[...leads,row('2026-09-20T09:00:00Z','new')],businessId:a,userId:user,partial:false});
+ assert.match(complete,/Período anterior:/);
  assert.match(html,/data-ed-sales-report-export/);
  assert.doesNotMatch(html,/PRIVATE CUSTOMER|secret@example.com|999888777/);
  const partial=render({leads,businessId:a,userId:user,partial:true});
