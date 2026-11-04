@@ -1,3 +1,4 @@
+import {readLimitedBody} from './read-limited-body.js';
 /**
  * Invite a new client to Edwin CRM. Passwords are NEVER emailed.
  * Auth sends an invitation link and the client chooses their own password.
@@ -15,7 +16,7 @@ export async function adminInvite(req,env,session){
  const origin=req.headers.get('Origin');
  if(origin&&origin!==new URL(req.url).origin)return respond({error:'Origen no autorizado.'},403,session.cookies);
  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return respond({error:'Se requiere JSON.'},415,session.cookies);
- let input;try{const raw=await req.text();if(raw.length>1600)throw Error('size');input=JSON.parse(raw)}catch{return respond({error:'Datos incorrectos.'},400,session.cookies)}
+ let input;try{input=JSON.parse(await readLimitedBody(req,1600))}catch{return respond({error:'Datos incorrectos.'},400,session.cookies)}
  const email=String(input?.email||'').trim().toLowerCase();
  const businessId=String(input?.business_id||'');
  if(!/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/u.test(email)||email.length>254||!UUID.test(businessId))
@@ -68,7 +69,7 @@ export async function acceptInvite(req,env){
  const origin=req.headers.get('Origin');
  if(origin&&origin!==new URL(req.url).origin)return respond({error:'Origen no autorizado.'},403);
  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return respond({error:'Se requiere JSON.'},415);
- let input;try{const raw=await req.text();if(raw.length>5000)throw Error();input=JSON.parse(raw)}catch{return respond({error:'Solicitud inválida.'},400)}
+ let input;try{input=JSON.parse(await readLimitedBody(req,5000))}catch{return respond({error:'Solicitud inválida.'},400)}
  const access=String(input?.access_token||''),refresh=String(input?.refresh_token||''),password=input?.password;
  if(access.length<30||access.length>3200||refresh.length<20||refresh.length>2000||typeof password!=='string'||password.length<10||password.length>128)
   return respond({error:'Invitación inválida o contraseña fuera de rango (10 a 128 caracteres).'},400);
@@ -111,7 +112,7 @@ export async function adminInviteBlogEditor(req,env,session){
  if(req.method!=='POST')return output({error:'Método no permitido.'},405);
  if(req.headers.get('Origin')!==new URL(req.url).origin)return output({error:'Origen no autorizado.'},403);
  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return output({error:'Se requiere JSON.'},415);
- let body;try{const raw=await req.text();if(raw.length>200)throw Error();body=JSON.parse(raw)}catch{return output({error:'Solicitud inválida.'},400)}
+ let body;try{body=JSON.parse(await readLimitedBody(req,200))}catch{return output({error:'Solicitud inválida.'},400)}
  if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)return output({error:'Solicitud inválida.'},400);
  const key=env.SUPABASE_SERVICE_ROLE_KEY;
  if(!key)return output({error:'La conexión administrativa no está configurada.'},503);
