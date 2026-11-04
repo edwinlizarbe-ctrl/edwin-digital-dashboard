@@ -53,3 +53,18 @@
   #app .main-content > .page-title { align-items: flex-start; }
   #app .integration-card .button { white-space: normal; text-align: center; }
 }
+
+/* Accesibilidad · contraste legible y objetivos táctiles en móvil (2026-11-03). */
+:root:not([data-theme="dark"]) {
+  --muted: #62708a;
+}
+@media (max-width: 600px) {
+  #app .sidebar .nav-link {
+    min-height: 44px;
+    height: auto;
+  }
+  #app .topbar .icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
