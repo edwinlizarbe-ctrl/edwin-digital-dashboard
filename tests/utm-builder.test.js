@@ -57,3 +57,19 @@ test('G11 is actually mounted on the UTM page and never sends data to third part
  assert.match(module,/navigator\.clipboard\.writeText/);
  assert.doesNotMatch(module,/\bfetch\s*\(/);
 });
+
+test('C23 source presets are bounded, safe and usable in the campaign form',()=>{
+ const {presetSource,sourcePresets}=globalThis.edwinUtmBuilder;
+ assert.deepEqual(Object.keys(sourcePresets),['google','meta','newsletter','linkedin','referral']);
+ for(const key of Object.keys(sourcePresets)){
+  assert.equal(presetSource(key),key);
+  assert.equal(new URL(build({...base,source:presetSource(key)})).searchParams.get('utm_source'),key);
+  assert.match(render(),new RegExp('data-ed-utm-source="'+key+'"'));
+ }
+ for(const invalid of ['__proto__','constructor','<script>','',null,{},'x'.repeat(101)]){
+  assert.throws(()=>presetSource(invalid),/predefinido no válido/);
+ }
+ assert.match(render(),/role="group" aria-label="Orígenes sugeridos"/);
+ assert.match(render(),/no se publica ni se envía nada/);
+ assert.equal(base.source,'meta','preset generation must not mutate source record');
+});
