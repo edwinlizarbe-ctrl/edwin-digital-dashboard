@@ -75,3 +75,48 @@ test('get, update stage and preserve real recorded data',async()=>{
   assert.equal(rows[0].currency,'PEN'); // stage PATCH does not silently rewrite currency
  });
 });
+
+test('rejects oversized lead bodies without writing private data',async()=>{
+ await inServer(async({calls})=>{
+  const large=new Request(base+'/api/crm/leads?business_id='+business,{
+   method:'POST',headers:{'Content-Type':'application/json','Origin':base},
+   body:JSON.stringify({...payload,notes:'x'.repeat(8000)})
+  });
+  const r=await handleLeadsApi(large,env,session);
+  assert.equal(r.status,413);
+  assert.equal(calls.some(x=>x.url.includes('/ed_crm_leads')),false);
+ });
+});
+test('import enforces the 95 KB cap even without a Content-Length header',async()=>{
+ await inServer(async({calls})=>{
+  const large=new Request(base+'/api/crm/leads/import?business_id='+business,{
+   method:'POST',headers:{'Content-Type':'application/json','Origin':base},
+   body:' '.repeat(95001)
+  });
+  const r=await handleLeadsApi(large,env,session);
+  assert.equal(r.status,413);
+  assert.equal(calls.some(x=>x.url.includes('/ed_crm_leads')),false);
+ });
+});
+test('oversized streaming lead request is cancelled rather than fully buffered',async()=>{
+ await inServer(async({calls})=>{
+  let produced=0,cancelled=false;
+  const stream=new ReadableStream({
+   pull(controller){
+    produced++;
+    controller.enqueue(new Uint8Array(1024));
+    if(produced>=100)controller.close();
+   },
+   cancel(){cancelled=true;}
+  });
+  const big=new Request(base+'/api/crm/leads?business_id='+business,{
+   method:'POST',headers:{'Content-Type':'application/json','Origin':base},
+   body:stream,duplex:'half'
+  });
+  const r=await handleLeadsApi(big,env,session);
+  assert.equal(r.status,413);
+  assert.equal(cancelled,true);
+  assert.ok(produced<100,'should stop reading before the full body');
+  assert.equal(calls.some(x=>x.url.includes('/ed_crm_leads')),false);
+ });
+});
