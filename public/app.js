@@ -19,7 +19,7 @@
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false,
-    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, gbp:null, gbpLocations:[], gbpReport:null, gbpBusy:false, gbpError:'', gbpNotice:'', gbpPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, funnelData:null, funnelLoading:false, funnelError:'', crmImportRows:[], crmImportFile:'', crmImportSkipped:0, crmImportWarnings:[], crmImportError:'', crmImportBusy:false, crmImportSource:'other', crmImportBusinessId:'', siteCreateBusy:false, siteCreateError:'', zernioBusy:false, zernioNotice:'', zernioStatus:null, zernioStatusError:'',
+    adminSiteStats: {}, adminStatsLoading: false, adminStatsError: '', metaPanelOpen: false, companyLogoDraft: null, googleAds:null, googleAdsAccounts:[], googleAdsReport:null, googleAdsBusy:false, googleAdsError:'', googleAdsReturnMessage:'', googleAdsPopupActive:false, ga4Connection:null, ga4Properties:[], ga4ConnectionBusy:false, sc:null, scSites:null, scReport:null, scBusy:false, scError:'', scNotice:'', scPopupActive:false, gbp:null, gbpLocations:[], gbpReport:null, gbpBusy:false, gbpError:'', gbpNotice:'', gbpPopupActive:false, ga4ConnectionError:'', ga4Notice:'', ga4PopupActive:false, leads:[], leadsLoading:false, leadsError:'', leadsNotice:'', leadsBusy:false, leadsPartial:false, funnelData:null, funnelLoading:false, funnelError:'', crmImportRows:[], crmImportFile:'', crmImportSkipped:0, crmImportWarnings:[], crmImportError:'', crmImportBusy:false, crmImportSource:'other', crmImportBusinessId:'', siteCreateBusy:false, siteCreateError:'', zernioBusy:false, zernioNotice:'', zernioStatus:null, zernioStatusError:'',
   };
   const clean = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -899,9 +899,10 @@ function campaigns(){
     if(leadsResult.status==='fulfilled'){
       const result=leadsResult.value;
       state.leads=result.leads||[];
+      state.leadsPartial=!!result.partial;
       if(result.partial)state.leadsNotice='Se muestran las 100 oportunidades más recientes. La paginación ampliada aún está pendiente.';
     }else{
-      state.leads=[];state.leadsError=leadsResult.reason?.message||'No se pudieron consultar oportunidades.';
+      state.leads=[];state.leadsPartial=false;state.leadsError=leadsResult.reason?.message||'No se pudieron consultar oportunidades.';
     }
     if(funnelResult.status==='fulfilled')state.funnelData=funnelResult.value;
     else state.funnelError=funnelResult.reason?.message||'No se pudo consultar el embudo.';
@@ -925,6 +926,7 @@ function campaigns(){
     const won=data.filter(l=>l.stage==='won'&&l.amount!==null&&l.amount!==undefined);
     const currencyTotals={};for(const l of won){const cur=l.currency||'PEN';currencyTotals[cur]=(currencyTotals[cur]||0)+Number(l.amount);}
     const funnelPanel=window.edwinCrmFunnel?.render(state.funnelData,{loading:state.funnelLoading,error:state.funnelError})||'';
+    const priorityPanel=window.edwinCrmScoring?.render(data,{loading:state.leadsLoading,partial:state.leadsPartial})||'';
     const kpis='<div class="crm-stats">'+[
       ['Oportunidades',data.length],['Por contactar',counts.new],['En seguimiento',counts.contacted+counts.qualified],['Cerradas',counts.won]
     ].map(([label,value])=>'<div class="crm-stat"><small>'+label+'</small><strong>'+fmt(value)+'</strong></div>').join('')+'</div>';
@@ -943,7 +945,7 @@ function campaigns(){
     ).join('')+'</tbody></table></div>':'<p class="crm-empty">Todavía no hay oportunidades registradas. Añade el primer contacto para empezar a medir el seguimiento comercial.</p>';
     return heading('Ventas y contactos','Oportunidades comerciales','Registra contactos reales, su origen declarado y su avance hasta la venta.')+
       (state.leadsError?alertBlock(state.leadsError):'')+(state.leadsNotice?alertBlock(state.leadsNotice,'info'):'')+
-      kpis+funnelPanel+crmImportPanel()+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+data.length+' registros en la empresa seleccionada</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
+      kpis+funnelPanel+priorityPanel+crmImportPanel()+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+data.length+' registros en la empresa seleccionada</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
   }
 
 

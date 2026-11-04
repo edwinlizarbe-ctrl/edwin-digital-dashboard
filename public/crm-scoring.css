@@ -1,0 +1,13 @@
+/* G03 — explainable commercial follow-up priority, no external contact. */
+#app .ed-priority{margin:20px 0;}
+#app .ed-priority-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+#app .ed-priority-head h2{margin:0;}
+#app .ed-priority-head>span{font-size:.85rem;color:var(--muted);}
+#app .ed-priority>p{color:var(--muted);line-height:1.5;}
+#app .ed-priority-list{list-style:none;padding:0;margin:18px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+#app .ed-priority-item{min-width:0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:12px;padding:14px;}
+#app .ed-priority-item strong{display:block;color:var(--text);font-size:.98rem;overflow-wrap:anywhere;}
+#app .ed-priority-item small{display:block;margin-top:6px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere;}
+#app .ed-priority-score{flex-shrink:0;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--text);border-radius:8px;padding:6px 8px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+#app .ed-priority-note{font-size:.8rem;}
+@media(max-width:700px){#app .ed-priority-list{grid-template-columns:1fr;}}
