@@ -51,7 +51,7 @@ test('CSV: omite datos inválidos y duplicados exactos sin atribuir automáticam
  assert.ok(!('source' in r.rows[0]));
 });
 test('CSV: no transforma etapas desconocidas en oportunidades nuevas',()=>{
- const r=parse('Nombre,Etapa,Correo\\nAna Torres,En negociación,ana@example.com\\nLuis Perez,Nuevo,luis@example.com\\n');
+ const r=parse('Nombre,Etapa,Correo\nAna Torres,En negociación,ana@example.com\nLuis Perez,Nuevo,luis@example.com\n');
  assert.equal(r.rows.length,1);
  assert.equal(r.rows[0].name,'Luis Perez');
  assert.equal(r.rows[0].stage,'new');
