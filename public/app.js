@@ -931,6 +931,9 @@ function campaigns(){
     const duplicatePanel=data.length?(window.edwinCrmDuplicates?.render(duplicateResults,{loading:state.leadsLoading,partial:state.leadsPartial})||''):'';
     const qualityReport=window.edwinCrmQuality?.analyze(data,state.businessId,{partial:state.leadsPartial});
     const qualityPanel=window.edwinCrmQuality?.render(qualityReport,{loading:state.leadsLoading})||'';
+    const pipelineCtx={businessId:state.businessId,userId:state.user?.id};
+    const displayed=window.edwinPipelineUI?.filterRows(data,pipelineCtx)||data;
+    const filterPanel=window.edwinPipelineUI?.render(data,pipelineCtx,{partial:state.leadsPartial})||'';
     const kpis='<div class="crm-stats">'+[
       ['Oportunidades',data.length],['Por contactar',counts.new],['En seguimiento',counts.contacted+counts.qualified],['Cerradas',counts.won]
     ].map(([label,value])=>'<div class="crm-stat"><small>'+label+'</small><strong>'+fmt(value)+'</strong></div>').join('')+'</div>';
@@ -944,12 +947,12 @@ function campaigns(){
       '<label>Importe estimado / confirmado <input class="simple-input" name="amount" type="number" min="0" step="0.01" placeholder="Sin importe"></label>'+
       '<label>Notas <input class="simple-input" name="notes" maxlength="500" placeholder="Necesidad del cliente"></label>'+
       '</div><div class="crm-form-bottom"><p>El origen y campaña son datos registrados manualmente. No constituyen atribución automática ni una venta confirmada.</p><button class="button button-primary" type="submit" '+(state.leadsBusy?'disabled':'')+'>'+(state.leadsBusy?'Guardando…':'Añadir oportunidad')+'</button></div></form>';
-    const records=data.length?'<div class="table-scroll crm-leads-table"><table><thead><tr><th>Contacto</th><th>Origen</th><th>Campaña</th><th>Estado</th><th>Importe</th><th>Registro</th></tr></thead><tbody>'+data.map(l=>
+    const records=displayed.length?'<div class="table-scroll crm-leads-table"><table><thead><tr><th>Contacto</th><th>Origen</th><th>Campaña</th><th>Estado</th><th>Importe</th><th>Registro</th></tr></thead><tbody>'+displayed.map(l=>
       '<tr><td><strong>'+clean(l.name)+'</strong>'+(duplicateResults?.flags?.[l.id]?'<span class="ed-dupe-flag">Posible duplicado: '+clean(duplicateResults.flags[l.id].join(' / '))+'</span>':'')+'<small>'+clean(l.email||l.phone||'Sin datos de contacto')+'</small></td><td>'+clean(leadSources[l.source]||l.source)+'</td><td>'+clean(l.campaign||'—')+'</td><td><select class="simple-input crm-stage-select" data-id="'+clean(l.id)+'" aria-label="Estado de '+clean(l.name)+'">'+Object.entries(leadStages).map(([k,v])=>'<option value="'+k+'" '+(l.stage===k?'selected':'')+'>'+v+'</option>').join('')+'</select></td><td>'+ (l.amount==null?'—':money(l.amount,l.currency||'PEN'))+'</td><td>'+clean(String(l.created_at||'').slice(0,10))+'</td></tr>'
-    ).join('')+'</tbody></table></div>':'<p class="crm-empty">Todavía no hay oportunidades registradas. Añade el primer contacto para empezar a medir el seguimiento comercial.</p>';
+    ).join('')+'</tbody></table></div>':'<p class="crm-empty">'+(data.length?'Ninguna oportunidad coincide con los filtros aplicados. Prueba a limpiar los filtros.':'Todavía no hay oportunidades registradas. Añade el primer contacto para empezar a medir el seguimiento comercial.')+'</p>';
     return heading('Ventas y contactos','Oportunidades comerciales','Registra contactos reales, su origen declarado y su avance hasta la venta.')+
       (state.leadsError?alertBlock(state.leadsError):'')+(state.leadsNotice?alertBlock(state.leadsNotice,'info'):'')+
-      kpis+funnelPanel+priorityPanel+duplicatePanel+qualityPanel+(window.edwinResponseLibrary?.render({businessId:state.businessId,userId:state.user?.id})||'')+crmImportPanel()+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+data.length+' registros en la empresa seleccionada</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
+      kpis+funnelPanel+priorityPanel+duplicatePanel+qualityPanel+filterPanel+(window.edwinResponseLibrary?.render({businessId:state.businessId,userId:state.user?.id})||'')+crmImportPanel()+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+displayed.length+' de '+data.length+' contactos visibles en esta empresa</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
   }
 
 
@@ -2119,6 +2122,8 @@ function sidebar(){
  }catch(e){state.siteError=e.message||'No se pudo guardar el sitio.';}
  finally{state.siteBusy=false;render();}
 }
+  window.addEventListener('edwin:pipeline-ready',()=>{if(state.page==='leads'&&!isAdmin())render();});
+  window.addEventListener('edwin:pipeline-change',()=>{if(state.page==='leads'&&!isAdmin())render();});
   document.addEventListener('click', async e=>{
     const b=e.target.closest('[data-act]');if(!b)return;
     const action=b.dataset.act;
