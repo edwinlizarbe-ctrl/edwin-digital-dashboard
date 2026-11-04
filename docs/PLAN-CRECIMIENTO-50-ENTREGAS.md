@@ -76,14 +76,14 @@
 
 | Fecha | Entregas | PR fusionado | CI |
 |---|---|---|---|
-| 2026-11-04 | C01–C10 | PR #115 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C11–C16 | PR #116 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C17–C20 | PR #118 fusionado en main | 6 verificaciones verdes |
+| 2026-11-04 | C01–C10 | PR #115 fusionado en main | 6 verificaciones verdes |
+| 2026-11-04 | C11–C16 | PR #116 fusionado en main | 6 verificaciones verdes |
+| 2026-11-04 | C17–C20 | PR #118 fusionado en main | 6 verificaciones verdes |
 | 2026-11-04 | C23 | PR #120 fusionado en main | 3 verificaciones verdes |
 | 2026-11-04 | C24–C27 | PR #121 fusionado en main | 3 verificaciones verdes |
 | 2026-11-04 | C29–C30 | PR #122 fusionado en main | 3 verificaciones verdes |
 | 2026-11-04 | C28 | PR #123 fusionado en main | 3 verificaciones verdes |
 | 2026-11-04 | C31–C34 | PR #125 fusionado en main | 6 verificaciones verdes |
 | 2026-11-04 | C41–C45 | PR #126 fusionado en main | 6 verificaciones verdes |
-| 2026-11-04 | C39, C40, C48 | Este PR en validación | Pendiente CI y merge |
-
 | 2026-11-04 | C39–C40, C48 | PR #127 fusionado en main | 6 verificaciones verdes |
 | 2026-11-04 | C49 (salto accesible) | PR #128 fusionado en main | 3 verificaciones verdes |
