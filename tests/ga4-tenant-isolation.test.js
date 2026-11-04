@@ -116,3 +116,27 @@ test('storage lookup failure fails closed instead of assigning the property', as
     assert.equal(calls.some(isWrite), false);
   });
 });
+
+test('oversized property-selection bodies are cancelled before Analytics or tenant writes',async()=>{
+ await withServer({},async({env,calls})=>{
+  let chunks=0,cancelled=false;
+  const stream=new ReadableStream({
+   pull(controller){
+    chunks++;
+    controller.enqueue(new Uint8Array(1024));
+    if(chunks>=50)controller.close();
+   },
+   cancel(){cancelled=true;}
+  });
+  const req=new Request(origin+'/api/ga4/select?business_id='+own,{
+   method:'POST',headers:{'Content-Type':'application/json',Origin:origin},
+   body:stream,duplex:'half'
+  });
+  const res=await handleGa4OAuthApi(req,env,session);
+  assert.equal(res.status,413);
+  assert.equal(cancelled,true);
+  assert.ok(chunks<50);
+  assert.equal(calls.some(isWrite),false);
+  assert.equal(calls.some(x=>x.url.origin==='https://oauth2.googleapis.com'),false);
+ });
+});
