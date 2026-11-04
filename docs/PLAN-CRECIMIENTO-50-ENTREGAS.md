@@ -2,7 +2,7 @@
 
 **Objetivo:** capacidades útiles que eleven captación, conversión, seguimiento, activación, calidad comercial y preparación SaaS. Estas son **entregas pendientes o desarrolladas**, no 50 cambios publicados por el mero hecho de escribir el plan.
 
-**Avance comprobado al 2026-11-04:** 25/50 entregas publicadas en main; C21–C22, C28 y C29–C50 pendientes de publicación. Se han publicado C01–C10 (#115), C11–C16 (#116) y C17–C20 (#118). Cada bloque tiene sus propias pruebas. No se ha verificado aquí un despliegue de Cloudflare.
+**Avance comprobado al 2026-11-04:** 27/50 entregas publicadas en main; C21–C22, C28 y C31–C50 pendientes de publicación. Se han publicado C01–C10 (#115), C11–C16 (#116) y C17–C20 (#118). Cada bloque tiene sus propias pruebas. No se ha verificado aquí un despliegue de Cloudflare.
 
 **Reglas operativas:** trabajar por bloques pequeños, revisar PR abierto para evitar duplicar otras automatizaciones, pruebas CI verdes antes del merge, aislamiento business_id/JWT, no compartir PII entre empresas, no enviar emails/WhatsApp ni gastar en anuncios ni cobrar sin acción autorizada; no tocar secretos, RLS ni datos existentes. Fusionar GitHub no prueba despliegue Cloudflare. Cada PR publicado debe figurar en el historial con su número y estado real.
 
@@ -37,9 +37,9 @@
 | C25 | Captación y trazabilidad | Alertar cuando los parámetros UTM obligatorios estén vacíos | Publicada · PR #121 · CI verde |
 | C26 | Captación y trazabilidad | Generar nombre de campaña normalizado y legible | Publicada · PR #121 · CI verde |
 | C27 | Captación y trazabilidad | Proveer vista previa de enlaces HTTPS etiquetados | Publicada · PR #121 · CI verde |
-| C28 | Captación y trazabilidad | Exportar exclusivamente etiquetas de campaña sin datos de contactos | Pendiente |
-| C29 | Captación y trazabilidad | Comparar cobertura de oportunidades por origen declarado | Implementada en esta rama; pendiente CI y merge |
-| C30 | Captación y trazabilidad | Explicar cobertura parcial y límites de atribución de cada comparación | Implementada en esta rama; pendiente CI y merge |
+| C28 | Captación y trazabilidad | Exportar exclusivamente etiquetas de campaña sin datos de contactos | Implementada en esta rama; pendiente CI y merge |
+| C29 | Captación y trazabilidad | Comparar cobertura de oportunidades por origen declarado | Publicada · PR #122 · CI verde |
+| C30 | Captación y trazabilidad | Explicar cobertura parcial y límites de atribución de cada comparación | Publicada · PR #122 · CI verde |
 | C31 | Activación y retención | Mostrar progreso real del onboarding de empresa | Pendiente |
 | C32 | Activación y retención | Detectar si aún no hay primera oportunidad registrada | Pendiente |
 | C33 | Activación y retención | Explicar cómo conectar una fuente de analítica autorizada | Pendiente |
@@ -61,7 +61,7 @@
 | C49 | Reportes y preparación SaaS | Reforzar navegación accesible del centro de crecimiento | Pendiente |
 | C50 | Reportes y preparación SaaS | Agregar pruebas de regresión para todas las nuevas capacidades | Pendiente |
 
-**C23 publicada:** PR #120 fusionado con 3 verificaciones verdes. **C24–C27 publicadas:** PR #121 fusionado con 3 verificaciones verdes. **C29–C30** se implementan en el presente PR como comparación de registros por origen y transparencia sobre cobertura; se considerarán publicadas solo después de CI y merge.
+**C23 publicada:** PR #120 fusionado con 3 verificaciones verdes. **C24–C27 publicadas:** PR #121 fusionado con 3 verificaciones verdes. **C29–C30 publicadas:** PR #122 fusionado con 3 verificaciones verdes. **C28** implementada en esta rama como exportación segura de etiquetas UTM sin URL ni PII, pendiente CI y merge.
 
 ## Protocolo repetible
 1. Leer este archivo en main y comprobar commits y PR actuales antes de empezar.
@@ -77,4 +77,5 @@
 | 2026-11-04 | C01–C10 | PR #115 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C11–C16 | PR #116 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C17–C20 | PR #118 fusionado en main | 6 verificaciones verdes |
 | 2026-11-04 | C23 | PR #120 fusionado en main | 3 verificaciones verdes |
 | 2026-11-04 | C24–C27 | PR #121 fusionado en main | 3 verificaciones verdes |
-| 2026-11-04 | C29–C30 | Este PR en validación | Pendiente CI y merge |
+| 2026-11-04 | C29–C30 | PR #122 fusionado en main | 3 verificaciones verdes |
+| 2026-11-04 | C28 | Este PR en validación | Pendiente CI y merge |
