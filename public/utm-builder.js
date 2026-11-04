@@ -48,6 +48,21 @@
   if(result.length>2048)throw Error('El enlace generado supera los 2048 caracteres.');
   return result;
  }
+ function csvTags(data){
+  // Reuse full URL validation, but export only bounded UTM tags (never a URL or lead PII).
+  const url=new URL(build(data));
+  const csvCell=value=>{
+   const raw=String(value??'');
+   const neutral=/^\s*[=+\-@]/.test(raw)?"'"+raw:raw;
+   return '"'+neutral.replace(/"/g,'""')+'"';
+  };
+  const rows=[['Parámetro','Valor']];
+  for(const key of fields.slice(1)){
+   const value=url.searchParams.get('utm_'+key);
+   if(value!==null)rows.push(['utm_'+key,value]);
+  }
+  return '\uFEFF'+rows.map(r=>r.map(csvCell).join(';')).join('\r\n')+'\r\n';
+ }
  function render(){
   let link='';
   try{link=build(draft);}catch{}
@@ -70,19 +85,19 @@
    '<textarea id="ed-utm-result" class="simple-input" rows="2" readonly aria-describedby="ed-utm-status">'+esc(link)+'</textarea>'+
    '<p id="ed-utm-preview" class="ed-utm-preview" role="status">'+(link?'Destino: '+esc(preview(link).destination)+' · '+esc(preview(link).route)+' · '+preview(link).labels.length+' etiquetas UTM':'La vista previa del destino y las etiquetas aparecerá al completar el enlace.')+'</p>'+
    '<div class="ed-utm-footer"><p id="ed-utm-status" role="status" aria-live="polite">'+(link?'Enlace listo para copiar.':'Completa los campos obligatorios para generar el enlace.')+'</p>'+
-   '<button class="button button-primary" type="button" data-ed-utm-copy '+(link?'':'disabled')+'>Copiar enlace</button></div>'+
+   '<div class="ed-utm-export-buttons"><button class="button button-outline" type="button" data-ed-utm-export '+(link?'':'disabled')+'>Exportar etiquetas CSV</button><button class="button button-primary" type="button" data-ed-utm-copy '+(link?'':'disabled')+'>Copiar enlace</button></div></div>'+
    '</form><p class="ed-utm-note">Conserva otros parámetros y fragmentos de la URL. Etiquetar enlaces no garantiza medición hasta que el sitio y GA4 estén configurados.</p></section>';
  }
  function update(form){
   for(const key of fields)draft[key]=String(form.elements.namedItem(key)?.value||'');
-  const output=form.querySelector('#ed-utm-result'),status=form.querySelector('#ed-utm-status'),button=form.querySelector('[data-ed-utm-copy]');
+  const output=form.querySelector('#ed-utm-result'),status=form.querySelector('#ed-utm-status'),button=form.querySelector('[data-ed-utm-copy]'),exportButton=form.querySelector('[data-ed-utm-export]');
   const required=form.querySelector('#ed-utm-required'),previewLabel=form.querySelector('#ed-utm-preview');
   if(required){const missing=missingRequired(draft);required.textContent=missing.length?'Por completar: '+missing.join(', ')+'.':'Parámetros obligatorios completos.';}
   try{
    const link=build(draft);
-   output.value=link;button.disabled=false;status.textContent='Enlace listo para copiar.';
+   output.value=link;button.disabled=false;if(exportButton)exportButton.disabled=false;status.textContent='Enlace listo para copiar.';
    if(previewLabel){const p=preview(link);previewLabel.textContent='Destino: '+p.destination+' · '+p.route+' · '+p.labels.length+' etiquetas UTM'+(p.fragment?' · conserva fragmento':'')+'.';}
-  }catch(error){output.value='';button.disabled=true;status.textContent=error.message;
+  }catch(error){output.value='';button.disabled=true;if(exportButton)exportButton.disabled=true;status.textContent=error.message;
    if(previewLabel)previewLabel.textContent='Completa un enlace HTTPS válido para ver la vista previa.';}
  }
  if(typeof document!=='undefined'){
@@ -118,6 +133,23 @@
     try{campaign.value=normalizeCampaignName(campaign.value);update(form);}catch(error){if(status)status.textContent=error.message;}
     return;
    }
+   const exportButton=event.target.closest?.('[data-ed-utm-export]');
+   if(exportButton){
+    const form=exportButton.closest('#ed-utm-builder');
+    const status=form?.querySelector('#ed-utm-status');
+    if(!form)return;
+    update(form);
+    try{
+     const body=csvTags(draft);
+     const link=URL.createObjectURL(new Blob([body],{type:'text/csv;charset=utf-8'}));
+     const anchor=document.createElement('a');
+     anchor.href=link;anchor.download='edwin-crm-etiquetas-utm.csv';
+     document.body.appendChild(anchor);anchor.click();anchor.remove();
+     setTimeout(()=>URL.revokeObjectURL(link),1500);
+     if(status)status.textContent='CSV de etiquetas generado. No incluye la URL ni información de contactos.';
+    }catch(error){if(status)status.textContent=error.message;}
+    return;
+   }
    const button=event.target.closest?.('[data-ed-utm-copy]');
    if(!button)return;
    const form=button.closest('#ed-utm-builder'),output=form?.querySelector('#ed-utm-result'),status=form?.querySelector('#ed-utm-status');
@@ -129,5 +161,5 @@
    }catch{status.textContent='No se pudo copiar automáticamente. Selecciona el enlace para copiarlo manualmente.';}
   });
  }
- root.edwinUtmBuilder=Object.freeze({build,render,presetSource,sourcePresets,presetMedium,mediumPresets,missingRequired,normalizeCampaignName,preview});
+ root.edwinUtmBuilder=Object.freeze({build,render,presetSource,sourcePresets,presetMedium,mediumPresets,missingRequired,normalizeCampaignName,preview,csvTags});
 })(globalThis);
