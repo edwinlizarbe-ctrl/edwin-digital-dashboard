@@ -2,6 +2,8 @@
 (function(root){
  'use strict';
  const fields=['url','source','medium','campaign','content','term'];
+ const sourcePresets=Object.freeze({google:'Google',meta:'Meta',newsletter:'Newsletter',linkedin:'LinkedIn',referral:'Referidos'});
+ function presetSource(key){if(!Object.hasOwn(sourcePresets,key))throw Error('Origen predefinido no válido.');return key;}
  const draft=Object.fromEntries(fields.map(key=>[key,'']));
  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function build(data){
@@ -35,6 +37,7 @@
    '<div class="ed-utm-grid">'+
    field('url','URL de destino HTTPS','https://tuempresa.com/landing',true)+
    field('source','Origen (utm_source)','google, meta, newsletter',true)+
+    '<div class="ed-utm-presets" role="group" aria-label="Orígenes sugeridos">'+Object.entries(sourcePresets).map(([key,label])=>'<button type="button" class="button button-outline" data-ed-utm-source="'+key+'">'+label+'</button>').join('')+'</div>'+
    field('medium','Medio (utm_medium)','cpc, paid_social, email',true)+
    field('campaign','Campaña (utm_campaign)','cyber_wow_noviembre',true)+
    field('content','Contenido (opcional)','video_a, banner_b')+
@@ -62,6 +65,14 @@
    if(event.target?.id==='ed-utm-builder'){event.preventDefault();update(event.target);}
   });
   document.addEventListener('click',async event=>{
+   const presetButton=event.target.closest?.('[data-ed-utm-source]');
+   if(presetButton){
+    const form=presetButton.closest('#ed-utm-builder');
+    const source=form?.elements.namedItem('source');
+    if(!source)return;
+    try{source.value=presetSource(presetButton.dataset.edUtmSource);update(form);}catch{}
+    return;
+   }
    const button=event.target.closest?.('[data-ed-utm-copy]');
    if(!button)return;
    const form=button.closest('#ed-utm-builder'),output=form?.querySelector('#ed-utm-result'),status=form?.querySelector('#ed-utm-status');
@@ -73,5 +84,5 @@
    }catch{status.textContent='No se pudo copiar automáticamente. Selecciona el enlace para copiarlo manualmente.';}
   });
  }
- root.edwinUtmBuilder=Object.freeze({build,render});
+ root.edwinUtmBuilder=Object.freeze({build,render,presetSource,sourcePresets});
 })(globalThis);

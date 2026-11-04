@@ -50,10 +50,33 @@ test('G11 is actually mounted on the UTM page and never sends data to third part
  const index=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const module=readFileSync(new URL('../public/utm-builder.js',import.meta.url),'utf8');
- assert.match(index,/utm-builder\.js\?v=growth-g11-20261104/);
+ assert.match(index,/utm-builder\.js\?v=growth-c23-20261104/);
  assert.match(index,/utm-builder\.css\?v=growth-g11-20261104/);
  assert.ok(index.indexOf('utm-builder.js')<index.indexOf('/app.js'));
  assert.match(app,/window\.edwinUtmBuilder\?\.render\(\)/);
  assert.match(module,/navigator\.clipboard\.writeText/);
  assert.doesNotMatch(module,/\bfetch\s*\(/);
+});
+
+test('C23 source presets are bounded, safe and usable in the campaign form',()=>{
+ const {presetSource,sourcePresets}=globalThis.edwinUtmBuilder;
+ assert.deepEqual(Object.keys(sourcePresets),['google','meta','newsletter','linkedin','referral']);
+ for(const key of Object.keys(sourcePresets)){
+  assert.equal(presetSource(key),key);
+  assert.equal(new URL(build({...base,source:presetSource(key)})).searchParams.get('utm_source'),key);
+  assert.match(render(),new RegExp('data-ed-utm-source="'+key+'"'));
+ }
+ for(const invalid of ['__proto__','constructor','<script>','',null,{},'x'.repeat(101)]){
+  assert.throws(()=>presetSource(invalid),/predefinido no válido/);
+ }
+ assert.match(render(),/role="group" aria-label="Orígenes sugeridos"/);
+ assert.match(render(),/no se publica ni se envía nada/);
+ assert.equal(base.source,'meta','preset generation must not mutate source record');
+});
+
+test('C23 preset buttons are wired to the active form and update the generated URL',()=>{
+ const module=readFileSync(new URL('../public/utm-builder.js',import.meta.url),'utf8');
+ assert.match(module,/closest\?\.\('\[data-ed-utm-source\]'\)/);
+ assert.match(module,/source\.value=presetSource\(presetButton\.dataset\.edUtmSource\);update\(form\)/);
+ assert.match(module,/if\(!source\)return/);
 });
