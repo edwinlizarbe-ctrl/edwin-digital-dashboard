@@ -73,3 +73,10 @@ test('C23 source presets are bounded, safe and usable in the campaign form',()=>
  assert.match(render(),/no se publica ni se envía nada/);
  assert.equal(base.source,'meta','preset generation must not mutate source record');
 });
+
+test('C23 preset buttons are wired to the active form and update the generated URL',()=>{
+ const module=readFileSync(new URL('../public/utm-builder.js',import.meta.url),'utf8');
+ assert.match(module,/closest\?\.\('\[data-ed-utm-source\]'\)/);
+ assert.match(module,/source\.value=presetSource\(presetButton\.dataset\.edUtmSource\);update\(form\)/);
+ assert.match(module,/if\(!source\)return/);
+});
