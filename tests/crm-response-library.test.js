@@ -42,5 +42,13 @@ test('G10 assets render inside the commercial opportunity dashboard',()=>{
  assert.match(index,/crm-response-library\.js\?v=growth-g10-20261104/);
  assert.match(index,/crm-response-library\.css\?v=growth-g10-20261104/);
  assert.ok(index.indexOf('crm-response-library.js')<index.indexOf('/app.js'));
- assert.match(app,/edwinResponseLibrary\?\.render\(\)/);
+ assert.match(app,/edwinResponseLibrary\?\.render\(\{businessId:state\.businessId,userId:state\.user\?\.id\}\)/);
+});
+
+test('G10 binds draft state to user and business instead of sharing across clients',()=>{
+ const module=readFileSync(new URL('../public/crm-response-library.js',import.meta.url),'utf8');
+ assert.match(module,/nextContext!==activeContext/);
+ assert.match(module,/edited=null/);
+ assert.match(lib.render({businessId:'company-A',userId:'member-1'}),/Biblioteca de mensajes/);
+ assert.match(lib.render({businessId:'company-B',userId:'member-1'}),/id="ed-response-locale"/);
 });
