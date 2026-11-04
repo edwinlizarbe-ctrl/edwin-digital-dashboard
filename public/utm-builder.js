@@ -2,6 +2,8 @@
 (function(root){
  'use strict';
  const fields=['url','source','medium','campaign','content','term'];
+ const sourcePresets=Object.freeze({google:'Google',meta:'Meta',newsletter:'Newsletter',linkedin:'LinkedIn',referral:'Referidos'});
+ function presetSource(key){if(!Object.hasOwn(sourcePresets,key))throw Error('Origen predefinido no válido.');return key;}
  const draft=Object.fromEntries(fields.map(key=>[key,'']));
  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function build(data){
@@ -35,6 +37,7 @@
    '<div class="ed-utm-grid">'+
    field('url','URL de destino HTTPS','https://tuempresa.com/landing',true)+
    field('source','Origen (utm_source)','google, meta, newsletter',true)+
+    '<div class="ed-utm-presets" role="group" aria-label="Orígenes sugeridos">'+Object.entries(sourcePresets).map(([key,label])=>'<button type="button" class="button button-outline" data-ed-utm-source="'+key+'">'+label+'</button>').join('')+'</div>'+
    field('medium','Medio (utm_medium)','cpc, paid_social, email',true)+
    field('campaign','Campaña (utm_campaign)','cyber_wow_noviembre',true)+
    field('content','Contenido (opcional)','video_a, banner_b')+
@@ -73,5 +76,5 @@
    }catch{status.textContent='No se pudo copiar automáticamente. Selecciona el enlace para copiarlo manualmente.';}
   });
  }
- root.edwinUtmBuilder=Object.freeze({build,render});
+ root.edwinUtmBuilder=Object.freeze({build,render,presetSource,sourcePresets});
 })(globalThis);
