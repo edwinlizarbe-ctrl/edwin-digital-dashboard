@@ -46,7 +46,7 @@ function validBlocks(blocks){
 }
 function personalized(s,person){return String(s).replace(/\{\{\s*(nombre|empresa)\s*\}\}/gi,(_,k)=>k.toLowerCase()==='nombre'?person.name:person.company);}
 export function renderNewsletter(campaign,person={name:'Amiga/o',company:'Brásper'}){
- const subject=safe(campaign.subject,150),blocks=campaign.blocks||[];
+ const subject=safe(campaign.subject,150),blocks=campaign.blocks||[],pt=campaign.language==='pt';
  if(!validBlocks(blocks))throw Error('El newsletter tiene bloques inválidos.');
  const brand='#1366F8';
  const inner=blocks.map(b=>{
@@ -56,11 +56,11 @@ export function renderNewsletter(campaign,person={name:'Amiga/o',company:'Brásp
   if(b.type==='button')return '<p style="text-align:center;margin:26px 0"><a href="'+escapeAttr(https(b.url))+'" style="display:inline-block;background:'+brand+';color:#ffffff;padding:15px 25px;border-radius:11px;text-decoration:none;font-weight:700">'+esc(personalized(b.text,person))+'</a></p>';
   return '';
  }).join('');
- return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'+
+ return '<!doctype html><html lang="'+(pt?'pt-BR':'es')+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'+
  '<body style="margin:0;background:#f2f6fc;font-family:Arial,Helvetica,sans-serif;color:#142b49"><div style="display:none;max-height:0;overflow:hidden;opacity:0">'+esc(personalized(campaign.preheader||'',person))+'</div>'+
  '<main style="max-width:600px;margin:30px auto;background:#fff;border-radius:20px;overflow:hidden;border:1px solid #dce7f8"><div style="background:'+brand+';color:#fff;padding:27px 32px;font-size:25px;font-weight:800">brasper<span style="font-size:12px;font-weight:400;float:right">Perú ↔ Brasil</span></div>'+
  '<div style="padding:22px 32px">'+inner+'</div><footer style="background:#f8fbff;border-top:1px solid #e4edfa;color:#6b7e91;font-size:12px;line-height:1.6;padding:20px 32px">'+
- 'Brásper · Recibes este mensaje porque te suscribiste a nuestras comunicaciones. Puedes darte de baja desde el enlace incluido en el correo.</footer></main></body></html>';
+ (pt?'Brásper · Você recebe esta mensagem porque se inscreveu para receber nossas comunicações. Você pode cancelar a inscrição pelo link incluído neste e-mail.':'Brásper · Recibes este mensaje porque te suscribiste a nuestras comunicaciones. Puedes darte de baja desde el enlace incluido en el correo.')+'</footer></main></body></html>';
 }
 const TEMPLATE=[
  {type:'heading',text:'Olá, {{nombre}}! 🇧🇷🇵🇪'},
