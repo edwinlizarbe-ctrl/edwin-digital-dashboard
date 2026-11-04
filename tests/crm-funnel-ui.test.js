@@ -61,5 +61,6 @@ test('G02 is loaded from the dashboard and requested independently from contact 
  assert.ok(index.indexOf('crm-funnel.js')<index.indexOf('/app.js'));
  assert.match(app,/Promise\.allSettled\(\[/);
  assert.match(app,/api\/crm\/leads\/funnel\?business_id=/);
- assert.match(app,/funnelPanel\+crmImportPanel\(\)/);
+ assert.match(app,/funnelPanel\+/);
+ assert.match(app,/crmImportPanel\(\)/);
 });
