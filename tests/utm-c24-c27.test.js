@@ -70,7 +70,7 @@ test('C24-C27 buttons are wired to the same local form without external requests
  assert.match(script,/medium\.value=presetMedium\(mediumButton\.dataset\.edUtmMedium\);update\(form\)/);
  assert.match(script,/campaign\.value=normalizeCampaignName\(campaign\.value\);update\(form\)/);
  assert.match(script,/previewLabel\.textContent='Destino:/);
- assert.match(index,/utm-builder\.js\?v=growth-c24-c27-20261104/);
- assert.match(index,/utm-builder\.css\?v=growth-c24-c27-20261104/);
+ assert.match(index,/utm-builder\.js\?v=growth-c28-20261104/);
+ assert.match(index,/utm-builder\.css\?v=growth-c28-20261104/);
  assert.doesNotMatch(script,/\bfetch\s*\(|XMLHttpRequest|sendBeacon/);
 });
