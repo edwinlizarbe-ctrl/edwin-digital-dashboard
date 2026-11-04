@@ -87,3 +87,59 @@ test('queued Portuguese newsletter uses Portuguese unsubscribe label without cha
   assert.equal(mail[0].to[0],'camila@example.com');
  }finally{globalThis.fetch=previous;}
 });
+
+test('signed unsubscribe supports the normal URL-encoded confirmation form',async()=>{
+ await mocked(async calls=>{
+  const url=await unsubscribeLink(new Request(origin),env,id,contact);
+  const token=new URL(url).searchParams.get('token');
+  const response=await publicMailRoute(new Request(url,{
+   method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+   body:new URLSearchParams({token})
+  }),env);
+  assert.equal(response.status,200);
+  assert.equal(calls.filter(x=>x.method==='PATCH').length,2);
+ });
+});
+
+test('unsubscription form rejects and cancels excessive streaming request bodies',async()=>{
+ await mocked(async calls=>{
+  const url=await unsubscribeLink(new Request(origin),env,id,contact);
+  let chunks=0,cancelled=false;
+  const stream=new ReadableStream({
+   pull(controller){
+    chunks++;controller.enqueue(new Uint8Array(1024));
+    if(chunks>=100)controller.close();
+   },
+   cancel(){cancelled=true;}
+  });
+  const response=await publicMailRoute(new Request(url,{
+   method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+   body:stream,duplex:'half'
+  }),env);
+  assert.equal(response.status,413);
+  assert.equal(cancelled,true);
+  assert.ok(chunks<100);
+  assert.equal(calls.length,0);
+ });
+});
+
+test('unauthenticated email webhook rejects oversized streamed payload before signature or database access',async()=>{
+ await mocked(async calls=>{
+  let chunks=0,cancelled=false;
+  const stream=new ReadableStream({
+   pull(controller){
+    chunks++;controller.enqueue(new Uint8Array(16_384));
+    if(chunks>=100)controller.close();
+   },
+   cancel(){cancelled=true;}
+  });
+  const response=await publicMailRoute(new Request(origin+'/api/email-marketing/webhook',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:stream,duplex:'half'
+  }),env);
+  assert.equal(response.status,413);
+  assert.equal(cancelled,true);
+  assert.ok(chunks<100);
+  assert.equal(calls.length,0);
+ });
+});
