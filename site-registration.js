@@ -1,3 +1,4 @@
+import {readLimitedBody} from './read-limited-body.js';
 /**
  * Alta de sitios web declarados por empresas de Edwin CRM.
  * NO verifica propiedad de dominio ni conecta GA4/Search Console automáticamente.
@@ -23,9 +24,11 @@ export async function handleSiteCreate(req,env,s){
  const origin=req.headers.get('Origin');
  if(origin&&origin!==url.origin)return reply({error:'Origen no autorizado.'},403);
  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return reply({error:'Se requiere JSON.'},415);
- if(Number(req.headers.get('Content-Length')||0)>3000)return reply({error:'Solicitud demasiado grande.'},413);
- const raw=await req.text();
- if(raw.length>3000)return reply({error:'Solicitud demasiado grande.'},413);
+ let raw;
+ try{raw=await readLimitedBody(req,3000);}
+ catch(e){return e.code==='BODY_TOO_LARGE'
+  ?reply({error:'Solicitud demasiado grande.'},413)
+  :reply({error:'No se pudo leer la solicitud.'},400);}
  let data;try{data=JSON.parse(raw);}catch{return reply({error:'JSON inválido.'},400);}
  if(!data||typeof data!=='object'||Array.isArray(data))return reply({error:'Datos inválidos.'},400);
  const businessId=data.business_id,siteName=typeof data.name==='string'?data.name.trim().replace(/\s+/g,' '):'',website=validateWebsite(data.url);
