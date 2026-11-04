@@ -74,7 +74,7 @@ test('onboarding links and progress styles are accessible and stay inside author
  const index=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const css=readFileSync(new URL('../public/onboarding-progress.css',import.meta.url),'utf8');
  assert.match(index,/onboarding-progress\.css\?v=growth-c31-c34-20261104/);
- assert.match(index,/app\.js\?v=edwin-onboarding-c31-c34-20261104/);
+ assert.match(index,/app\.js\?v=edwin-crm-onboarding-c31-c34-20261104/);
  assert.match(guide(),/aria-label="Progreso de primeros pasos"/);
  assert.match(css,/forced-colors:active/);
  assert.match(css,/:focus-visible/);
