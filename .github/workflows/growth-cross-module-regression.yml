@@ -1,0 +1,34 @@
+name: Edwin CRM growth cross-module regression
+on:
+  pull_request:
+    paths:
+      - 'tests/growth-cross-module-regression.test.mjs'
+      - 'public/crm-integration-health.js'
+      - 'public/crm-commercial-report.js'
+      - 'public/crm-quality.js'
+      - 'public/utm-builder.js'
+      - 'public/index.html'
+      - '.github/workflows/growth-cross-module-regression.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tests/growth-cross-module-regression.test.mjs'
+      - 'public/crm-integration-health.js'
+      - 'public/crm-commercial-report.js'
+      - 'public/crm-quality.js'
+      - 'public/utm-builder.js'
+      - 'public/index.html'
+      - '.github/workflows/growth-cross-module-regression.yml'
+permissions:
+  contents: read
+jobs:
+  regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run Edwin CRM cross-module regression cases
+        run: node --test tests/growth-cross-module-regression.test.mjs
