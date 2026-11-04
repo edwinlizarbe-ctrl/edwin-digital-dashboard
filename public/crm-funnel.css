@@ -24,3 +24,7 @@
  #app .ed-funnel-stages{grid-template-columns:repeat(2,minmax(0,1fr));}
  #app .ed-funnel-stage{min-width:0;}
 }
+
+/* G17: make CSV export visible without competing with funnel metrics. */
+#app .ed-funnel-actions{display:flex;justify-content:flex-end;margin-top:14px;}
+@media(max-width:700px){#app .ed-funnel-actions .button{width:100%;}}
