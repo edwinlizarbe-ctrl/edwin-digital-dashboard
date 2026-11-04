@@ -18,6 +18,11 @@ function store(ctx){
  try{return pipelineViewStore(globalRef?.localStorage,ctx.userId,ctx.businessId);}
  catch{return null;}
 }
+function setFilters(input,ctx){
+ context(ctx.businessId,ctx.userId);
+ filters=normalizePipelineFilter(input);
+ return {...filters};
+}
 function filterRows(rows,ctx){
  context(ctx.businessId,ctx.userId);
  const own=Array.isArray(rows)?rows.filter(x=>x?.business_id===ctx.businessId):[];
@@ -58,7 +63,7 @@ if(typeof document!=='undefined'){
   e.preventDefault();
   const form=e.target,fd=new FormData(form);
   try{
-   filters=normalizePipelineFilter(Object.fromEntries(['stage','source','from','to'].map(x=>[x,fd.get(x)||''])));
+   setFilters(Object.fromEntries(['stage','source','from','to'].map(x=>[x,fd.get(x)||''])),{businessId:activeBusiness,userId:activeUser});
    selectedView='';notice='Filtros aplicados a los contactos cargados.';redraw();
   }catch(error){status(error.message||'Filtros inválidos.');}
  });
@@ -72,6 +77,8 @@ if(typeof document!=='undefined'){
   try{
    if(action==='save'){
     const name=String(document.getElementById('ed-pipeline-name')?.value||'').trim();
+    const fd=new FormData(document.getElementById('ed-pipeline-filter-form'));
+    setFilters(Object.fromEntries(['stage','source','from','to'].map(x=>[x,fd.get(x)||''])),ctx);
     const id='vista-'+String(Date.now())+'-'+Math.floor(Math.random()*100000);
     const item=saved.save(id,name,filters);selectedView=item.id;notice='Vista guardada para esta empresa y usuario.';
    }else{
@@ -89,7 +96,7 @@ if(typeof document!=='undefined'){
  });
 }
 if(globalRef){
- globalRef.edwinPipelineUI=Object.freeze({filterRows,render,context});
+ globalRef.edwinPipelineUI=Object.freeze({filterRows,render,context,setFilters});
  globalRef.dispatchEvent(new Event('edwin:pipeline-ready'));
 }
-export {filterRows,render,context};
+export {filterRows,render,context,setFilters};
