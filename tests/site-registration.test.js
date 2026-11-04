@@ -85,3 +85,26 @@ test('UI de Mi empresa conserva edición e incorpora alta sin afirmar verificaci
  assert.match(app,/id="site-edit-form"/);
  assert.match(app,/no verificado/i);
 });
+
+test('rejects oversized streaming site creation before accessing Supabase',async()=>{
+ await mock(async requests=>{
+  let produced=0,cancelled=false;
+  const stream=new ReadableStream({
+   pull(controller){
+    produced++;
+    controller.enqueue(new Uint8Array(1024));
+    if(produced>=100)controller.close();
+   },
+   cancel(){cancelled=true;}
+  });
+  const request=new Request(base+'/api/sites/create',{
+   method:'POST',headers:{Origin:base,'Content-Type':'application/json'},
+   body:stream,duplex:'half'
+  });
+  const response=await handleSiteCreate(request,env,session);
+  assert.equal(response.status,413);
+  assert.equal(cancelled,true);
+  assert.ok(produced<100);
+  assert.equal(requests.length,0);
+ });
+});
