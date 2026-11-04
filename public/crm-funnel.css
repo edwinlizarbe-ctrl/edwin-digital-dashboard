@@ -1,0 +1,26 @@
+/* Aggregated CRM funnel · responsive and accessible for light/dark themes. */
+#app .ed-funnel{margin:20px 0;}
+#app .ed-funnel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;}
+#app .ed-funnel-head h2{margin:0 0 6px;}
+#app .ed-funnel-head p{margin:0;color:var(--muted);line-height:1.5;}
+#app .ed-funnel-head-stat{display:flex;flex-direction:column;text-align:right;flex-shrink:0;}
+#app .ed-funnel-head-stat strong{font-size:1.65rem;color:var(--text);font-variant-numeric:tabular-nums;}
+#app .ed-funnel-head-stat small{color:var(--muted);}
+#app .ed-funnel-stages{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:18px 0;}
+#app .ed-funnel-stage{display:flex;flex-direction:column;gap:7px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--card);}
+#app .ed-funnel-stage small{color:var(--muted);font-weight:600;}
+#app .ed-funnel-stage strong{font-size:1.35rem;font-variant-numeric:tabular-nums;color:var(--text);}
+#app .ed-funnel-table{width:100%;min-width:440px;}
+#app .ed-funnel-table th,#app .ed-funnel-table td{padding:11px 10px;text-align:left;}
+#app .ed-funnel-table td:nth-child(2),#app .ed-funnel-table td:nth-child(3){font-variant-numeric:tabular-nums;}
+#app .ed-funnel-progress{display:flex;align-items:center;gap:10px;min-width:150px;}
+#app .ed-funnel-progress progress{width:100%;height:11px;accent-color:var(--accent);}
+#app .ed-funnel-progress span{min-width:44px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+#app .ed-funnel-warning{color:var(--text);font-weight:600;}
+#app .ed-funnel-disclaimer{color:var(--muted);font-size:.85rem;line-height:1.5;margin:14px 0 0;}
+@media(max-width:700px){
+ #app .ed-funnel-head{flex-direction:column;}
+ #app .ed-funnel-head-stat{text-align:left;}
+ #app .ed-funnel-stages{grid-template-columns:repeat(2,minmax(0,1fr));}
+ #app .ed-funnel-stage{min-width:0;}
+}
