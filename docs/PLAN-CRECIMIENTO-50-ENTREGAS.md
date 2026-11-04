@@ -40,10 +40,10 @@
 | C28 | Captación y trazabilidad | Exportar exclusivamente etiquetas de campaña sin datos de contactos | Publicada · PR #123 · CI verde |
 | C29 | Captación y trazabilidad | Comparar cobertura de oportunidades por origen declarado | Publicada · PR #122 · CI verde |
 | C30 | Captación y trazabilidad | Explicar cobertura parcial y límites de atribución de cada comparación | Publicada · PR #122 · CI verde |
-| C31 | Activación y retención | Mostrar progreso real del onboarding de empresa | Pendiente |
-| C32 | Activación y retención | Detectar si aún no hay primera oportunidad registrada | Pendiente |
-| C33 | Activación y retención | Explicar cómo conectar una fuente de analítica autorizada | Pendiente |
-| C34 | Activación y retención | Guiar desde una pantalla vacía hacia la primera acción | Pendiente |
+| C31 | Activación y retención | Mostrar progreso real del onboarding de empresa | Implementada en esta rama; pendiente CI y merge |
+| C32 | Activación y retención | Detectar si aún no hay primera oportunidad registrada | Implementada en esta rama; pendiente CI y merge |
+| C33 | Activación y retención | Explicar cómo conectar una fuente de analítica autorizada | Implementada en esta rama; pendiente CI y merge |
+| C34 | Activación y retención | Guiar desde una pantalla vacía hacia la primera acción | Implementada en esta rama; pendiente CI y merge |
 | C35 | Activación y retención | Ofrecer demo aislada con métricas claramente ficticias | Pendiente |
 | C36 | Activación y retención | Registrar hitos de activación sin información personal | Pendiente |
 | C37 | Activación y retención | Mostrar seguimiento de actividad comercial por períodos comparables | Pendiente |
@@ -63,6 +63,8 @@
 
 **C23 publicada:** PR #120 fusionado con 3 verificaciones verdes. **C24–C27 publicadas:** PR #121 fusionado con 3 verificaciones verdes. **C29–C30 publicadas:** PR #122 fusionado con 3 verificaciones verdes. **C28 publicada:** PR #123 fusionado con 3 verificaciones verdes; la exportación CSV no incluye la URL ni PII y neutraliza fórmulas.
 
+**C31–C34:** este PR amplía la guía de inicio existente con progreso verificable, identificación honesta de la primera oportunidad (incluidos errores y consultas pendientes), instrucciones precisas de autorización de GA4 y acceso directo a la próxima acción. Solo se marcarán publicadas tras CI verde y merge en main. No atribuir números de clientes o de conversiones inexistentes.
+
 ## Protocolo repetible
 1. Leer este archivo en main y comprobar commits y PR actuales antes de empezar.
 2. Seleccionar una entrega pendiente sin desarrollo en otra rama. Si hay un PR en borrador, inspeccionarlo y corregirlo en lugar de duplicarlo.
@@ -79,3 +81,4 @@
 | 2026-11-04 | C24–C27 | PR #121 fusionado en main | 3 verificaciones verdes |
 | 2026-11-04 | C29–C30 | PR #122 fusionado en main | 3 verificaciones verdes |
 | 2026-11-04 | C28 | PR #123 fusionado en main | 3 verificaciones verdes |
+| 2026-11-04 | C31–C34 | Este PR en validación | Pendiente CI y merge |
