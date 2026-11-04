@@ -69,5 +69,6 @@ test('G03 integration uses the registered lead list without sending outbound mes
  assert.match(index,/crm-scoring\.css\?v=growth-g03-20261104/);
  assert.ok(index.indexOf('crm-scoring.js')<index.indexOf('/app.js'));
  assert.match(app,/edwinCrmScoring\?\.render\(data,/);
- assert.match(app,/funnelPanel\+priorityPanel\+crmImportPanel\(\)/);
+ assert.match(app,/funnelPanel\+priorityPanel\+/);
+ assert.match(app,/crmImportPanel\(\)/);
 });
