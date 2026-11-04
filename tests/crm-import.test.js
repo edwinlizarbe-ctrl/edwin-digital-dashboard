@@ -50,6 +50,14 @@ test('CSV: omite datos inválidos y duplicados exactos sin atribuir automáticam
  assert.equal(r.skipped,2);
  assert.ok(!('source' in r.rows[0]));
 });
+test('CSV: no transforma etapas desconocidas en oportunidades nuevas',()=>{
+ const r=parse('Nombre,Etapa,Correo\nAna Torres,En negociación,ana@example.com\nLuis Perez,Nuevo,luis@example.com\n');
+ assert.equal(r.rows.length,1);
+ assert.equal(r.rows[0].name,'Luis Perez');
+ assert.equal(r.rows[0].stage,'new');
+ assert.equal(r.skipped,1);
+ assert.match(r.warnings.join(' '),/Fila 2/);
+});
 test('CSV: rechaza sin nombre, comillas abiertas y archivos enormes',()=>{
  assert.throws(()=>parse('Email,Phone\na@example.com,123'),/nombre/i);
  assert.throws(()=>parse('Name,Email\n"not closed,x@y.com'),/comillas/i);

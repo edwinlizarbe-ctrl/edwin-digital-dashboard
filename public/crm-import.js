@@ -65,10 +65,10 @@
       const email=get('email'),phone=get('phone'),campaign=get('campaign'),notes=get('notes');
       const amountRaw=get('amount'), currency=get('currency').toUpperCase() || 'PEN', stageRaw=norm(get('stage'));
       const stageMap={nuevo:'new',new:'new',contactado:'contacted',contacted:'contacted',calificado:'qualified',qualified:'qualified',ganado:'won',won:'won',venta:'won',perdido:'lost',lost:'lost'};
-      const stage=stageMap[stageRaw]||'new';
+      const stage=stageRaw ? stageMap[stageRaw] : 'new';
       // Prevent a row from silently losing an amount if its format is ambiguous.
       const amount=amountRaw ? Number(amountRaw.replace(/\s/g,'').replace(/,(?=\d{1,2}$)/,'.').replace(/(?<=\d)[,.](?=\d{3}(?:[,.]|$))/g,'')) : null;
-      const bad=name.length<2||name.length>120||email.length>160||phone.length>35||campaign.length>150||notes.length>500||
+      const bad=!stage||name.length<2||name.length>120||email.length>160||phone.length>35||campaign.length>150||notes.length>500||
         (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) || (amountRaw && (!Number.isFinite(amount)||amount<0||amount>1e10)) ||
         !/^[A-Z]{3}$/.test(currency);
       if(bad){skipped++;if(warnings.length<3)warnings.push('Fila '+(i+1)+': datos incompletos o inválidos.');continue;}
