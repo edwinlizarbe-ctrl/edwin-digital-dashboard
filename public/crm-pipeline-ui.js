@@ -6,11 +6,12 @@ const globalRef=typeof window!=='undefined'?window:null;
 const blank=()=>({stage:'',source:'',from:'',to:''});
 const stageOptions=Object.freeze({new:'Nuevo',contacted:'Contactado',qualified:'Calificado',won:'Ganado',lost:'Perdido'});
 const sourceOptions=Object.freeze({google_ads:'Google Ads',meta_ads:'Meta Ads',organic:'Orgánico',referral:'Referido',whatsapp:'WhatsApp',other:'Otro'});
-let activeContext='',filters=blank(),selectedView='',notice='';
+let activeContext='',activeBusiness='',activeUser='',filters=blank(),selectedView='',notice='';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function context(businessId,userId){
  const id=String(userId||'')+'|'+String(businessId||'');
  if(activeContext!==id){activeContext=id;filters=blank();selectedView='';notice='';}
+ activeBusiness=businessId;activeUser=userId;
  return {businessId,userId};
 }
 function store(ctx){
@@ -63,9 +64,9 @@ if(typeof document!=='undefined'){
  });
  document.addEventListener('click',e=>{
   const el=e.target.closest?.('[data-ed-pipeline]');if(!el)return;
-  const action=el.dataset.edPipeline,ctxData=globalRef?.edwinPipelineContext;
-  if(!ctxData?.businessId||!ctxData?.userId)return;
-  const ctx=context(ctxData.businessId,ctxData.userId),saved=store(ctx);
+  const action=el.dataset.edPipeline;
+  if(!activeBusiness||!activeUser)return;
+  const ctx={businessId:activeBusiness,userId:activeUser},saved=store(ctx);
   if(action==='reset'){filters=blank();selectedView='';notice='Filtros limpiados.';redraw();return;}
   if(!saved){status('El almacenamiento de vistas no está disponible en este navegador.');return;}
   try{
