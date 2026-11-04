@@ -143,3 +143,49 @@ test('unauthenticated email webhook rejects oversized streamed payload before si
   assert.equal(calls.length,0);
  });
 });
+
+test('Portuguese unsubscribe links keep the original signed token and localize every page',async()=>{
+ await mocked(async calls=>{
+  const es=await unsubscribeLink(new Request(origin),env,id,contact);
+  const pt=await unsubscribeLink(new Request(origin),env,id,contact,'pt');
+  const ptUrl=new URL(pt),esUrl=new URL(es);
+  assert.equal(ptUrl.searchParams.get('lang'),'pt');
+  assert.equal(esUrl.searchParams.get('lang'),null);
+  const ptToken=ptUrl.searchParams.get('token');
+  assert.match(ptToken,/^[^.]+\.[^.]+\.[0-9]+\.[a-f0-9]{64}$/i);
+  const get=await publicMailRoute(new Request(pt),env);
+  assert.equal(get.status,200);
+  const page=await get.text();
+  assert.match(page,/<html lang="pt-BR">/);
+  assert.match(page,/Cancelar minha inscrição/);
+  assert.match(page,/Confirmar cancelamento/);
+  assert.doesNotMatch(page,/Confirmar baja/);
+  assert.equal(calls.length,0,'GET cannot update stored consent');
+  const posted=await publicMailRoute(new Request(pt,{
+   method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+   body:new URLSearchParams({token:ptToken})
+  }),env);
+  assert.equal(posted.status,200);
+  assert.match(await posted.text(),/Seu cancelamento foi registrado/);
+  assert.equal(calls.filter(c=>c.method==='PATCH').length,2);
+  const invalid=new URL(pt);invalid.searchParams.set('token',ptToken.replace(contact,'44444444-4444-4444-8444-444444444444'));
+  const denied=await publicMailRoute(new Request(invalid),env);
+  assert.equal(denied.status,400);
+  assert.match(await denied.text(),/Link inválido/);
+ });
+});
+
+test('legacy Spanish unsubscribe links keep existing confirmation copy',async()=>{
+ await mocked(async calls=>{
+  const es=await unsubscribeLink(new Request(origin),env,id,contact);
+  const response=await publicMailRoute(new Request(es),env);
+  assert.equal(response.status,200);
+  const page=await response.text();
+  assert.match(page,/<html lang="es">/);
+  assert.match(page,/Confirmar baja/);
+  const confirmed=await publicMailRoute(new Request(es,{method:'POST'}),env);
+  assert.equal(confirmed.status,200);
+  assert.match(await confirmed.text(),/Tu baja se registró correctamente/);
+  assert.equal(calls.filter(c=>c.method==='PATCH').length,2);
+ });
+});
