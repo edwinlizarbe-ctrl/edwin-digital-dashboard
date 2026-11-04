@@ -1,3 +1,4 @@
+import {readLimitedBody} from './read-limited-body.js';
 /**
  * E Digital.IA · business integration entitlements (manual administrative provisioning).
  * Never trust client-provided switches. Changes require a verified admin session.
@@ -9,6 +10,11 @@ export const DEFAULT_FEATURES=Object.freeze({
  ga4:true,search_console:false,business_profile:false,social_organic:false,hotmart:false,shopify:false,
  meta_ads:true,google_ads:false,tiktok_ads:false,linkedin_ads:false
 });
+// Invalid or unavailable entitlement data must never grant integrations.
+const DENIED_FEATURES=Object.freeze(Object.fromEntries(ED_FEATURES.map(feature=>[feature,false])));
+const knownFlags=raw=>raw&&typeof raw==='object'&&!Array.isArray(raw)
+ ?Object.fromEntries(ED_FEATURES.filter(k=>typeof raw[k]==='boolean').map(k=>[k,raw[k]]))
+ :{};
 const validId=x=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x||'');
 const response=(data,status=200,cookies=[])=>{
  const headers=new Headers({'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
@@ -23,26 +29,31 @@ async function ownsBusiness(env,s,id){
  return Array.isArray(list)&&list.some(x=>x.id===id);
 }
 async function featureRow(env,id){
- if(!env.SUPABASE_SERVICE_ROLE_KEY)return {configured:false,row:null};
+ if(!env.SUPABASE_SERVICE_ROLE_KEY)return {configured:false,row:null,unavailable:true};
  const key=env.SUPABASE_SERVICE_ROLE_KEY;
- const r=await fetch(supaBase(env)+'/rest/v1/ed_business_features?select=business_id,plan,features,updated_at&business_id=eq.'+encodeURIComponent(id)+'&limit=1',{
-  headers:{apikey:key,Authorization:'Bearer '+key,Accept:'application/json'}
- });
- if(!r.ok)return {configured:false,row:null};
- const rows=await r.json().catch(()=>[]);
- return {configured:true,row:rows[0]||null};
+ try{
+  const r=await fetch(supaBase(env)+'/rest/v1/ed_business_features?select=business_id,plan,features,updated_at&business_id=eq.'+encodeURIComponent(id)+'&limit=1',{
+   headers:{apikey:key,Authorization:'Bearer '+key,Accept:'application/json'}
+  });
+  if(!r.ok)return {configured:false,row:null,unavailable:true};
+  const rows=await r.json();
+  if(!Array.isArray(rows))return {configured:false,row:null,unavailable:true};
+  return {configured:true,row:rows[0]||null,unavailable:false};
+ }catch{return {configured:false,row:null,unavailable:true};}
 }
 export async function readBusinessEntitlements(env,s,id){
  if(!validId(id)||!await ownsBusiness(env,s,id))return null;
  const data=await featureRow(env,id);
  const plan=data.row?.plan||null;
- const features=plan==='premium'
-  ?Object.fromEntries(ED_FEATURES.map(feature=>[feature,true]))
-  :{...DEFAULT_FEATURES,...(data.row?.features||{})};
+ const features=data.unavailable
+  ?{...DENIED_FEATURES}
+  :plan==='premium'
+   ?Object.fromEntries(ED_FEATURES.map(feature=>[feature,true]))
+   :{...DEFAULT_FEATURES,...knownFlags(data.row?.features)};
  return {configured:data.configured,
   business_id:id,plan,features,
   updated_at:data.row?.updated_at||null,
-  provisioned:!!data.row};
+  provisioned:!!data.row,...(data.unavailable?{unavailable:true}:{})};
 }
 export async function ensureBusinessFeature(env,s,id,feature){
  if(!ED_FEATURES.includes(feature))return false;
@@ -99,8 +110,10 @@ export async function handleFeaturesApi(req,env,s){
  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
   return response({error:'Se requiere JSON.'},415,s.cookies);
  let input={};
- try{const raw=await req.text();if(raw.length>2200)throw new Error();input=JSON.parse(raw)}
+ try{input=JSON.parse(await readLimitedBody(req,2200));}
  catch{return response({error:'La solicitud contiene datos inválidos.'},400,s.cookies);}
+ if(!input||typeof input!=='object'||Array.isArray(input))
+  return response({error:'La solicitud contiene datos inválidos.'},400,s.cookies);
  const id=String(input.business_id||''),feature=String(input.feature||'');
  if(!validId(id)||!await ownsBusiness(env,s,id))return response({error:'La empresa no está autorizada.'},403,s.cookies);
  if(!env.SUPABASE_SERVICE_ROLE_KEY)return response({error:'Configura SUPABASE_SERVICE_ROLE_KEY en Cloudflare.'},503,s.cookies);
@@ -121,7 +134,7 @@ export async function handleFeaturesApi(req,env,s){
    if(plan==='premium')features=Object.fromEntries(ED_FEATURES.map(key=>[key,true]));
    else features={...freeDefault};
  }else{
-   features={...freeDefault,...(before?.features||{})};
+   features={...freeDefault,...knownFlags(before?.features)};
    features[feature]=input.enabled;
  }
  if(!['free','premium'].includes(plan))return response({error:'Selecciona un plan antes de modificar los permisos.'},409,s.cookies);
