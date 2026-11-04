@@ -1,0 +1,20 @@
+/* Edwin CRM C41–C45: aggregated sales reporting, responsive and accessible. */
+#app .ed-sales-report{margin:20px 0;padding:22px;}
+#app .ed-sales-report-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+#app .ed-sales-report-head h2{font-size:1.17rem;margin:0 0 7px;}
+#app .ed-sales-report-head p{color:var(--muted);margin:0;line-height:1.5;font-size:.87rem;}
+#app .ed-sales-report-head label{display:flex;flex-direction:column;gap:7px;font-size:.85rem;font-weight:600;flex-shrink:0;}
+#app .ed-sales-report-head select{min-width:120px;}
+#app .ed-sales-report-summary{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:18px 0;}
+#app .ed-sales-report-summary strong{font-size:1.4rem;color:var(--text);font-variant-numeric:tabular-nums;}
+#app .ed-sales-report-summary span{font-size:.85rem;color:var(--muted);}
+#app .ed-sales-report-table{width:100%;min-width:630px;border-collapse:collapse;}
+#app .ed-sales-report-table th,#app .ed-sales-report-table td{text-align:left;padding:10px;border-bottom:1px solid var(--border);}
+#app .ed-sales-report-table td{font-variant-numeric:tabular-nums;}
+#app .ed-sales-report-comparison{font-size:.91rem;font-weight:600;color:var(--text);margin:18px 0 10px;}
+#app .ed-sales-report-notes{padding-left:20px;margin:12px 0 20px;display:grid;gap:7px;}
+#app .ed-sales-report-notes li,#app .ed-sales-report-empty{font-size:.83rem;color:var(--muted);line-height:1.5;}
+#app #ed-sales-report-status{font-size:.81rem;color:var(--muted);margin:12px 0 0;line-height:1.5;}
+#app .ed-sales-report button:focus-visible,#app .ed-sales-report select:focus-visible{outline:2px solid currentColor;outline-offset:4px;}
+@media(max-width:700px){#app .ed-sales-report{padding:16px;}#app .ed-sales-report-head{flex-direction:column;}#app .ed-sales-report-head label{width:100%;}#app .ed-sales-report-head select{width:100%;}#app .ed-sales-report>button{width:100%;}}
+@media(forced-colors:active){#app .ed-sales-report{border:1px solid CanvasText;}}
