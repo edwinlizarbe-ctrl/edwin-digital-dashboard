@@ -1,0 +1,17 @@
+/* Edwin CRM · compact commercial-quality audit, accessible in light/dark mode. */
+#app .ed-quality{margin:18px 0;}
+#app .ed-quality-heading{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;}
+#app .ed-quality-heading h2{margin:0 0 7px;}
+#app .ed-quality-heading p,#app .ed-quality-footnote,#app .ed-quality-empty{color:var(--muted);line-height:1.5;}
+#app .ed-quality-heading>strong{font-size:.87rem;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--text);}
+#app .ed-quality-list{padding:0;margin:14px 0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+#app .ed-quality-item{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:12px 13px;border:1px solid var(--border);border-radius:11px;min-width:0;}
+#app .ed-quality-item strong{color:var(--text);font-size:.9rem;}
+#app .ed-quality-item p{font-size:.8rem;line-height:1.4;margin:6px 0 0;color:var(--muted);}
+#app .ed-quality-count{flex-shrink:0;min-width:2.2rem;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px;padding:6px;}
+#app .ed-quality-more{border-top:1px solid var(--border);margin-top:17px;padding-top:14px;}
+#app .ed-quality-more summary{cursor:pointer;font-weight:600;color:var(--text);}
+#app .ed-quality-more summary:focus-visible{outline:2px solid currentColor;outline-offset:4px;}
+#app .ed-quality-warning{font-weight:600;color:var(--text);}
+#app .ed-quality-footnote{font-size:.82rem;margin:14px 0 0;}
+@media(max-width:700px){#app .ed-quality-list{grid-template-columns:1fr;}}
