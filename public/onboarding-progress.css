@@ -1,0 +1,14 @@
+/* C31–C34: verified activation progress and next-step guidance. */
+#app .start-progress{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:18px;row-gap:10px;margin:0 0 20px;padding:15px 17px;border:1px solid #c5d6f3;border-radius:13px;background:rgba(255,255,255,.66);}
+#app .start-progress-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;grid-column:1/-1;font-size:.88rem;color:#17355c;}
+#app .start-progress-header strong{font-variant-numeric:tabular-nums;}
+#app .start-progress progress{display:block;width:100%;height:14px;accent-color:#2261cb;align-self:center;}
+#app .start-progress p{grid-column:1/-1;color:#456181;font-size:.8rem;line-height:1.5;margin:0;}
+#app .start-progress .start-next-action{grid-column:1/-1;justify-self:start;min-height:40px;}
+[data-theme="dark"] #app .start-progress{background:rgba(13,27,51,.64);border-color:#405784;}
+[data-theme="dark"] #app .start-progress-header{color:#e4eeff;}
+[data-theme="dark"] #app .start-progress p{color:#b5c9e8;}
+[data-theme="dark"] #app .start-progress progress{accent-color:#8baeff;}
+#app .start-progress .start-next-action:focus-visible{outline:3px solid currentColor;outline-offset:4px;}
+@media(max-width:600px){#app .start-progress{grid-template-columns:1fr;padding:13px;}#app .start-progress .start-next-action{width:100%;justify-self:stretch;}}
+@media(forced-colors:active){#app .start-progress{border:1px solid CanvasText;}#app .start-progress progress{forced-color-adjust:auto;}}
