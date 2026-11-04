@@ -35,7 +35,7 @@ test('G02 provides an honest empty state without inventing conversions',()=>{
 });
 
 test('G02 ignores untrusted source labels, weird numbers and injected content',()=>{
- const html=render({total:'9000000',won_share_percent:Infinity,by_stage:{new:-2,won:'19'},
+ const html=render({total:2,won_share_percent:Infinity,by_stage:{new:-2,won:'9000000'},
   by_source:{evil:{total:5,by_stage:{won:4},won_share_percent:80},
    meta_ads:{total:2,by_stage:{won:1},won_share_percent:150}},partial:false});
  assert.doesNotMatch(html,/evil/);
