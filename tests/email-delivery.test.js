@@ -180,7 +180,9 @@ test('legacy Spanish unsubscribe links keep existing confirmation copy',async()=
   const es=await unsubscribeLink(new Request(origin),env,id,contact);
   const response=await publicMailRoute(new Request(es),env);
   assert.equal(response.status,200);
-  assert.match(await response.text(),/<html lang="es">[\\s\\S]*Confirmar baja/);
+  const page=await response.text();
+  assert.match(page,/<html lang="es">/);
+  assert.match(page,/Confirmar baja/);
   const confirmed=await publicMailRoute(new Request(es,{method:'POST'}),env);
   assert.equal(confirmed.status,200);
   assert.match(await confirmed.text(),/Tu baja se registró correctamente/);
