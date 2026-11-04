@@ -20,10 +20,10 @@ test('C28 creates a BOM-prefixed and Excel-readable CSV from exactly five allowe
 test('C28 neutralizes spreadsheet formula payloads and quotes without removing legitimate values',()=>{
  const csv=csvTags({...base,campaign:' =HYPERLINK("https://evil.test","click")',content:'+SUM(1,2)',term:'@cmd',source:'-12'});
  assert.match(csv,/"utm_campaign";"' =HYPERLINK\(""https:\/\/evil\.test"",""click""\)"/);
- assert.match(csv,/"utm_content";"'+SUM\(1,2\)"/);
+ assert.match(csv,/"utm_content";"'\+SUM\(1,2\)"/);
  assert.match(csv,/"utm_term";"'@cmd"/);
  assert.match(csv,/"utm_source";"'-12"/);
- assert.doesNotMatch(csv,/\n[^\r]/,'all CSV rows use CRLF');
+ assert.equal(csv.replace(/\r\n/g,'').includes('\n'),false,'all CSV rows use CRLF');
 });
 
 test('C28 rejects incomplete or unsafe URLs and omits absent optional parameters',()=>{
