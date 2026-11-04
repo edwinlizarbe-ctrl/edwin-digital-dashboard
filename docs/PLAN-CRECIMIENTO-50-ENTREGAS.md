@@ -2,7 +2,7 @@
 
 **Objetivo:** capacidades útiles que eleven captación, conversión, seguimiento, activación, calidad comercial y preparación SaaS. Estas son **entregas pendientes o desarrolladas**, no 50 cambios publicados por el mero hecho de escribir el plan.
 
-**Avance comprobado al 2026-11-04:** 28/50 entregas publicadas en main; C21–C22 y C31–C50 pendientes de publicación. Se han publicado C01–C10 (#115), C11–C16 (#116) y C17–C20 (#118). Cada bloque tiene sus propias pruebas. No se ha verificado aquí un despliegue de Cloudflare.
+**Avance comprobado al 2026-11-04:** 32/50 entregas publicadas en main; C21–C22 y C35–C50 pendientes de publicación. Se han publicado C01–C10 (#115), C11–C16 (#116) y C17–C20 (#118). Cada bloque tiene sus propias pruebas. No se ha verificado aquí un despliegue de Cloudflare.
 
 **Reglas operativas:** trabajar por bloques pequeños, revisar PR abierto para evitar duplicar otras automatizaciones, pruebas CI verdes antes del merge, aislamiento business_id/JWT, no compartir PII entre empresas, no enviar emails/WhatsApp ni gastar en anuncios ni cobrar sin acción autorizada; no tocar secretos, RLS ni datos existentes. Fusionar GitHub no prueba despliegue Cloudflare. Cada PR publicado debe figurar en el historial con su número y estado real.
 
@@ -40,21 +40,21 @@
 | C28 | Captación y trazabilidad | Exportar exclusivamente etiquetas de campaña sin datos de contactos | Publicada · PR #123 · CI verde |
 | C29 | Captación y trazabilidad | Comparar cobertura de oportunidades por origen declarado | Publicada · PR #122 · CI verde |
 | C30 | Captación y trazabilidad | Explicar cobertura parcial y límites de atribución de cada comparación | Publicada · PR #122 · CI verde |
-| C31 | Activación y retención | Mostrar progreso real del onboarding de empresa | Implementada en esta rama; pendiente CI y merge |
-| C32 | Activación y retención | Detectar si aún no hay primera oportunidad registrada | Implementada en esta rama; pendiente CI y merge |
-| C33 | Activación y retención | Explicar cómo conectar una fuente de analítica autorizada | Implementada en esta rama; pendiente CI y merge |
-| C34 | Activación y retención | Guiar desde una pantalla vacía hacia la primera acción | Implementada en esta rama; pendiente CI y merge |
+| C31 | Activación y retención | Mostrar progreso real del onboarding de empresa | Publicada · PR #125 · CI verde |
+| C32 | Activación y retención | Detectar si aún no hay primera oportunidad registrada | Publicada · PR #125 · CI verde |
+| C33 | Activación y retención | Explicar cómo conectar una fuente de analítica autorizada | Publicada · PR #125 · CI verde |
+| C34 | Activación y retención | Guiar desde una pantalla vacía hacia la primera acción | Publicada · PR #125 · CI verde |
 | C35 | Activación y retención | Ofrecer demo aislada con métricas claramente ficticias | Pendiente |
 | C36 | Activación y retención | Registrar hitos de activación sin información personal | Pendiente |
 | C37 | Activación y retención | Mostrar seguimiento de actividad comercial por períodos comparables | Pendiente |
 | C38 | Activación y retención | Separar datos actuales de cohortes con muestras insuficientes | Pendiente |
 | C39 | Activación y retención | Generar checklist de calidad de integración por negocio | Pendiente |
 | C40 | Activación y retención | Advertir cuando una integración no puede confirmar datos recientes | Pendiente |
-| C41 | Reportes y preparación SaaS | Exportar reporte resumido de seguimiento sin PII | Pendiente |
-| C42 | Reportes y preparación SaaS | Añadir totales desglosados por etapa y canal al reporte | Pendiente |
-| C43 | Reportes y preparación SaaS | Proteger CSV contra fórmulas maliciosas | Pendiente |
-| C44 | Reportes y preparación SaaS | Permitir períodos comparables en reportes agregados | Pendiente |
-| C45 | Reportes y preparación SaaS | Documentar fuentes, fechas y universo de cada KPI | Pendiente |
+| C41 | Reportes y preparación SaaS | Exportar reporte resumido de seguimiento sin PII | Implementada en esta rama; pendiente CI y merge |
+| C42 | Reportes y preparación SaaS | Añadir totales desglosados por etapa y canal al reporte | Implementada en esta rama; pendiente CI y merge |
+| C43 | Reportes y preparación SaaS | Proteger CSV contra fórmulas maliciosas | Implementada en esta rama; pendiente CI y merge |
+| C44 | Reportes y preparación SaaS | Permitir períodos comparables en reportes agregados | Implementada en esta rama; pendiente CI y merge |
+| C45 | Reportes y preparación SaaS | Documentar fuentes, fechas y universo de cada KPI | Implementada en esta rama; pendiente CI y merge |
 | C46 | Reportes y preparación SaaS | Mostrar estados de suscripción sin ejecutar cobros | Pendiente |
 | C47 | Reportes y preparación SaaS | Previsualizar límites de planes sin aplicarlos a clientes | Pendiente |
 | C48 | Reportes y preparación SaaS | Mostrar una lista de preparación comercial para una demo | Pendiente |
@@ -63,7 +63,7 @@
 
 **C23 publicada:** PR #120 fusionado con 3 verificaciones verdes. **C24–C27 publicadas:** PR #121 fusionado con 3 verificaciones verdes. **C29–C30 publicadas:** PR #122 fusionado con 3 verificaciones verdes. **C28 publicada:** PR #123 fusionado con 3 verificaciones verdes; la exportación CSV no incluye la URL ni PII y neutraliza fórmulas.
 
-**C31–C34:** este PR amplía la guía de inicio existente con progreso verificable, identificación honesta de la primera oportunidad (incluidos errores y consultas pendientes), instrucciones precisas de autorización de GA4 y acceso directo a la próxima acción. Solo se marcarán publicadas tras CI verde y merge en main. No atribuir números de clientes o de conversiones inexistentes.
+**C31–C34 publicadas:** PR #125 fusionado en main con seis verificaciones verdes; mejora guía de activación con progreso verificable, primera oportunidad, GA4 y próxima acción. **C41–C45** implementadas en esta rama como reporte comercial agregado y exportable; quedarán pendientes hasta verificar CI y merge.
 
 ## Protocolo repetible
 1. Leer este archivo en main y comprobar commits y PR actuales antes de empezar.
@@ -81,4 +81,5 @@
 | 2026-11-04 | C24–C27 | PR #121 fusionado en main | 3 verificaciones verdes |
 | 2026-11-04 | C29–C30 | PR #122 fusionado en main | 3 verificaciones verdes |
 | 2026-11-04 | C28 | PR #123 fusionado en main | 3 verificaciones verdes |
-| 2026-11-04 | C31–C34 | Este PR en validación | Pendiente CI y merge |
+| 2026-11-04 | C31–C34 | PR #125 fusionado en main | 6 verificaciones verdes |
+| 2026-11-04 | C41–C45 | Este PR en validación | Pendiente CI y merge |
