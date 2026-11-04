@@ -6,6 +6,7 @@
  const count=n=>Number.isSafeInteger(n)&&n>=0?n:0;
  const format=n=>count(n).toLocaleString('es-PE');
  const percent=n=>typeof n==='number'&&Number.isFinite(n)?Math.min(100,Math.max(0,n)):0;
+ const stageRate=(part,total)=>total>0?Math.round(1000*count(part)/total)/10:0;
  let visibleReport=null;
  // This export is built exclusively from aggregated API counters; no lead PII.
  function csv(data){
@@ -28,19 +29,20 @@
   if(!data||typeof data!=='object'){visibleReport=null;return '';}
   visibleReport=data;
   const total=count(data.total),share=percent(data.won_share_percent);
-  const stages=Object.entries(stageLabels).map(([key,label])=>'<div class="ed-funnel-stage"><small>'+label+'</small><strong>'+format(data.by_stage?.[key])+'</strong></div>').join('');
+  const stages=Object.entries(stageLabels).map(([key,label])=>'<div class="ed-funnel-stage"><small>'+label+'</small><strong>'+format(data.by_stage?.[key])+'</strong><small>'+stageRate(data.by_stage?.[key],total).toLocaleString('es-PE')+' % del total</small></div>').join('');
   const rows=Object.entries(sourceLabels)
    .filter(([key])=>count(data.by_source?.[key]?.total)>0)
    .map(([key,label])=>{
     const channel=data.by_source[key],won=count(channel.by_stage?.won),channelTotal=count(channel.total),p=percent(channel.won_share_percent);
-    return '<tr><th scope="row">'+label+'</th><td>'+format(channelTotal)+'</td><td>'+format(won)+'</td><td><div class="ed-funnel-progress"><progress max="100" value="'+p+'" aria-label="Porcentaje ganado · '+label+'"></progress><span>'+p.toLocaleString('es-PE',{maximumFractionDigits:1})+' %</span></div></td></tr>';
+    const distribution=Object.keys(stageLabels).map(stage=>'<td>'+stageRate(channel.by_stage?.[stage],channelTotal).toLocaleString('es-PE')+' %</td>').join('');
+    return '<tr><th scope="row">'+label+'</th><td>'+format(channelTotal)+'</td>'+distribution+'<td><div class="ed-funnel-progress"><progress max="100" value="'+p+'" aria-label="Porcentaje ganado · '+label+'"></progress><span>'+p.toLocaleString('es-PE',{maximumFractionDigits:1})+' %</span></div></td></tr>';
    }).join('');
   const notice=data.partial?'<p class="ed-funnel-warning" role="status">Vista parcial: se resumen solo las 1.000 oportunidades más recientes. No representa el historial completo.</p>':'';
   return '<section class="card ed-funnel" aria-labelledby="ed-funnel-title">'+
    '<div class="ed-funnel-head"><div><h2 id="ed-funnel-title">Embudo por canal</h2><p>Registros de la empresa seleccionada, clasificados por origen declarado.</p></div><div class="ed-funnel-head-stat"><strong>'+format(total)+'</strong><small>Oportunidades analizadas</small></div></div>'+
    '<div class="ed-funnel-stages" aria-label="Distribución de etapas">'+stages+'</div>'+
-   (total?'<div class="table-scroll"><table class="ed-funnel-table"><thead><tr><th>Origen</th><th>Total</th><th>Ganadas</th><th>Porcentaje ganado</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="crm-empty">Todavía no hay oportunidades para analizar. Registra tus primeros contactos para iniciar el embudo.</p>')+
-   notice+(total?'<div class="ed-funnel-actions"><button class="button button-outline" type="button" data-ed-funnel-export>Descargar CSV agregado</button></div>':'')+'<p class="ed-funnel-disclaimer">El porcentaje ganado ('+share.toLocaleString('es-PE',{maximumFractionDigits:1})+' % general) compara estados de oportunidades registradas; no mide conversiones atribuibles a anuncios ni ingresos confirmados.</p>'+
+   (total?'<div class="table-scroll"><table class="ed-funnel-table"><thead><tr><th>Origen</th><th>Total</th>'+Object.values(stageLabels).map(label=>'<th>'+label+' (% del canal)</th>').join('')+'<th>Porcentaje ganado</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="crm-empty">Todavía no hay oportunidades para analizar. Registra tus primeros contactos para iniciar el embudo.</p>')+
+   notice+(total?'<div class="ed-funnel-actions"><button class="button button-outline" type="button" data-ed-funnel-export>Descargar CSV agregado</button></div>':'')+'<p class="ed-funnel-disclaimer">Los porcentajes por etapa se calculan sobre las oportunidades del mismo canal, no sobre transiciones históricas. El porcentaje ganado ('+share.toLocaleString('es-PE',{maximumFractionDigits:1})+' % general) compara estados de oportunidades registradas; no mide conversiones atribuibles a anuncios ni ingresos confirmados.</p>'+
    '</section>';
  }
  if(typeof document!=='undefined'){
