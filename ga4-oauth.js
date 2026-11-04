@@ -1,3 +1,4 @@
+import {readLimitedBody} from './read-limited-body.js';
 // Google Analytics 4 OAuth — encrypted offline credentials per business; read-only scope.
 import { ensureBusinessFeature } from './feature-access.js';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -112,7 +113,9 @@ export async function handleGa4OAuthApi(req,env,s){
  }
  if(path==='/api/ga4/select'&&method==='POST'){
   if(!sameOrigin(req)||(req.headers.get('Content-Type')||'').split(';')[0]!=='application/json')return bad('Origen o contenido no autorizado.',403);
-  const raw=await req.text();if(raw.length>400)return bad('Solicitud demasiado grande.',413);
+  let raw;
+  try{raw=await readLimitedBody(req,400);}
+  catch(e){return bad(e.code==='BODY_TOO_LARGE'?'Solicitud demasiado grande.':'No se pudo leer la solicitud.',e.code==='BODY_TOO_LARGE'?413:400);}
   let body;try{body=JSON.parse(raw)}catch{return bad('Solicitud inválida.');}
   const propertyId=String(body?.property_id||'');
   if(!PROPERTY.test(propertyId))return bad('Selecciona una propiedad válida.');
