@@ -1,0 +1,13 @@
+/* G10 · Draft response library. Client-side only; no automated contact. */
+#app .ed-response-library{margin:18px 0;}
+#app .ed-response-library h2{margin:0 0 7px;}
+#app .ed-response-library p{line-height:1.5;color:var(--muted);}
+#app .ed-response-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:16px 0;}
+#app .ed-response-fields label{display:flex;flex-direction:column;gap:7px;min-width:0;font-weight:600;}
+#app .ed-response-fields select{width:100%;min-width:0;}
+#app .ed-response-library>label{font-weight:600;}
+#app #ed-response-text{display:block;width:100%;margin-top:8px;resize:vertical;min-height:100px;}
+#app .ed-response-actions{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-top:14px;}
+#app .ed-response-actions p{margin:0;font-size:.86rem;}
+#app .ed-response-actions button{flex-shrink:0;}
+@media(max-width:700px){#app .ed-response-fields{grid-template-columns:1fr;}#app .ed-response-actions{align-items:stretch;flex-direction:column;}#app .ed-response-actions button{width:100%;}}
