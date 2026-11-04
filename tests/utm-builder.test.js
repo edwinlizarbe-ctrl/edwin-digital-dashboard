@@ -50,8 +50,8 @@ test('G11 is actually mounted on the UTM page and never sends data to third part
  const index=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const module=readFileSync(new URL('../public/utm-builder.js',import.meta.url),'utf8');
- assert.match(index,/utm-builder\.js\?v=growth-c24-c27-20261104/);
- assert.match(index,/utm-builder\.css\?v=growth-c24-c27-20261104/);
+ assert.match(index,/utm-builder\.js\?v=growth-c28-20261104/);
+ assert.match(index,/utm-builder\.css\?v=growth-c28-20261104/);
  assert.ok(index.indexOf('utm-builder.js')<index.indexOf('/app.js'));
  assert.match(app,/window\.edwinUtmBuilder\?\.render\(\)/);
  assert.match(module,/navigator\.clipboard\.writeText/);
