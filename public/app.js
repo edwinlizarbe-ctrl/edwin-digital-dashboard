@@ -934,6 +934,7 @@ function campaigns(){
     const pipelineCtx={businessId:state.businessId,userId:state.user?.id};
     const displayed=window.edwinPipelineUI?.filterRows(data,pipelineCtx)||data;
     const filterPanel=window.edwinPipelineUI?.render(data,pipelineCtx,{partial:state.leadsPartial})||'';
+    const agendaPanel=window.edwinCrmAgenda?.render(data,pipelineCtx)||'';
     const kpis='<div class="crm-stats">'+[
       ['Oportunidades',data.length],['Por contactar',counts.new],['En seguimiento',counts.contacted+counts.qualified],['Cerradas',counts.won]
     ].map(([label,value])=>'<div class="crm-stat"><small>'+label+'</small><strong>'+fmt(value)+'</strong></div>').join('')+'</div>';
@@ -952,7 +953,7 @@ function campaigns(){
     ).join('')+'</tbody></table></div>':'<p class="crm-empty">'+(data.length?'Ninguna oportunidad coincide con los filtros aplicados. Prueba a limpiar los filtros.':'Todavía no hay oportunidades registradas. Añade el primer contacto para empezar a medir el seguimiento comercial.')+'</p>';
     return heading('Ventas y contactos','Oportunidades comerciales','Registra contactos reales, su origen declarado y su avance hasta la venta.')+
       (state.leadsError?alertBlock(state.leadsError):'')+(state.leadsNotice?alertBlock(state.leadsNotice,'info'):'')+
-      kpis+funnelPanel+priorityPanel+duplicatePanel+qualityPanel+filterPanel+(window.edwinResponseLibrary?.render({businessId:state.businessId,userId:state.user?.id})||'')+crmImportPanel()+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+displayed.length+' de '+data.length+' contactos visibles en esta empresa</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
+      kpis+funnelPanel+priorityPanel+duplicatePanel+qualityPanel+filterPanel+agendaPanel+(window.edwinResponseLibrary?.render({businessId:state.businessId,userId:state.user?.id})||'')+crmImportPanel()+'<div class="crm-layout"><section class="card crm-form-card"><h2>Nuevo contacto</h2><p>Datos que registra tu equipo, sin generar leads ficticios.</p>'+form+'</section><section class="card crm-list-card"><div class="crm-list-heading"><div><h2>Seguimiento de oportunidades</h2><p>'+displayed.length+' de '+data.length+' contactos visibles en esta empresa</p></div><button class="button button-outline" data-act="download" data-report="crm-leads" '+(data.length?'':'disabled')+'>'+icon('download',16)+' CSV</button></div>'+(state.leadsLoading?'<p>Cargando contactos…</p>':records)+'<div class="crm-total-note">'+(Object.keys(currencyTotals).length?'Ventas cerradas registradas: '+Object.entries(currencyTotals).map(([cur,value])=>money(value,cur)).join(' · '):'Sin montos de ventas cerradas todavía.')+'</div></section></div>';
   }
 
 
@@ -2124,6 +2125,8 @@ function sidebar(){
 }
   window.addEventListener('edwin:pipeline-ready',()=>{if(state.page==='leads'&&!isAdmin())render();});
   window.addEventListener('edwin:pipeline-change',()=>{if(state.page==='leads'&&!isAdmin())render();});
+  window.addEventListener('edwin:agenda-ready',()=>{if(state.page==='leads'&&!isAdmin())render();});
+  window.addEventListener('edwin:agenda-change',()=>{if(state.page==='leads'&&!isAdmin())render();});
   document.addEventListener('click', async e=>{
     const b=e.target.closest('[data-act]');if(!b)return;
     const action=b.dataset.act;

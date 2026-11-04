@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {filterRows,render,context,setFilters} from '../public/crm-pipeline-ui.js';
+import {filterRows,render,context,setFilters,setSort} from '../public/crm-pipeline-ui.js';
 import {pipelineViewStore,filterPipelineRows} from '../public/pipeline-views.js';
 
 const a='11111111-1111-4111-8111-111111111111';
@@ -80,10 +80,26 @@ test('filter toolbar exposes six controls, sample coverage and safe empty result
 test('pipeline UI module is loaded and linked with actual opportunity list',()=>{
  const index=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- assert.match(index,/type="module" src="\/crm-pipeline-ui\.js\?v=growth-c50-filters-20261104"/);
+ assert.match(index,/type="module" src="\/crm-pipeline-ui\.js\?v=growth-c50-followup-20261104"/);
  assert.match(index,/crm-pipeline-ui\.css\?v=growth-c50-filters-20261104/);
  assert.match(app,/edwinPipelineUI\?\.filterRows\(data,pipelineCtx\)/);
  assert.match(app,/edwinPipelineUI\?\.render\(data,pipelineCtx/);
  assert.match(app,/edwin:pipeline-change/);
  assert.match(app,/displayed\.map\(l=>/);
+});
+
+test('C17 prioritizes old open opportunities while leaving closed records last',()=>{
+ const ctx={businessId:a,userId:u};
+ const sample=[
+  {business_id:a,id:'newer',stage:'new',source:'organic',created_at:'2026-11-04',updated_at:new Date().toISOString()},
+  {business_id:a,id:'old',stage:'qualified',source:'organic',created_at:'2025-10-01',updated_at:'2025-10-02'},
+  {business_id:a,id:'closed',stage:'won',source:'organic',created_at:'2025-01-01',updated_at:'2025-01-02'},
+  {business_id:b,id:'foreign',stage:'qualified',source:'organic',created_at:'2020-01-01',updated_at:'2020-01-02'}
+ ];
+ setFilters({},ctx);setSort('followup',ctx);
+ assert.deepEqual(filterRows(sample,ctx).map(x=>x.id),['old','newer','closed']);
+ assert.match(render(sample,ctx),/Seguimiento pendiente primero/);
+ assert.throws(()=>setSort('unsafe',ctx),/Orden inválido/);
+ setSort('original',ctx);
+ assert.deepEqual(filterRows(sample,ctx).map(x=>x.id),['newer','old','closed']);
 });
