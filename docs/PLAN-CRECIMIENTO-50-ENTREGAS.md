@@ -2,9 +2,11 @@
 
 **Objetivo:** capacidades útiles que eleven captación, conversión, seguimiento, activación, calidad comercial y preparación SaaS. Estas son **entregas pendientes o desarrolladas**, no 50 cambios publicados por el mero hecho de escribir el plan.
 
+**Avance comprobado al 2026-11-04:** 20/50 entregas publicadas en main; C21–C50 pendientes. Se han publicado C01–C10 (#115), C11–C16 (#116) y C17–C20 (#118). Cada bloque tiene sus propias pruebas. No se ha verificado aquí un despliegue de Cloudflare.
+
 **Reglas operativas:** trabajar por bloques pequeños, revisar PR abierto para evitar duplicar otras automatizaciones, pruebas CI verdes antes del merge, aislamiento business_id/JWT, no compartir PII entre empresas, no enviar emails/WhatsApp ni gastar en anuncios ni cobrar sin acción autorizada; no tocar secretos, RLS ni datos existentes. Fusionar GitHub no prueba despliegue Cloudflare. Cada PR publicado debe figurar en el historial con su número y estado real.
 
-**Publicado y verificado:** C01–C10 integradas en main mediante PR #115 (6 checks verdes). **Publicado y verificado:** C11–C16 integradas en main mediante PR #116 (6 checks verdes), reutilizando el núcleo G06 de PR #113. **C17–C20** se implementan en este PR como orden de seguimiento y agenda exclusivamente local: no existe sincronización entre dispositivos ni envíos externos. Los antiguos PR #110 y #112 contienen prototipos de lógica similares; antes de retomarlos evitar duplicar la interfaz publicada.
+**Publicado y verificado:** C01–C10 integradas en main mediante PR #115 (6 checks verdes). **Publicado y verificado:** C11–C16 integradas en main mediante PR #116 (6 checks verdes), reutilizando el núcleo G06 de PR #113. **Publicado y verificado:** C17–C20 integradas en main mediante PR #118 (6 verificaciones verdes): seguimiento basado en antigüedad y agenda local por usuario y empresa. La agenda no se sincroniza entre dispositivos ni envía notificaciones. Los antiguos PR #110 y #112 contienen prototipos de lógica similares; revisar antes de retomarlos para evitar duplicar la interfaz publicada.
 
 | ID | Área | Entrega comprobable | Estado |
 |---|---|---|---|
@@ -24,10 +26,10 @@
 | C14 | Gestión avanzada de oportunidades | Guardar filtros por usuario y empresa | Publicada · PR #116 · CI verde |
 | C15 | Gestión avanzada de oportunidades | Recuperar una vista comercial guardada | Publicada · PR #116 · CI verde |
 | C16 | Gestión avanzada de oportunidades | Eliminar vistas sin modificar contactos | Publicada · PR #116 · CI verde |
-| C17 | Gestión avanzada de oportunidades | Ordenar seguimiento usando última actividad registrada | Implementada en esta rama; pendiente CI y merge |
-| C18 | Gestión avanzada de oportunidades | Crear tareas comerciales internas sin notificar externamente | Implementada en esta rama; pendiente CI y merge |
-| C19 | Gestión avanzada de oportunidades | Marcar tareas internas como concluidas con verificación de usuario | Implementada en esta rama; pendiente CI y merge |
-| C20 | Gestión avanzada de oportunidades | Mostrar resumen de tareas vencidas por negocio | Implementada en esta rama; pendiente CI y merge |
+| C17 | Gestión avanzada de oportunidades | Ordenar seguimiento usando última actividad registrada | Publicada · PR #118 · CI verde |
+| C18 | Gestión avanzada de oportunidades | Crear tareas comerciales internas sin notificar externamente | Publicada · PR #118 · CI verde |
+| C19 | Gestión avanzada de oportunidades | Marcar tareas internas como concluidas con verificación de usuario | Publicada · PR #118 · CI verde |
+| C20 | Gestión avanzada de oportunidades | Mostrar resumen de tareas vencidas por negocio | Publicada · PR #118 · CI verde |
 | C21 | Captación y trazabilidad | Asociar UTMs declaradas a registros nuevos con validación | Pendiente |
 | C22 | Captación y trazabilidad | Conservar la URL de campaña en contexto de la oportunidad sin guardar tokens | Pendiente |
 | C23 | Captación y trazabilidad | Crear presets de utm_source para canales | Pendiente |
@@ -70,4 +72,4 @@
 
 | Fecha | Entregas | PR fusionado | CI |
 |---|---|---|---|
-| 2026-11-04 | C01–C10 | PR #115 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C11–C16 | PR #116 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C17–C20 | Este PR en validación | Pendiente CI y merge |
+| 2026-11-04 | C01–C10 | PR #115 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C11–C16 | PR #116 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C17–C20 | PR #118 fusionado en main | 6 verificaciones verdes |
