@@ -10,3 +10,13 @@
 #app .ed-utm-footer p{margin:0;color:var(--muted);font-size:.87rem;}
 #app .ed-utm-note{font-size:.82rem;margin-top:16px;}
 @media(max-width:700px){#app .ed-utm-grid{grid-template-columns:1fr;}#app .ed-utm-footer button{width:100%;}}
+
+/* C24–C27: presets, transparent validation and local destination preview. */
+#app .ed-utm-presets{display:flex;align-items:center;gap:7px;flex-wrap:wrap;grid-column:1/-1;margin:-4px 0 4px;}
+#app .ed-utm-presets .button{font-size:.8rem;white-space:normal;}
+#app .ed-utm-campaign-tools{display:flex;align-items:center;gap:12px;grid-column:1/-1;flex-wrap:wrap;margin:-4px 0 4px;}
+#app .ed-utm-campaign-tools small{color:var(--muted);line-height:1.4;}
+#app .ed-utm-required,#app .ed-utm-preview{font-size:.86rem;line-height:1.5;overflow-wrap:anywhere;}
+#app .ed-utm-required{font-weight:600;color:var(--text);margin:12px 0;}
+#app .ed-utm-preview{color:var(--muted);margin:8px 0 14px;}
+@media(max-width:700px){#app .ed-utm-presets .button{flex:1 1 auto;}#app .ed-utm-campaign-tools .button{width:100%;}}
