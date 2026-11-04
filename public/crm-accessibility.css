@@ -1,0 +1,24 @@
+/* C49: keyboard access to the CRM's main content, without changing app routing. */
+.crm-skip-link{
+  position:fixed;
+  z-index:10000;
+  top:12px;
+  left:12px;
+  transform:translateY(-180%);
+  padding:12px 16px;
+  border:2px solid currentColor;
+  border-radius:10px;
+  background:var(--surface,#fff);
+  color:var(--text,#17233d);
+  font-size:14px;
+  font-weight:700;
+  text-decoration:none;
+}
+.crm-skip-link:focus,.crm-skip-link:focus-visible{
+  transform:none;
+  outline:3px solid var(--accent,#2563eb);
+  outline-offset:3px;
+}
+#app:focus{outline:none}
+@media (prefers-reduced-motion:reduce){.crm-skip-link{transition:none}}
+@media (forced-colors:active){.crm-skip-link{background:Canvas;color:CanvasText;border-color:CanvasText}}
