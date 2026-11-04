@@ -4,26 +4,26 @@
 
 **Reglas operativas:** trabajar por bloques pequeños, revisar PR abierto para evitar duplicar otras automatizaciones, pruebas CI verdes antes del merge, aislamiento business_id/JWT, no compartir PII entre empresas, no enviar emails/WhatsApp ni gastar en anuncios ni cobrar sin acción autorizada; no tocar secretos, RLS ni datos existentes. Fusionar GitHub no prueba despliegue Cloudflare. Cada PR publicado debe figurar en el historial con su número y estado real.
 
-Los diez controles C01–C10 se implementan en el PR que añade este documento, con pruebas independientes; se considerarán publicados únicamente **después** de verificar merge a main y CI. G04, G05 y G06 tenían PR en borrador; antes de implementarlos hay que revisarlos para no duplicar trabajo.
+**Publicado y verificado:** C01–C10 integradas en main mediante PR #115 (6 checks verdes). **Nuevas C11–C16:** se implementan en el presente PR de filtros comerciales, usando la base G06 que fue integrada mediante PR #113. Se marcarán como publicadas únicamente al verificar CI y merge. G04 y G05 permanecen en PR #110 y #112 respectivamente; revisar antes de continuar.
 
 | ID | Área | Entrega comprobable | Estado |
 |---|---|---|---|
-| C01 | Auditoría de calidad comercial | Alertar oportunidades nuevas sin cambios durante 3 días | Implementada en esta rama; pendiente CI y merge |
-| C02 | Auditoría de calidad comercial | Detectar contactos sin avances tras 7 días | Implementada en esta rama; pendiente CI y merge |
-| C03 | Auditoría de calidad comercial | Señalar oportunidades calificadas detenidas más de 7 días | Implementada en esta rama; pendiente CI y merge |
-| C04 | Auditoría de calidad comercial | Detectar leads sin correo ni teléfono | Implementada en esta rama; pendiente CI y merge |
-| C05 | Auditoría de calidad comercial | Identificar direcciones de email que requieren revisión | Implementada en esta rama; pendiente CI y merge |
-| C06 | Auditoría de calidad comercial | Detectar teléfonos con formato posiblemente incompleto | Implementada en esta rama; pendiente CI y merge |
-| C07 | Auditoría de calidad comercial | Señalar origen de pauta sin campaña declarada | Implementada en esta rama; pendiente CI y merge |
-| C08 | Auditoría de calidad comercial | Identificar oportunidades con fuente «Otro» por precisar | Implementada en esta rama; pendiente CI y merge |
-| C09 | Auditoría de calidad comercial | Advertir cierres ganados sin importe registrado | Implementada en esta rama; pendiente CI y merge |
-| C10 | Auditoría de calidad comercial | Encontrar oportunidades calificadas sin notas de contexto | Implementada en esta rama; pendiente CI y merge |
-| C11 | Gestión avanzada de oportunidades | Filtrar oportunidades por etapa | Pendiente; revisar PR #110, #112 o #113 según corresponda |
-| C12 | Gestión avanzada de oportunidades | Filtrar oportunidades por canal declarado | Pendiente; revisar PR #110, #112 o #113 según corresponda |
-| C13 | Gestión avanzada de oportunidades | Filtrar oportunidades por intervalo de fechas | Pendiente; revisar PR #110, #112 o #113 según corresponda |
-| C14 | Gestión avanzada de oportunidades | Guardar filtros por usuario y empresa | Pendiente; revisar PR #110, #112 o #113 según corresponda |
-| C15 | Gestión avanzada de oportunidades | Recuperar una vista comercial guardada | Pendiente; revisar PR #110, #112 o #113 según corresponda |
-| C16 | Gestión avanzada de oportunidades | Eliminar vistas sin modificar contactos | Pendiente; revisar PR #110, #112 o #113 según corresponda |
+| C01 | Auditoría de calidad comercial | Alertar oportunidades nuevas sin cambios durante 3 días | Publicada · PR #115 · CI verde |
+| C02 | Auditoría de calidad comercial | Detectar contactos sin avances tras 7 días | Publicada · PR #115 · CI verde |
+| C03 | Auditoría de calidad comercial | Señalar oportunidades calificadas detenidas más de 7 días | Publicada · PR #115 · CI verde |
+| C04 | Auditoría de calidad comercial | Detectar leads sin correo ni teléfono | Publicada · PR #115 · CI verde |
+| C05 | Auditoría de calidad comercial | Identificar direcciones de email que requieren revisión | Publicada · PR #115 · CI verde |
+| C06 | Auditoría de calidad comercial | Detectar teléfonos con formato posiblemente incompleto | Publicada · PR #115 · CI verde |
+| C07 | Auditoría de calidad comercial | Señalar origen de pauta sin campaña declarada | Publicada · PR #115 · CI verde |
+| C08 | Auditoría de calidad comercial | Identificar oportunidades con fuente «Otro» por precisar | Publicada · PR #115 · CI verde |
+| C09 | Auditoría de calidad comercial | Advertir cierres ganados sin importe registrado | Publicada · PR #115 · CI verde |
+| C10 | Auditoría de calidad comercial | Encontrar oportunidades calificadas sin notas de contexto | Publicada · PR #115 · CI verde |
+| C11 | Gestión avanzada de oportunidades | Filtrar oportunidades por etapa | Implementada en esta rama; pendiente CI y merge |
+| C12 | Gestión avanzada de oportunidades | Filtrar oportunidades por canal declarado | Implementada en esta rama; pendiente CI y merge |
+| C13 | Gestión avanzada de oportunidades | Filtrar oportunidades por intervalo de fechas | Implementada en esta rama; pendiente CI y merge |
+| C14 | Gestión avanzada de oportunidades | Guardar filtros por usuario y empresa | Implementada en esta rama; pendiente CI y merge |
+| C15 | Gestión avanzada de oportunidades | Recuperar una vista comercial guardada | Implementada en esta rama; pendiente CI y merge |
+| C16 | Gestión avanzada de oportunidades | Eliminar vistas sin modificar contactos | Implementada en esta rama; pendiente CI y merge |
 | C17 | Gestión avanzada de oportunidades | Ordenar seguimiento usando última actividad registrada | Pendiente; revisar PR #110, #112 o #113 según corresponda |
 | C18 | Gestión avanzada de oportunidades | Crear tareas comerciales internas sin notificar externamente | Pendiente; revisar PR #110, #112 o #113 según corresponda |
 | C19 | Gestión avanzada de oportunidades | Marcar tareas internas como concluidas con verificación de usuario | Pendiente; revisar PR #110, #112 o #113 según corresponda |
@@ -70,4 +70,4 @@ Los diez controles C01–C10 se implementan en el PR que añade este documento, 
 
 | Fecha | Entregas | PR fusionado | CI |
 |---|---|---|---|
-| — | C01–C50 | Se actualizará con entregas verificadas | No atribuir un merge antes de comprobarlo |
+| 2026-11-04 | C01–C10 | PR #115 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C11–C16 | Este PR en validación | Pendiente CI y merge |
