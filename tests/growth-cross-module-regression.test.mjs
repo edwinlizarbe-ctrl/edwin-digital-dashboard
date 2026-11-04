@@ -7,7 +7,7 @@ const A='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const B='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 function load(file,exportName){
   const source=readFileSync(new URL('../public/'+file,import.meta.url),'utf8');
-  const context={};
+  const context={URL};
   context.globalThis=context;
   runInNewContext(source,context,{filename:file,timeout:1000});
   assert.ok(context[exportName],file+' must export '+exportName);
