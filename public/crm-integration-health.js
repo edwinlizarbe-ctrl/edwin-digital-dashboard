@@ -67,7 +67,7 @@
   const owned=Array.isArray(ctx.leads)?ctx.leads.filter(l=>l?.business_id===businessId):[];
   const checking=!!ctx.leadsLoading,failed=!!ctx.leadsError;
   const leadKnown=!checking&&!failed&&owned.length>0;
-  const reportKnown=!checking&&!failed&&!!ctx.funnelData&&Number.isSafeInteger(ctx.funnelData.total)&&ctx.funnelData.total>=0;
+  const reportKnown=leadKnown&&!!ctx.funnelData&&Number.isSafeInteger(ctx.funnelData.total)&&ctx.funnelData.total>=0;
   return {
    steps:[
     check('Empresa disponible',!!ctx.businessExists?'Listo':'Pendiente','Presenta solo el negocio autorizado.','company'),
