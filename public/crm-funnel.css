@@ -28,3 +28,16 @@
 /* G17: make CSV export visible without competing with funnel metrics. */
 #app .ed-funnel-actions{display:flex;justify-content:flex-end;margin-top:14px;}
 @media(max-width:700px){#app .ed-funnel-actions .button{width:100%;}}
+
+/* C29–C30: sample-channel share, clearly distinguished from ad attribution. */
+#app .ed-coverage{margin:18px 0;padding:16px;border:1px solid var(--border);border-radius:12px;}
+#app .ed-coverage h3{margin:0 0 7px;font-size:1.05rem;}
+#app .ed-coverage>p{font-size:.86rem;line-height:1.5;color:var(--muted);margin:0 0 13px;}
+#app .ed-coverage-list{padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:0;}
+#app .ed-coverage-row{display:grid;gap:7px;min-width:0;}
+#app .ed-coverage-row strong{display:block;color:var(--text);font-size:.88rem;}
+#app .ed-coverage-row small{display:block;color:var(--muted);font-size:.8rem;line-height:1.4;}
+#app .ed-coverage-row progress{display:block;width:100%;height:11px;accent-color:var(--accent);}
+#app .ed-coverage-warnings{border-top:1px solid var(--border);margin:17px 0 0;padding:12px 0 0 20px;display:grid;gap:6px;}
+#app .ed-coverage-warnings li{color:var(--muted);font-size:.79rem;line-height:1.5;}
+@media(max-width:700px){#app .ed-coverage-list{grid-template-columns:1fr;}}
