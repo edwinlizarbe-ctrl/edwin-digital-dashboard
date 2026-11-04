@@ -4,7 +4,7 @@
 
 **Reglas operativas:** trabajar por bloques pequeños, revisar PR abierto para evitar duplicar otras automatizaciones, pruebas CI verdes antes del merge, aislamiento business_id/JWT, no compartir PII entre empresas, no enviar emails/WhatsApp ni gastar en anuncios ni cobrar sin acción autorizada; no tocar secretos, RLS ni datos existentes. Fusionar GitHub no prueba despliegue Cloudflare. Cada PR publicado debe figurar en el historial con su número y estado real.
 
-**Publicado y verificado:** C01–C10 integradas en main mediante PR #115 (6 checks verdes). **Nuevas C11–C16:** se implementan en el presente PR de filtros comerciales, usando la base G06 que fue integrada mediante PR #113. Se marcarán como publicadas únicamente al verificar CI y merge. G04 y G05 permanecen en PR #110 y #112 respectivamente; revisar antes de continuar.
+**Publicado y verificado:** C01–C10 integradas en main mediante PR #115 (6 checks verdes). **Publicado y verificado:** C11–C16 integradas en main mediante PR #116 (6 checks verdes), reutilizando el núcleo G06 de PR #113. **C17–C20** se implementan en este PR como orden de seguimiento y agenda exclusivamente local: no existe sincronización entre dispositivos ni envíos externos. Los antiguos PR #110 y #112 contienen prototipos de lógica similares; antes de retomarlos evitar duplicar la interfaz publicada.
 
 | ID | Área | Entrega comprobable | Estado |
 |---|---|---|---|
@@ -18,16 +18,16 @@
 | C08 | Auditoría de calidad comercial | Identificar oportunidades con fuente «Otro» por precisar | Publicada · PR #115 · CI verde |
 | C09 | Auditoría de calidad comercial | Advertir cierres ganados sin importe registrado | Publicada · PR #115 · CI verde |
 | C10 | Auditoría de calidad comercial | Encontrar oportunidades calificadas sin notas de contexto | Publicada · PR #115 · CI verde |
-| C11 | Gestión avanzada de oportunidades | Filtrar oportunidades por etapa | Implementada en esta rama; pendiente CI y merge |
-| C12 | Gestión avanzada de oportunidades | Filtrar oportunidades por canal declarado | Implementada en esta rama; pendiente CI y merge |
-| C13 | Gestión avanzada de oportunidades | Filtrar oportunidades por intervalo de fechas | Implementada en esta rama; pendiente CI y merge |
-| C14 | Gestión avanzada de oportunidades | Guardar filtros por usuario y empresa | Implementada en esta rama; pendiente CI y merge |
-| C15 | Gestión avanzada de oportunidades | Recuperar una vista comercial guardada | Implementada en esta rama; pendiente CI y merge |
-| C16 | Gestión avanzada de oportunidades | Eliminar vistas sin modificar contactos | Implementada en esta rama; pendiente CI y merge |
-| C17 | Gestión avanzada de oportunidades | Ordenar seguimiento usando última actividad registrada | Pendiente; revisar PR #110, #112 o #113 según corresponda |
-| C18 | Gestión avanzada de oportunidades | Crear tareas comerciales internas sin notificar externamente | Pendiente; revisar PR #110, #112 o #113 según corresponda |
-| C19 | Gestión avanzada de oportunidades | Marcar tareas internas como concluidas con verificación de usuario | Pendiente; revisar PR #110, #112 o #113 según corresponda |
-| C20 | Gestión avanzada de oportunidades | Mostrar resumen de tareas vencidas por negocio | Pendiente; revisar PR #110, #112 o #113 según corresponda |
+| C11 | Gestión avanzada de oportunidades | Filtrar oportunidades por etapa | Publicada · PR #116 · CI verde |
+| C12 | Gestión avanzada de oportunidades | Filtrar oportunidades por canal declarado | Publicada · PR #116 · CI verde |
+| C13 | Gestión avanzada de oportunidades | Filtrar oportunidades por intervalo de fechas | Publicada · PR #116 · CI verde |
+| C14 | Gestión avanzada de oportunidades | Guardar filtros por usuario y empresa | Publicada · PR #116 · CI verde |
+| C15 | Gestión avanzada de oportunidades | Recuperar una vista comercial guardada | Publicada · PR #116 · CI verde |
+| C16 | Gestión avanzada de oportunidades | Eliminar vistas sin modificar contactos | Publicada · PR #116 · CI verde |
+| C17 | Gestión avanzada de oportunidades | Ordenar seguimiento usando última actividad registrada | Implementada en esta rama; pendiente CI y merge |
+| C18 | Gestión avanzada de oportunidades | Crear tareas comerciales internas sin notificar externamente | Implementada en esta rama; pendiente CI y merge |
+| C19 | Gestión avanzada de oportunidades | Marcar tareas internas como concluidas con verificación de usuario | Implementada en esta rama; pendiente CI y merge |
+| C20 | Gestión avanzada de oportunidades | Mostrar resumen de tareas vencidas por negocio | Implementada en esta rama; pendiente CI y merge |
 | C21 | Captación y trazabilidad | Asociar UTMs declaradas a registros nuevos con validación | Pendiente |
 | C22 | Captación y trazabilidad | Conservar la URL de campaña en contexto de la oportunidad sin guardar tokens | Pendiente |
 | C23 | Captación y trazabilidad | Crear presets de utm_source para canales | Pendiente |
@@ -70,4 +70,4 @@
 
 | Fecha | Entregas | PR fusionado | CI |
 |---|---|---|---|
-| 2026-11-04 | C01–C10 | PR #115 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C11–C16 | Este PR en validación | Pendiente CI y merge |
+| 2026-11-04 | C01–C10 | PR #115 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C11–C16 | PR #116 fusionado en main | 6 verificaciones verdes |\n| 2026-11-04 | C17–C20 | Este PR en validación | Pendiente CI y merge |
