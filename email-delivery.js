@@ -4,6 +4,7 @@
  * No customer mail is sent by deploying this module.
  */
 import {renderNewsletter} from './email-marketing.js';
+import {readLimitedBody} from './read-limited-body.js';
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s||'');
 const base=env=>String(env.SUPABASE_URL||'').replace(/\/$/,'');
 const resp=(x,status=200)=>new Response(JSON.stringify(x),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -58,15 +59,22 @@ export async function publicMailRoute(req,env){
  const url=new URL(req.url);
  if(url.pathname==='/api/email-marketing/unsubscribe'){
   const isPost=req.method==='POST';
+  const headers={'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex,nofollow',
+   'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"};
   let token=url.searchParams.get('token')||'';
   if(isPost){
    const type=req.headers.get('Content-Type')||'';
-   if(type.includes('application/x-www-form-urlencoded'))token=String((await req.formData()).get('token')||token);
+   if(type.includes('application/x-www-form-urlencoded')){
+    let raw;
+    try{raw=await readLimitedBody(req,4096);}
+    catch(e){
+     return new Response(unsubPage(false),{status:e.code==='BODY_TOO_LARGE'?413:400,headers});
+    }
+    token=new URLSearchParams(raw).get('token')||token;
+   }
   }
   let parsed=null;
   try{parsed=await decodeToken(env,token);}catch{}
-  const headers={'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex,nofollow',
-   'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"};
   if(!parsed)return new Response(unsubPage(false),{status:400,headers});
   if(!isPost)return new Response(unsubPage(true,token),{headers});
   // The token is the proof of control of the unsubscribe link. No login required.
@@ -88,9 +96,17 @@ async function verifySvix(req,raw,env){
 }
 async function handleWebhook(req,env){
  if(req.method!=='POST')return resp({error:'Method not allowed'},405);
- const raw=await req.text();if(raw.length>120000)return resp({error:'Payload too large'},413);
+ let raw;
+ try{raw=await readLimitedBody(req,120000);}
+ catch(e){return e.code==='BODY_TOO_LARGE'
+  ?resp({error:'Payload too large'},413)
+  :resp({error:'Invalid request body'},400);}
  if(!await verifySvix(req,raw,env).catch(()=>false))return resp({error:'Invalid signature'},401);
- const ev=JSON.parse(raw),eventId=req.headers.get('svix-id'),providerId=ev.data?.email_id;
+ let ev;
+ try{ev=JSON.parse(raw);}
+ catch{return resp({error:'Invalid JSON'},400);}
+ if(!ev||typeof ev!=='object'||Array.isArray(ev))return resp({error:'Invalid event'},400);
+ const eventId=req.headers.get('svix-id'),providerId=ev.data?.email_id;
  const kinds={'email.delivered':'delivered','email.opened':'opened','email.clicked':'clicked','email.bounced':'bounced','email.complained':'complained','email.failed':'failed','email.suppressed':'suppressed'};
  if(!kinds[ev.type]||!providerId)return resp({ok:true});
  const key=env.SUPABASE_SERVICE_ROLE_KEY;
