@@ -1,4 +1,5 @@
 import {broadcastAction} from './email-delivery.js';
+import {readLimitedBody} from './read-limited-body.js';
 /**
  * Brásper Email Marketing MVP.
  * Tenant-locked, consent-only contact import, structured newsletter drafts,
@@ -119,7 +120,11 @@ export async function handleEmailMarketingApi(req,env,s){
  if(method!=='POST')return send({error:'Método no permitido.'},405);
  if(req.headers.get('Origin')&&req.headers.get('Origin')!==url.origin)return send({error:'Origen no autorizado.'},403);
  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return send({error:'Envía JSON.'},415);
- const raw=await req.text();if(raw.length>3_200_000)return send({error:'Solicitud demasiado grande.'},413);
+ let raw;
+ try{raw=await readLimitedBody(req,3_200_000);}
+ catch(e){return e.code==='BODY_TOO_LARGE'
+  ?send({error:'Solicitud demasiado grande.'},413)
+  :send({error:'No se pudo leer la solicitud.'},400);}
  let body;try{body=JSON.parse(raw)}catch{return send({error:'JSON inválido.'},400);}
  const action=body?.action;
  try{

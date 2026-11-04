@@ -108,3 +108,35 @@ test('rejects SVG and invalid media without uploading',async()=>{
   assert.equal(calls.some(x=>x.u.includes('/storage/v1/')),false);
  });
 });
+
+test('rejects an oversized streamed newsletter request without contacting private tables or mail provider',async()=>{
+ await mock(async({calls})=>{
+  let reads=0,cancelled=false;
+  const stream=new ReadableStream({
+   pull(controller){
+    reads++;
+    controller.enqueue(new Uint8Array(64_000));
+    if(reads>=100)controller.close();
+   },
+   cancel(){cancelled=true;}
+  });
+  const oversized=new Request(origin+'/api/email-marketing?business_id='+id,{
+   method:'POST',
+   headers:{'Content-Type':'application/json',Origin:origin},
+   body:stream,duplex:'half'
+  });
+  const response=await handleEmailMarketingApi(oversized,env,s);
+  assert.equal(response.status,413);
+  assert.equal(cancelled,true,'stream should be cancelled after reaching the limit');
+  assert.ok(reads<100,'should not read the entire oversized stream');
+  assert.equal(calls.filter(x=>!x.u.includes('/rest/v1/businesses?')).length,0);
+ });
+});
+
+test('still accepts a correctly sized newsletter draft after the streaming guard',async()=>{
+ await mock(async({rows})=>{
+  const response=await handleEmailMarketingApi(request('POST',id,{action:'save_campaign',campaign:draft}),env,s);
+  assert.equal(response.status,201);
+  assert.equal(rows.ed_email_campaigns.length,1);
+ });
+});
