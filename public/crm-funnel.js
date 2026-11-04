@@ -6,10 +6,27 @@
  const count=n=>Number.isSafeInteger(n)&&n>=0?n:0;
  const format=n=>count(n).toLocaleString('es-PE');
  const percent=n=>typeof n==='number'&&Number.isFinite(n)?Math.min(100,Math.max(0,n)):0;
+ let visibleReport=null;
+ // This export is built exclusively from aggregated API counters; no lead PII.
+ function csv(data){
+  if(!data||typeof data!=='object'||!count(data.total))return '';
+  const header=['Origen','Total','Nuevo','Contactado','Calificado','Ganado','Perdido','Porcentaje ganado','Muestra parcial'];
+  const lines=[header.join(';')];
+  for(const [key,label] of Object.entries(sourceLabels)){
+   const channel=data.by_source?.[key],total=count(channel?.total);
+   if(!total)continue;
+   const counts=Object.keys(stageLabels).map(stage=>count(channel.by_stage?.[stage]));
+   const share=percent(channel.won_share_percent).toLocaleString('es-PE',{maximumFractionDigits:1});
+   lines.push([label,total,...counts,share,data.partial?'Sí':'No'].join(';'));
+  }
+  return '\uFEFF'+lines.join('\r\n')+'\r\n';
+ }
+
  function render(data,{loading=false,error=''}={}){
   if(loading)return '<section class="card ed-funnel" aria-labelledby="ed-funnel-title"><h2 id="ed-funnel-title">Embudo por canal</h2><p role="status">Calculando oportunidades de la empresa…</p></section>';
   if(error)return '<section class="card ed-funnel" aria-labelledby="ed-funnel-title"><h2 id="ed-funnel-title">Embudo por canal</h2><p role="status">El análisis del embudo no está disponible. El registro de contactos sigue funcionando.</p></section>';
-  if(!data||typeof data!=='object')return '';
+  if(!data||typeof data!=='object'){visibleReport=null;return '';}
+  visibleReport=data;
   const total=count(data.total),share=percent(data.won_share_percent);
   const stages=Object.entries(stageLabels).map(([key,label])=>'<div class="ed-funnel-stage"><small>'+label+'</small><strong>'+format(data.by_stage?.[key])+'</strong></div>').join('');
   const rows=Object.entries(sourceLabels)
@@ -23,8 +40,20 @@
    '<div class="ed-funnel-head"><div><h2 id="ed-funnel-title">Embudo por canal</h2><p>Registros de la empresa seleccionada, clasificados por origen declarado.</p></div><div class="ed-funnel-head-stat"><strong>'+format(total)+'</strong><small>Oportunidades analizadas</small></div></div>'+
    '<div class="ed-funnel-stages" aria-label="Distribución de etapas">'+stages+'</div>'+
    (total?'<div class="table-scroll"><table class="ed-funnel-table"><thead><tr><th>Origen</th><th>Total</th><th>Ganadas</th><th>Porcentaje ganado</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="crm-empty">Todavía no hay oportunidades para analizar. Registra tus primeros contactos para iniciar el embudo.</p>')+
-   notice+'<p class="ed-funnel-disclaimer">El porcentaje ganado ('+share.toLocaleString('es-PE',{maximumFractionDigits:1})+' % general) compara estados de oportunidades registradas; no mide conversiones atribuibles a anuncios ni ingresos confirmados.</p>'+
+   notice+(total?'<div class="ed-funnel-actions"><button class="button button-outline" type="button" data-ed-funnel-export>Descargar CSV agregado</button></div>':'')+'<p class="ed-funnel-disclaimer">El porcentaje ganado ('+share.toLocaleString('es-PE',{maximumFractionDigits:1})+' % general) compara estados de oportunidades registradas; no mide conversiones atribuibles a anuncios ni ingresos confirmados.</p>'+
    '</section>';
  }
- root.edwinCrmFunnel=Object.freeze({render});
+ if(typeof document!=='undefined'){
+  document.addEventListener('click',event=>{
+   const button=event.target.closest?.('[data-ed-funnel-export]');
+   if(!button||!visibleReport)return;
+   const body=csv(visibleReport);if(!body)return;
+   const url=URL.createObjectURL(new Blob([body],{type:'text/csv;charset=utf-8'}));
+   const link=document.createElement('a');
+   link.href=url;link.download='edwin-crm-embudo-por-canal.csv';
+   document.body.appendChild(link);link.click();link.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),1500);
+  });
+ }
+ root.edwinCrmFunnel=Object.freeze({render,csv});
 })(globalThis);
