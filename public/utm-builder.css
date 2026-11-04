@@ -1,0 +1,12 @@
+/* G11 · UTM builder: legible standalone workflow inside the GA4 sources page. */
+#app .ed-utm-builder{margin:18px 0 24px;}
+#app .ed-utm-heading h2{margin:0 0 8px;}
+#app .ed-utm-heading p,#app .ed-utm-note{color:var(--muted);line-height:1.55;}
+#app .ed-utm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0;}
+#app .ed-utm-grid label{display:flex;flex-direction:column;gap:7px;font-weight:600;font-size:.92rem;min-width:0;}
+#app .ed-utm-grid input{width:100%;min-width:0;}
+#app .ed-utm-builder textarea{display:block;width:100%;min-height:76px;resize:vertical;margin-top:7px;overflow-wrap:anywhere;}
+#app .ed-utm-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:12px;}
+#app .ed-utm-footer p{margin:0;color:var(--muted);font-size:.87rem;}
+#app .ed-utm-note{font-size:.82rem;margin-top:16px;}
+@media(max-width:700px){#app .ed-utm-grid{grid-template-columns:1fr;}#app .ed-utm-footer button{width:100%;}}
