@@ -159,7 +159,7 @@ export async function processEmailQueue(env,reqBase='https://edwin-digital-dashb
    }
    const url=await unsubscribeLink(new Request(reqBase),env,id,contact.id);
    const html=renderNewsletter(campaign,{name:contact.name,company:contact.company||'Brásper'}).replace('</footer>',
-    '<p><a style="color:#176ad5" href="'+escape(url)+'">Cancelar suscripción</a></p></footer>');
+    '<p><a style="color:#176ad5" href="'+escape(url)+'">'+(campaign.language==='pt'?'Cancelar inscrição':'Cancelar suscripción')+'</a></p></footer>');
    const subject=String(campaign.subject||'').replace(/\{\{\s*nombre\s*\}\}/gi,contact.name).replace(/\{\{\s*empresa\s*\}\}/gi,contact.company||'Brásper');
    const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{
     Authorization:'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json','Idempotency-Key':'brasper/'+item.id

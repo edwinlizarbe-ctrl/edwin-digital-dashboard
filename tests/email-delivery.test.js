@@ -52,3 +52,38 @@ test('webhooks reject unsigned requests and never change recipient data',async()
   assert.equal(calls.length,0);
  });
 });
+
+test('queued Portuguese newsletter uses Portuguese unsubscribe label without changing delivery safeguards',async()=>{
+ const previous=globalThis.fetch,mail=[];
+ const campaignId='33333333-3333-4333-8333-333333333333';
+ const deliveryId='44444444-4444-4444-8444-444444444444';
+ const configured={...env,EMAIL_SENDING_ENABLED:'true',RESEND_API_KEY:'fake-test-key',
+  EMAIL_FROM:'Brásper <news@example.com>',RESEND_WEBHOOK_SECRET:'whsec_test'};
+ globalThis.fetch=async(url,opts={})=>{
+  const u=String(url),method=opts.method||'GET';
+  if(u.includes('/rpc/ed_email_claim_batch'))return json([{id:deliveryId,campaign_id:campaignId,contact_id:contact}]);
+  if(u.includes('/ed_email_campaigns?')){
+   if(method==='PATCH')return json([{id:campaignId,status:'completed'}]);
+   return json([{id:campaignId,subject:'Olá, {{nombre}}',preheader:'Novidades',
+    language:'pt',status:'sending',blocks:[{type:'text',text:'Bem-vinda, {{nombre}}'}]}]);
+  }
+  if(u.includes('/ed_email_contacts?'))return json([{id:contact,name:'Camila',email:'camila@example.com',
+   company:'Brásper',language:'pt',consented_at:'2026-11-01T00:00:00Z',unsubscribed_at:null}]);
+  if(u.includes('/ed_email_deliveries?'))return json([]);
+  if(u==='https://api.resend.com/emails'){
+   mail.push(JSON.parse(opts.body));
+   return json({id:'provider-test'});
+  }
+  throw Error('Unexpected mock URL: '+u);
+ };
+ try{
+  const status=await processEmailQueue(configured,origin);
+  assert.equal(status.sent,1);
+  assert.equal(mail.length,1);
+  assert.match(mail[0].html,/<html lang="pt-BR">/);
+  assert.match(mail[0].html,/Cancelar inscrição/);
+  assert.match(mail[0].html,/Você recebe esta mensagem/);
+  assert.doesNotMatch(mail[0].html,/Cancelar suscripción/);
+  assert.equal(mail[0].to[0],'camila@example.com');
+ }finally{globalThis.fetch=previous;}
+});

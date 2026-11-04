@@ -140,3 +140,15 @@ test('still accepts a correctly sized newsletter draft after the streaming guard
   assert.equal(rows.ed_email_campaigns.length,1);
  });
 });
+
+test('renders Portuguese campaign with correct document language and subscription footer',()=>{
+ const rendered=renderNewsletter({...draft,language:'pt'},{name:'Camila',company:'Brásper'});
+ assert.match(rendered,/<html lang="pt-BR">/);
+ assert.match(rendered,/Você recebe esta mensagem/);
+ assert.match(rendered,/cancelar a inscrição/);
+ assert.doesNotMatch(rendered,/Recibes este mensaje/);
+ const spanish=renderNewsletter(draft,{name:'Camila',company:'Brásper'});
+ assert.match(spanish,/<html lang="es">/);
+ assert.match(spanish,/Recibes este mensaje/);
+ assert.doesNotMatch(spanish,/Você recebe esta mensagem/);
+});
