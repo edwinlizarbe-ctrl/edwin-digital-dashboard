@@ -56,8 +56,8 @@ test('G02 preserves CRM lead list when report fails',()=>{
 test('G02 is loaded from the dashboard and requested independently from contact listing',()=>{
  const index=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- assert.match(index,/crm-funnel\.js\?v=growth-g02-20261104/);
- assert.match(index,/crm-funnel\.css\?v=growth-g02-20261104/);
+ assert.match(index,/crm-funnel\.js\?v=growth-g17-20261104/);
+ assert.match(index,/crm-funnel\.css\?v=growth-g17-20261104/);
  assert.ok(index.indexOf('crm-funnel.js')<index.indexOf('/app.js'));
  assert.match(app,/Promise\.allSettled\(\[/);
  assert.match(app,/api\/crm\/leads\/funnel\?business_id=/);
