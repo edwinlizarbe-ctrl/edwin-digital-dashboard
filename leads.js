@@ -71,7 +71,7 @@ export async function handleLeadsApi(req,env,s){
     sample_limit:1000,
     metric_note:'Porcentaje de oportunidades de la muestra marcadas como ganadas; no es una conversión atribuida a anuncios.'
    });
-  }catch(e){return reply({error:e.message},503);}
+  }catch(_error){return reply({error:'No fue posible consultar el embudo.'},503);}
  }
  if(url.pathname==='/api/crm/leads/import'){
   if(method!=='POST')return reply({error:'Método no permitido.'},405);
