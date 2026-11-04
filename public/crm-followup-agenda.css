@@ -1,0 +1,18 @@
+/* Local-only follow-up agenda: no messages are sent or scheduled externally. */
+#app .ed-agenda{margin:18px 0;}
+#app .ed-agenda-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+#app .ed-agenda-head h2{margin:0 0 7px;}
+#app .ed-agenda-head p,#app .ed-agenda-note,#app .ed-agenda-empty,#app #ed-agenda-status{margin:0;color:var(--muted);font-size:.86rem;line-height:1.5;}
+#app .ed-agenda-head>strong{font-variant-numeric:tabular-nums;white-space:nowrap;}
+#app .ed-agenda-form{margin:16px 0;display:grid;grid-template-columns:2fr 2fr 1fr auto;align-items:end;gap:10px;}
+#app .ed-agenda-form label{display:flex;flex-direction:column;gap:7px;font-size:.87rem;font-weight:600;min-width:0;}
+#app .ed-agenda-form select,#app .ed-agenda-form input{min-width:0;width:100%;}
+#app .ed-agenda-list{margin:16px 0;list-style:none;padding:0;display:grid;gap:8px;}
+#app .ed-agenda-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--border);border-radius:10px;padding:12px;}
+#app .ed-agenda-row strong{display:block;font-size:.92rem;color:var(--text);}
+#app .ed-agenda-row small{display:block;margin-top:6px;font-size:.82rem;color:var(--muted);line-height:1.45;}
+#app .ed-agenda-row .button{flex-shrink:0;}
+#app .ed-agenda-done{font-size:.85rem;color:var(--muted);font-weight:600;}
+#app .ed-agenda-note{margin-top:12px;}
+@media(max-width:850px){#app .ed-agenda-form{grid-template-columns:1fr 1fr;}#app .ed-agenda-form .button{width:100%;}}
+@media(max-width:650px){#app .ed-agenda-form{grid-template-columns:1fr;}#app .ed-agenda-row{align-items:stretch;flex-direction:column;}#app .ed-agenda-row .button{width:100%;}}
