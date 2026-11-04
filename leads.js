@@ -29,6 +29,30 @@ async function query(env,params,method='GET',value){
 const checkText=(value,max)=>typeof value==='string'&&value.length<=max;
 const trim=(s,max)=>String(s||'').trim().slice(0,max);
 const money=v=>v===null||v===undefined||v===''?null:Number(v);
+// Enforce body limits while streaming: a missing or forged Content-Length must not
+// cause the Worker to buffer an arbitrarily large request in memory.
+async function readBodyLimited(req,maxBytes){
+ const declared=req.headers.get('Content-Length');
+ if(declared!==null&&(!/^\d+$/.test(declared)||Number(declared)>maxBytes)){
+  const err=new Error('body limit');err.code='BODY_TOO_LARGE';throw err;
+ }
+ if(!req.body)return '';
+ const reader=req.body.getReader(),decoder=new TextDecoder();
+ let bytes=0,text='';
+ try{
+  while(true){
+   const {done,value}=await reader.read();
+   if(done)break;
+   bytes+=value.byteLength;
+   if(bytes>maxBytes){
+    await reader.cancel().catch(()=>{});
+    const err=new Error('body limit');err.code='BODY_TOO_LARGE';throw err;
+   }
+   text+=decoder.decode(value,{stream:true});
+  }
+  return text+decoder.decode();
+ }finally{reader.releaseLock();}
+}
 function validateCreate(data){
  if(!data||typeof data!=='object'||Array.isArray(data))return 'Datos inválidos.';
  if(!checkText(data.name,120)||trim(data.name,120).length<2)return 'Escribe el nombre del contacto (2–120 caracteres).';
@@ -49,10 +73,11 @@ export async function handleLeadsApi(req,env,s){
   const origin=req.headers.get('Origin');
   if(origin&&origin!==url.origin)return reply({error:'Origen no permitido.'},403);
   if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return reply({error:'Se requiere JSON.'},415);
-  const length=Number(req.headers.get('Content-Length')||0);
-  if(length>95000)return reply({error:'La importación es demasiado grande (máximo 50 contactos por lote).'},413);
-  const raw=await req.text();
-  if(raw.length>95000)return reply({error:'La importación es demasiado grande (máximo 50 contactos por lote).'},413);
+  let raw;
+  try{raw=await readBodyLimited(req,95000)}
+  catch(e){return e.code==='BODY_TOO_LARGE'
+   ?reply({error:'La importación es demasiado grande (máximo 50 contactos por lote).'},413)
+   :reply({error:'No se pudo leer la solicitud.'},400);}
   let payload;try{payload=JSON.parse(raw)}catch{return reply({error:'Solicitud JSON inválida.'},400);}
   const input=payload?.rows;
   if(!Array.isArray(input)||input.length<1||input.length>50)return reply({error:'Importa entre 1 y 50 contactos por lote.'},400);
@@ -79,8 +104,11 @@ export async function handleLeadsApi(req,env,s){
   const origin=req.headers.get('Origin');
   if(origin&&origin!==url.origin)return reply({error:'Origen no permitido.'},403);
   if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return reply({error:'Se requiere JSON.'},415);
-  const raw=await req.text();
-  if(raw.length>4096)return reply({error:'Solicitud demasiado extensa.'},413);
+  let raw;
+  try{raw=await readBodyLimited(req,4096)}
+  catch(e){return e.code==='BODY_TOO_LARGE'
+   ?reply({error:'Solicitud demasiado extensa.'},413)
+   :reply({error:'No se pudo leer la solicitud.'},400);}
   let data;try{data=JSON.parse(raw)}catch{return reply({error:'Solicitud inválida.'},400);}
   if(method==='POST'){
    const error=validateCreate(data);if(error)return reply({error},400);
