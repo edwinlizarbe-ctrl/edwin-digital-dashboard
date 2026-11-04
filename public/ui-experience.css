@@ -68,3 +68,12 @@
     min-height: 44px;
   }
 }
+
+/* Windows High Contrast: system colors remain visible when shadows are suppressed. */
+@media (forced-colors: active) {
+  #app :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 3px;
+    box-shadow: none;
+  }
+}
