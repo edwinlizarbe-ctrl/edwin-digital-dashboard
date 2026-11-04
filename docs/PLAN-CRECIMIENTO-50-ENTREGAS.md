@@ -18,12 +18,12 @@
 | C08 | Auditoría de calidad comercial | Identificar oportunidades con fuente «Otro» por precisar | Publicada · PR #115 · CI verde |
 | C09 | Auditoría de calidad comercial | Advertir cierres ganados sin importe registrado | Publicada · PR #115 · CI verde |
 | C10 | Auditoría de calidad comercial | Encontrar oportunidades calificadas sin notas de contexto | Publicada · PR #115 · CI verde |
-| C11 | Gestión avanzada de oportunidades | Filtrar oportunidades por etapa | Implementada en esta rama; pendiente CI y merge |
-| C12 | Gestión avanzada de oportunidades | Filtrar oportunidades por canal declarado | Implementada en esta rama; pendiente CI y merge |
-| C13 | Gestión avanzada de oportunidades | Filtrar oportunidades por intervalo de fechas | Implementada en esta rama; pendiente CI y merge |
-| C14 | Gestión avanzada de oportunidades | Guardar filtros por usuario y empresa | Implementada en esta rama; pendiente CI y merge |
-| C15 | Gestión avanzada de oportunidades | Recuperar una vista comercial guardada | Implementada en esta rama; pendiente CI y merge |
-| C16 | Gestión avanzada de oportunidades | Eliminar vistas sin modificar contactos | Implementada en esta rama; pendiente CI y merge |
+| C11 | Gestión avanzada de oportunidades | Filtrar oportunidades por etapa | Publicada · PR #116 · CI verde |
+| C12 | Gestión avanzada de oportunidades | Filtrar oportunidades por canal declarado | Publicada · PR #116 · CI verde |
+| C13 | Gestión avanzada de oportunidades | Filtrar oportunidades por intervalo de fechas | Publicada · PR #116 · CI verde |
+| C14 | Gestión avanzada de oportunidades | Guardar filtros por usuario y empresa | Publicada · PR #116 · CI verde |
+| C15 | Gestión avanzada de oportunidades | Recuperar una vista comercial guardada | Publicada · PR #116 · CI verde |
+| C16 | Gestión avanzada de oportunidades | Eliminar vistas sin modificar contactos | Publicada · PR #116 · CI verde |
 | C17 | Gestión avanzada de oportunidades | Ordenar seguimiento usando última actividad registrada | Pendiente; revisar PR #110, #112 o #113 según corresponda |
 | C18 | Gestión avanzada de oportunidades | Crear tareas comerciales internas sin notificar externamente | Pendiente; revisar PR #110, #112 o #113 según corresponda |
 | C19 | Gestión avanzada de oportunidades | Marcar tareas internas como concluidas con verificación de usuario | Pendiente; revisar PR #110, #112 o #113 según corresponda |
