@@ -65,6 +65,14 @@
    if(event.target?.id==='ed-utm-builder'){event.preventDefault();update(event.target);}
   });
   document.addEventListener('click',async event=>{
+   const presetButton=event.target.closest?.('[data-ed-utm-source]');
+   if(presetButton){
+    const form=presetButton.closest('#ed-utm-builder');
+    const source=form?.elements.namedItem('source');
+    if(!source)return;
+    try{source.value=presetSource(presetButton.dataset.edUtmSource);update(form);}catch{}
+    return;
+   }
    const button=event.target.closest?.('[data-ed-utm-copy]');
    if(!button)return;
    const form=button.closest('#ed-utm-builder'),output=form?.querySelector('#ed-utm-result'),status=form?.querySelector('#ed-utm-status');
