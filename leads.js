@@ -45,6 +45,34 @@ export async function handleLeadsApi(req,env,s){
  const url=new URL(req.url),method=req.method.toUpperCase(),businessId=url.searchParams.get('business_id')||'';
  const reply=(data,status)=>result(data,status,s.cookies||[]);
  if(!await authorized(env,s,businessId))return reply({error:'No tienes acceso a esta empresa.'},403);
+ if(url.pathname==='/api/crm/leads/funnel'){
+  if(method!=='GET')return reply({error:'Método no permitido.'},405);
+  // The private table stays behind the existing JWT/RLS membership check.
+  // Read only two dimension columns; never retrieve contact PII for this report.
+  try{
+   const rows=await query(env,'?select=source,stage&business_id=eq.'+businessId+'&order=created_at.desc&limit=1001');
+   if(!Array.isArray(rows))return reply({error:'Respuesta inválida del embudo.'},503);
+   const sample=rows.slice(0,1000),byStage=Object.fromEntries([...stages].map(x=>[x,0]));
+   const bySource=Object.fromEntries([...sources].map(x=>[x,{total:0,by_stage:Object.fromEntries([...stages].map(stage=>[stage,0]))}]));
+   for(const row of sample){
+    const stage=stages.has(row?.stage)?row.stage:'new';
+    const source=sources.has(row?.source)?row.source:'other';
+    byStage[stage]++;
+    bySource[source].total++;
+    bySource[source].by_stage[stage]++;
+   }
+   const wonShare=(won,total)=>total?Math.round(won/total*1000)/10:0;
+   return reply({
+    total:sample.length,
+    by_stage:byStage,
+    by_source:Object.fromEntries(Object.entries(bySource).map(([source,v])=>[source,{...v,won_share_percent:wonShare(v.by_stage.won,v.total)}])),
+    won_share_percent:wonShare(byStage.won,sample.length),
+    partial:rows.length>1000,
+    sample_limit:1000,
+    metric_note:'Porcentaje de oportunidades de la muestra marcadas como ganadas; no es una conversión atribuida a anuncios.'
+   });
+  }catch(e){return reply({error:e.message},503);}
+ }
  if(url.pathname==='/api/crm/leads/import'){
   if(method!=='POST')return reply({error:'Método no permitido.'},405);
   const origin=req.headers.get('Origin');
