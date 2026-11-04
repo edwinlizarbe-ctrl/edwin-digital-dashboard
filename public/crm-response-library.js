@@ -22,8 +22,13 @@
   if(typeof edits!=='string'||edits.length>4000)return null;
   return edits;
  }
- let locale='es',template='first',edited=null;
- function render(){
+ let locale='es',template='first',edited=null,activeContext='';
+ function render({businessId='',userId=''}={}){
+  // A draft edited for one user/business must never be shown in another tenant.
+  const nextContext=String(userId||'')+'|'+String(businessId||'');
+  if(nextContext!==activeContext){
+   activeContext=nextContext;locale='es';template='first';edited=null;
+  }
   const options=list(locale).map(item=>'<option value="'+item.id+'" '+(item.id===template?'selected':'')+'>'+escape(item.title)+'</option>').join('');
   const content=edited===null?draft(locale,template):edited;
   return '<section class="card ed-response-library" aria-labelledby="ed-response-title">'+
