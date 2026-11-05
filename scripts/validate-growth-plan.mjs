@@ -12,7 +12,7 @@ const published = rows.filter((r) => r[2] !== 'Pendiente');
 for (const row of published) {
   if (!/PR #\d+/.test(row[0])) throw new Error(row[1] + ': falta referencia al PR.');
 }
-const headline = text.match(/\*\*Avance comprobado[^\n]*?\*\*:\s*(\d+)\/50/);
+const headline = text.match(/^\*\*Avance comprobado[^\n]*?\*\*[^\n]*?(\d+)\/50/m);
 if (!headline) throw new Error('Falta el avance comprobado N/50.');
 const stated = Number(headline[1]);
 if (stated !== published.length) {
