@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edwin CRM · Demostración ficticia</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#17253c;background:#f3f7ff}body{max-width:880px;margin:3rem auto;padding:0 1rem}
+main{background:white;border-radius:16px;padding:2rem;box-shadow:0 8px 24px #182a4520}
+.badge{background:#fff2c2;color:#5b4300;padding:.6rem;border-radius:8px;font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:1rem;margin:1.5rem 0}
+.cards article{border:1px solid #d4dff0;border-radius:10px;padding:1rem}.cards strong{display:block;font-size:2rem}
+select{font:inherit;padding:.6rem;border-radius:6px}a{color:#1359c9}
+</style></head><body><main>
+<p><a href="/">← Volver al CRM</a></p>
+<h1>Demostración comercial</h1>
+<p class="badge" role="status">DATOS 100% FICTICIOS · No corresponden a clientes, ventas ni campañas reales.</p>
+<p>Explora cómo se vería el embudo comercial con ejemplos simulados. Esta pantalla no consulta cuentas ni datos del CRM y no guarda información.</p>
+<label for="scenario">Escenario ficticio:</label>
+<select id="scenario"><option value="inicio">Inicio</option><option value="crecimiento">Crecimiento</option><option value="seguimiento">Seguimiento</option></select>
+<section aria-label="Métricas ficticias" class="cards" id="cards"></section>
+<p id="detail" aria-live="polite"></p>
+<p><strong>Limitaciones:</strong> no existe atribución publicitaria, ingresos verificados, sincronización ni conexión con una empresa real.</p>
+</main><script type="module">
+import {demoSnapshot, DEMO_BUSINESS_ID} from './crm-demo-data.js';
+const select=document.getElementById('scenario'), cards=document.getElementById('cards'), detail=document.getElementById('detail');
+function render(){
+ try {
+ const x=demoSnapshot(DEMO_BUSINESS_ID,select.value);
+ const fields=[['Leads',x.leads],['Contactados',x.contacted],['Calificados',x.qualified],['Ganados',x.won],['Contacto',x.contactRate+'%'],['Conversión',x.winRate+'%']];
+ cards.replaceChildren(...fields.map(([label,value])=>{const el=document.createElement('article');const title=document.createElement('span');title.textContent=label;const number=document.createElement('strong');number.textContent=String(value);el.append(title,number);return el;}));
+ detail.textContent='Escenario '+x.label+'. '+x.attribution+'.';
+ }catch{cards.replaceChildren();detail.textContent='No se pudo cargar el escenario ficticio.';}
+}
+select.addEventListener('change',render);render();
+</script></body></html>
