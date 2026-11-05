@@ -1296,6 +1296,18 @@ async function loadAccounts(){
     ${state.accountsConfigured===false?`<div class="admin-setup-guide"><strong>Activa la gestión de accesos</strong><p>En Supabase abre la configuración del proyecto → API Keys y obtén la clave de servidor <code>service_role</code>. Agrégala en Cloudflare → Worker → Variables and Secrets como secreto cifrado con el nombre <code>SUPABASE_SERVICE_ROLE_KEY</code>.</p><p>No publiques ni pegues esa clave en el chat, en GitHub ni en código del navegador. Después pulsa «Actualizar usuarios».</p></div>`:''}
     ${state.accountNotice?`<p class="company-message">${clean(state.accountNotice)}</p>`:''}
     ${state.temporaryAccess&&!list.some(u=>u.id===state.temporaryAccess?.id||u.email?.toLowerCase()===state.temporaryAccess?.email?.toLowerCase())?`<div class="temporary-credential" role="status" style="margin:10px 0 16px"><strong>Clave nueva de ${clean(state.temporaryAccess.email)}</strong><div class="temporary-credential-content"><code>${state.temporaryPasswordVisible?clean(state.temporaryAccess.password):'••••••••••••••••'}</code><button type="button" class="button button-outline" data-act="account-toggle-temp">${icon('eye',16)} ${state.temporaryPasswordVisible?'Ocultar':'Mostrar'}</button><button type="button" class="button button-primary" data-act="account-copy-temp">Copiar clave</button></div><small>El usuario aún no aparece en la lista. Actualiza usuarios para verificar la vinculación.</small></div>`:''}
+    ${state.businesses.length?card('Invitar a una empresa existente','Acceso comercial completo con los permisos de la empresa seleccionada',`
+<form id="admin-existing-company-invite-form" class="security-form" autocomplete="off" style="display:grid;gap:12px;max-width:650px">
+<label class="form-label">Empresa existente
+<select class="simple-input" name="business_id" required style="display:block;width:100%;margin-top:6px">
+${state.businesses.map(b=>`<option value="${clean(b.id)}">${clean(b.name)} (${clean(b.slug||'empresa')})</option>`).join('')}
+</select></label>
+<label class="form-label">Correo del responsable comercial
+<input class="simple-input" name="email" type="email" required maxlength="254" placeholder="responsable@empresa.com" style="display:block;width:100%;margin-top:6px">
+</label>
+<p class="fine-print">Conserva la empresa y su plan. Se invita una cuenta nueva con permisos comerciales; no se cambia el rol de los editores de Blog ni se conectan cuentas de publicidad automáticamente. No uses aquí el correo editorial de Brasper. La invitación depende del correo de Supabase.</p>
+<button class="button button-primary" type="submit" ${state.inviteBusy?'disabled':''}>${state.inviteBusy?'Enviando invitación…':'Invitar a esta empresa'}</button>
+</form>`):''}
     ${card('Crear cliente','Crear usuario y contraseña de inmediato',`<form id="admin-invite-form" class="security-form" autocomplete="off" style="display:grid;gap:12px;max-width:650px">
 <label class="form-label">Correo electrónico<input class="simple-input" name="email" type="email" required maxlength="254" placeholder="cliente@empresa.com" style="display:block;width:100%;margin-top:6px"></label>
 <label class="form-label">Nombre de la empresa<input class="simple-input" name="company_name" type="text" required minlength="2" maxlength="80" placeholder="Nombre comercial" style="display:block;width:100%;margin-top:6px"></label>
@@ -2671,6 +2683,27 @@ function sidebar(){
         state.accountNotice='Contraseña actualizada para '+email+'. Comparte la nueva contraseña únicamente por un canal seguro.';
       }catch(error){state.accountPasswordError=error.message||'No se pudo cambiar la contraseña.';}
       finally{state.accountPasswordBusy=false;render();}
+      return;
+    }
+    if(e.target.id==='admin-existing-company-invite-form'){
+      e.preventDefault();if(!isAdmin()||state.inviteBusy)return;
+      const values=new FormData(e.target);
+      const email=String(values.get('email')||'').trim().toLowerCase();
+      const business_id=String(values.get('business_id')||'');
+      if(!email||!state.businesses.some(b=>b.id===business_id))return;
+      if(email==='marketing.brasper@gmail.com'){
+        state.accountsError='Ese correo tiene un perfil editorial restringido. Invita otro correo autorizado para el acceso comercial.';render();return;
+      }
+      state.inviteBusy=true;state.accountNotice='';state.accountsError='';
+      const submit=e.target.querySelector('[type="submit"]');
+      if(submit){submit.disabled=true;submit.textContent='Enviando invitación…';}
+      try{
+        const result=await api('/api/admin/invite',{method:'POST',body:JSON.stringify({email,business_id})});
+        if(!result.ok)throw new Error('No se pudo confirmar la invitación.');
+        state.accountNotice='Invitación solicitada a '+(result.business_name||'la empresa')+'. El nuevo usuario debe revisar su correo y aceptar el acceso. Los permisos editoriales anteriores no se modificaron.';
+        try{await loadAccounts();await loadAdminDirectory();}catch{}
+      }catch(error){state.accountsError=error.message||'No fue posible invitar al responsable comercial.';}
+      finally{state.inviteBusy=false;render();}
       return;
     }
     if(e.target.id==='admin-invite-form'){
