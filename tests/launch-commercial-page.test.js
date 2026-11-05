@@ -15,7 +15,8 @@ test('la presentación comercial existe y abre la demo real con datos ficticios'
   assert.match(html, /datos ficticios/i);
   assert.match(html, /suscripciones aún están en preparación/i);
   assert.match(html, /name="robots" content="noindex, nofollow"/);
-  assert.doesNotMatch(html, /100% (?:garantizado|seguro)|ventas garantizadas(?:\s*<\/[^>]+>)*\s*\./i);
+  assert.match(html, /no promete ventas garantizadas/i);
+  assert.doesNotMatch(html, /(?:paga|suscríbete) ahora|prueba gratuita por 14 días/i);
 });
 
 test('ninguna llamada a la acción local apunta a una página inexistente', () => {
