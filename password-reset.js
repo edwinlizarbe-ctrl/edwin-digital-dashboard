@@ -1,4 +1,3 @@
-import { readLimitedBody } from './read-limited-body.js';
 /**
  * Recuperación de contraseña por correo (Supabase Auth, solo anon key; nunca service_role).
  * - request-reset: POST /auth/v1/recover con redirect_to same-origin allowlisted. Respuesta idéntica exista o no el correo.
@@ -8,6 +7,8 @@ import { readLimitedBody } from './read-limited-body.js';
  * (sin verificar firma; la firma la verifica Supabase en el PUT). Un token de sesión normal (amr password/oauth…)
  * se rechaza. Las cookies HttpOnly de sesión nunca se usan aquí. /api/auth/change-password no se modifica.
  */
+
+import { readLimitedBody } from './read-limited-body.js';
 const HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
   'Cache-Control': 'no-store',
