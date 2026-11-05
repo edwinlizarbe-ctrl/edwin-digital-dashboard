@@ -33,7 +33,7 @@ export async function handleSiteCreate(req,env,s){
  if(!s.user||s.user.role==='admin')return reply({error:'Acceso exclusivo de clientes.'},403);
  const origin=req.headers.get('Origin');
  if(origin&&origin!==url.origin)return reply({error:'Origen no autorizado.'},403);
- if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return reply({error:'Se requiere JSON.'},415);
+ if(!/^application\/json(?:\s*;|$)/.test((req.headers.get('Content-Type')||'').toLowerCase()))return reply({error:'Se requiere JSON.'},415);
  let raw;
  try{raw=await readLimitedBody(req,3000);}
  catch(e){return e.code==='BODY_TOO_LARGE'
