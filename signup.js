@@ -1,3 +1,4 @@
+import { readLimitedBody } from './read-limited-body.js';
 /**
  * Registro autoservicio (correo + contraseña) y creación de la primera empresa.
  * - Signup usa solo la anon key de Supabase Auth; no emite cookies ni acepta rol.
@@ -47,10 +48,14 @@ export function validateBusinessName(input) {
 async function readJson(req, limit) {
   const type = (req.headers.get('Content-Type') || '').toLowerCase();
   if (!/^application\/json(?:\s*;|$)/.test(type)) return { status: 415, error: 'Se requiere JSON.' };
-  const declared = req.headers.get('Content-Length');
-  if (declared && Number(declared) > limit) return { status: 413, error: 'Solicitud demasiado grande.' };
-  const text = await req.text();
-  if (new TextEncoder().encode(text).byteLength > limit) return { status: 413, error: 'Solicitud demasiado grande.' };
+  // Reusar el lector acotado: nunca acumular en memoria un cuerpo ilimitado.
+  let text;
+  try {
+    text = await readLimitedBody(req, limit);
+  } catch (error) {
+    if (error?.code === 'BODY_TOO_LARGE') return { status: 413, error: 'Solicitud demasiado grande.' };
+    return { status: 400, error: 'Solicitud no válida.' };
+  }
   try { return { body: JSON.parse(text) }; } catch { return { status: 400, error: 'Solicitud no válida.' }; }
 }
 const foreignOrigin = (req) => { const o = req.headers.get('Origin'); return !!o && o !== new URL(req.url).origin; };
