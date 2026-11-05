@@ -2,7 +2,7 @@
 
 **Objetivo:** capacidades útiles que eleven captación, conversión, seguimiento, activación, calidad comercial y preparación SaaS. Estas son **entregas pendientes o desarrolladas**, no 50 cambios publicados por el mero hecho de escribir el plan.
 
-**Avance comprobado al 2026-11-04:** 42/50 entregas integradas en main (sin confirmación de despliegue Cloudflare); C21–C22, C36–C38, C46–C47 y C50 pendientes. Se han publicado C01–C10 (#115), C11–C16 (#116) y C17–C20 (#118). Cada bloque tiene sus propias pruebas. No se ha verificado aquí un despliegue de Cloudflare.
+**Avance comprobado al 2026-11-05:** 46/50 entregas integradas en main (sin confirmación de despliegue Cloudflare); C21, C22, C37 y C50 pendientes. Se han publicado C01–C10 (#115), C11–C16 (#116) y C17–C20 (#118). Cada bloque tiene sus propias pruebas. No se ha verificado aquí un despliegue de Cloudflare.
 
 **Reglas operativas:** trabajar por bloques pequeños, revisar PR abierto para evitar duplicar otras automatizaciones, pruebas CI verdes antes del merge, aislamiento business_id/JWT, no compartir PII entre empresas, no enviar emails/WhatsApp ni gastar en anuncios ni cobrar sin acción autorizada; no tocar secretos, RLS ni datos existentes. Fusionar GitHub no prueba despliegue Cloudflare. Cada PR publicado debe figurar en el historial con su número y estado real.
 
@@ -45,9 +45,9 @@
 | C33 | Activación y retención | Explicar cómo conectar una fuente de analítica autorizada | Publicada · PR #125 · CI verde |
 | C34 | Activación y retención | Guiar desde una pantalla vacía hacia la primera acción | Publicada · PR #125 · CI verde |
 | C35 | Activación y retención | Ofrecer demo aislada con métricas claramente ficticias | Integrada · PR #131 · 5 checks verdes |
-| C36 | Activación y retención | Registrar hitos de activación sin información personal | Pendiente |
+| C36 | Activación y retención | Registrar hitos de activación sin información personal | Integrada · PR #134 · CI verde |
 | C37 | Activación y retención | Mostrar seguimiento de actividad comercial por períodos comparables | Pendiente |
-| C38 | Activación y retención | Separar datos actuales de cohortes con muestras insuficientes | Pendiente |
+| C38 | Activación y retención | Separar datos actuales de cohortes con muestras insuficientes | Integrada · PR #136 · CI verde |
 | C39 | Activación y retención | Generar checklist de calidad de integración por negocio | Integrada · PR #127 · 6 checks verdes |
 | C40 | Activación y retención | Advertir cuando una integración no puede confirmar datos recientes | Integrada · PR #127 · 6 checks verdes |
 | C41 | Reportes y preparación SaaS | Exportar reporte resumido de seguimiento sin PII | Publicada · PR #126 · CI verde |
@@ -55,8 +55,8 @@
 | C43 | Reportes y preparación SaaS | Proteger CSV contra fórmulas maliciosas | Publicada · PR #126 · CI verde |
 | C44 | Reportes y preparación SaaS | Permitir períodos comparables en reportes agregados | Publicada · PR #126 · CI verde |
 | C45 | Reportes y preparación SaaS | Documentar fuentes, fechas y universo de cada KPI | Publicada · PR #126 · CI verde |
-| C46 | Reportes y preparación SaaS | Mostrar estados de suscripción sin ejecutar cobros | Pendiente |
-| C47 | Reportes y preparación SaaS | Previsualizar límites de planes sin aplicarlos a clientes | Pendiente |
+| C46 | Reportes y preparación SaaS | Mostrar estados de suscripción sin ejecutar cobros | Integrada · PR #135 · CI verde |
+| C47 | Reportes y preparación SaaS | Previsualizar límites de planes sin aplicarlos a clientes | Integrada · PR #133 · CI verde |
 | C48 | Reportes y preparación SaaS | Mostrar una lista de preparación comercial para una demo | Integrada · PR #127 · 6 checks verdes |
 | C49 | Reportes y preparación SaaS | Reforzar navegación accesible del centro de crecimiento | Integrada · PR #128 · 3 checks verdes |
 | C50 | Reportes y preparación SaaS | Agregar pruebas de regresión para todas las nuevas capacidades | Pendiente |
@@ -67,7 +67,7 @@
 
 **C35 integrada:** PR #131 fusionado en main con 5 checks exitosos para el SHA `ef6262af699e84cfca70ed9f5aac7dde398c74ae` (tests, syntax, regressions, playwright y Workers Builds). Demo exclusivamente sintética, sin sincronización de datos ni despliegue Cloudflare confirmado.
 
-## Protocolo repetible
+**C47 integrada:** PR #133 (5 checks verdes), simulador local de límites, sin cobros. **C36 integrada:** PR #134 (5 checks verdes), hitos locales por empresa y usuario, no sincronizados. **C46 integrada:** PR #135 (5 checks verdes), estados de suscripción ilustrativos sin facturación. **C38 integrada:** PR #136 (checks de tests, syntax, regressions y playwright verdes), comparador manual con umbral de muestra, no sincronizado. Todas integradas en main; no se ha verificado despliegue Cloudflare.\n\n## Protocolo repetible
 1. Leer este archivo en main y comprobar commits y PR actuales antes de empezar.
 2. Seleccionar una entrega pendiente sin desarrollo en otra rama. Si hay un PR en borrador, inspeccionarlo y corregirlo en lugar de duplicarlo.
 3. Entregar implementación de usuario o lógica consumida realmente por el sistema, con pruebas positivas, negativas y de aislamiento.
@@ -88,4 +88,4 @@
 | 2026-11-04 | C31–C34 | PR #125 fusionado en main | 6 verificaciones verdes |
 | 2026-11-04 | C41–C45 | PR #126 fusionado en main | 6 verificaciones verdes |
 | 2026-11-04 | C39–C40, C48 | PR #127 fusionado en main | 6 verificaciones verdes |
-| 2026-11-04 | C49 (salto accesible) | PR #128 fusionado en main | 3 verificaciones verdes |
+| 2026-11-04 | C49 (salto accesible) | PR #128 fusionado en main | 3 verificaciones verdes |\n| 2026-11-05 | C35 | PR #131 fusionado en main | 5 verificaciones verdes |\n| 2026-11-05 | C47 | PR #133 fusionado en main | 5 verificaciones verdes |\n| 2026-11-05 | C36 | PR #134 fusionado en main | 5 verificaciones verdes |\n| 2026-11-05 | C46 | PR #135 fusionado en main | 5 verificaciones verdes |\n| 2026-11-05 | C38 | PR #136 fusionado en main | 4 workflows verdes |
