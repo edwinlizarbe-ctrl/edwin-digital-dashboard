@@ -1,0 +1,25 @@
+name: Edwin CRM - navegación comercial móvil
+on:
+  pull_request:
+    paths:
+      - 'public/edwin-crm.html'
+      - 'tests/commercial-mobile-nav.test.mjs'
+      - '.github/workflows/commercial-mobile-nav.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'public/edwin-crm.html'
+      - 'tests/commercial-mobile-nav.test.mjs'
+      - '.github/workflows/commercial-mobile-nav.yml'
+permissions:
+  contents: read
+jobs:
+  mobile-navigation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/commercial-mobile-nav.test.mjs
