@@ -1,0 +1,26 @@
+name: Edwin CRM - prueba de rutas públicas
+on:
+  pull_request:
+    paths:
+      - 'scripts/probe-public-routes.mjs'
+      - 'tests/probe-public-routes.test.mjs'
+      - '.github/workflows/public-route-probe.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/probe-public-routes.mjs'
+      - 'tests/probe-public-routes.test.mjs'
+      - '.github/workflows/public-route-probe.yml'
+permissions:
+  contents: read
+jobs:
+  public-route-probe-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probar éxito, fallos, URLs inválidas y ausencia de datos empresariales
+        run: node --test tests/probe-public-routes.test.mjs
