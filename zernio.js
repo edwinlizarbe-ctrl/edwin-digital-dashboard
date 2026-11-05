@@ -1,3 +1,4 @@
+import { readLimitedBody } from './read-limited-body.js';
 /**
  * Zernio WhatsApp onboarding for Edwin CRM.
  * One stable Zernio profile per authorised Edwin CRM business.
@@ -40,11 +41,17 @@ export async function handleZernioApi(request,env,session) {
   if(!status&&!connect&&!inbox&&!messages&&!send)return json({error:'Ruta no disponible.'},404,cookies);
   const origin=request.headers.get('Origin');
   if(origin&&origin!==url.origin)return json({error:'Origen no autorizado.'},403,cookies);
-  if((connect||send)&&!(request.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
+  if((connect||send)&&!/^application\/json(?:\s*;|$)/.test((request.headers.get('Content-Type')||'').toLowerCase()))
     return json({error:'Se requiere JSON.'},415,cookies);
-  if(Number(request.headers.get('Content-Length')||0)>8192)return json({error:'Solicitud demasiado grande.'},413,cookies);
   let body={};
-  if(connect||send){try {body=await request.json();} catch {return json({error:'Datos no válidos.'},400,cookies);}}
+  if(connect||send){
+    try {body=JSON.parse(await readLimitedBody(request,8192));}
+    catch(error){
+      return error?.code==='BODY_TOO_LARGE'
+        ? json({error:'Solicitud demasiado grande.'},413,cookies)
+        : json({error:'Datos no válidos.'},400,cookies);
+    }
+  }
   const businessId=connect||send?body?.business_id:url.searchParams.get('business_id');
   if(!UUID.test(String(businessId||'')))return json({error:'Selecciona una empresa válida.'},400,cookies);
   const business=await authorisedBusiness(env,session,businessId);
