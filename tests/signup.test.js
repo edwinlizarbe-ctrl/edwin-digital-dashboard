@@ -103,6 +103,18 @@ test('onboarding requires a client session and rejects foreign origin / client-s
   });
 });
 
+test('onboarding rejects absent and malformed sessions without RPC or cookie leakage', async () => {
+  await withFetch(() => { throw Error('RPC must not be called'); }, async (calls) => {
+    for (const invalid of [undefined, null, {}, { user: null }, { user: { id: 'u', role: 'client' } }, { user: { id: 'u', role: 'client' }, access: '' }]) {
+      const response = await handleOnboardingBusiness(req('/api/onboarding/business', { name: 'Mi Tienda' }), env, invalid);
+      assert.equal(response.status, 403);
+      assert.equal(response.headers.get('Set-Cookie'), null);
+      assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    }
+    assert.equal(calls.length, 0);
+  });
+});
+
 test('onboarding calls the RPC with user JWT, only the name, and ignores user_id/business_id/role from client', async () => {
   await withFetch(() => json([{ id: '22222222-2222-4222-8222-222222222222', name: 'Mi Tienda', slug: 'crm-abc', created: true }]), async (calls) => {
     const r = await handleOnboardingBusiness(req('/api/onboarding/business', { name: 'Mi Tienda', user_id: 'other', business_id: 'other', role: 'admin' }), env, session);
