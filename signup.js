@@ -45,11 +45,12 @@ export function validateBusinessName(input) {
   return { name };
 }
 async function readJson(req, limit) {
-  if (!(req.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) return { status: 415, error: 'Se requiere JSON.' };
+  const type = (req.headers.get('Content-Type') || '').toLowerCase();
+  if (!/^application\/json(?:\s*;|$)/.test(type)) return { status: 415, error: 'Se requiere JSON.' };
   const declared = req.headers.get('Content-Length');
   if (declared && Number(declared) > limit) return { status: 413, error: 'Solicitud demasiado grande.' };
   const text = await req.text();
-  if (text.length > limit) return { status: 413, error: 'Solicitud demasiado grande.' };
+  if (new TextEncoder().encode(text).byteLength > limit) return { status: 413, error: 'Solicitud demasiado grande.' };
   try { return { body: JSON.parse(text) }; } catch { return { status: 400, error: 'Solicitud no válida.' }; }
 }
 const foreignOrigin = (req) => { const o = req.headers.get('Origin'); return !!o && o !== new URL(req.url).origin; };
@@ -94,13 +95,15 @@ export async function handleSignup(req, env) {
 }
 
 export async function handleOnboardingBusiness(req, env, s) {
-  if (req.method.toUpperCase() !== 'POST') return reply({ error: 'Método no permitido.' }, 405, s.cookies);
-  if (foreignOrigin(req)) return reply({ error: 'Origen no autorizado.' }, 403, s.cookies);
-  if (!s?.user?.id || s.user.role !== 'client') return reply({ error: 'Solo las cuentas de cliente pueden crear una empresa.' }, 403, s.cookies);
+  // Una sesión ausente o malformada debe devolver un error controlado, jamás lanzar al leer cookies.
+  const cookies = Array.isArray(s?.cookies) ? s.cookies : [];
+  if (req.method.toUpperCase() !== 'POST') return reply({ error: 'Método no permitido.' }, 405, cookies);
+  if (foreignOrigin(req)) return reply({ error: 'Origen no autorizado.' }, 403, cookies);
+  if (!s?.user?.id || s.user.role !== 'client' || typeof s.access !== 'string' || !s.access) return reply({ error: 'Solo las cuentas de cliente pueden crear una empresa.' }, 403, cookies);
   const parsed = await readJson(req, 1024);
-  if (parsed.error) return reply({ error: parsed.error }, parsed.status, s.cookies);
+  if (parsed.error) return reply({ error: parsed.error }, parsed.status, cookies);
   const v = validateBusinessName(parsed.body);
-  if (v.error) return reply({ error: v.error }, 400, s.cookies);
+  if (v.error) return reply({ error: v.error }, 400, cookies);
   // Único dato del cliente: el nombre. El usuario sale de auth.uid() dentro del RPC (JWT de la sesión).
   let res;
   try {
@@ -109,19 +112,19 @@ export async function handleOnboardingBusiness(req, env, s) {
       headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${s.access}`, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ p_name: v.name }),
     });
-  } catch { return reply({ error: 'No se pudo crear la empresa. Inténtalo de nuevo.' }, 502, s.cookies); }
-  if (res.status === 404) return reply({ error: 'El registro de empresas aún no está activado (falta aplicar la migración en Supabase).' }, 503, s.cookies);
+  } catch { return reply({ error: 'No se pudo crear la empresa. Inténtalo de nuevo.' }, 502, cookies); }
+  if (res.status === 404) return reply({ error: 'El registro de empresas aún no está activado (falta aplicar la migración en Supabase).' }, 503, cookies);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
     const msg = String(detail.message || '');
-    if (/reserved_name/.test(msg)) return reply({ error: 'Ese nombre está reservado. Elige otro nombre para tu empresa.' }, 400, s.cookies);
-    if (/invalid_name/.test(msg)) return reply({ error: 'El nombre debe tener entre 2 y 80 caracteres.' }, 400, s.cookies);
-    if (/email_unverified/.test(msg)) return reply({ error: 'Confirma tu correo electrónico antes de crear tu empresa.' }, 403, s.cookies);
-    if (/not_allowed/.test(msg)) return reply({ error: 'Tu cuenta no puede crear empresas.' }, 403, s.cookies);
-    return reply({ error: 'No se pudo crear la empresa. Inténtalo de nuevo.' }, 502, s.cookies);
+    if (/reserved_name/.test(msg)) return reply({ error: 'Ese nombre está reservado. Elige otro nombre para tu empresa.' }, 400, cookies);
+    if (/invalid_name/.test(msg)) return reply({ error: 'El nombre debe tener entre 2 y 80 caracteres.' }, 400, cookies);
+    if (/email_unverified/.test(msg)) return reply({ error: 'Confirma tu correo electrónico antes de crear tu empresa.' }, 403, cookies);
+    if (/not_allowed/.test(msg)) return reply({ error: 'Tu cuenta no puede crear empresas.' }, 403, cookies);
+    return reply({ error: 'No se pudo crear la empresa. Inténtalo de nuevo.' }, 502, cookies);
   }
   const row = await res.json().catch(() => null);
   const out = Array.isArray(row) ? row[0] : row;
-  if (!out || typeof out !== 'object' || !out.id) return reply({ error: 'No se pudo confirmar la empresa creada.' }, 502, s.cookies);
-  return reply({ ok: true, business: { id: out.id, name: out.name, slug: out.slug }, created: !!out.created }, 200, s.cookies);
+  if (!out || typeof out !== 'object' || !out.id) return reply({ error: 'No se pudo confirmar la empresa creada.' }, 502, cookies);
+  return reply({ ok: true, business: { id: out.id, name: out.name, slug: out.slug }, created: !!out.created }, 200, cookies);
 }
