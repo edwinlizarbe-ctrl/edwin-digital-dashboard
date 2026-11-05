@@ -17,3 +17,42 @@ export function demoSnapshot(businessId, scenarioId) {
     attribution: 'Ninguna: números simulados, sin ingresos ni campañas reales'
   });
 }
+
+
+/**
+ * Métricas pedagógicas derivadas solo de escenarios sintéticos.
+ * No se conecta a leads, ingresos, campañas, cookies ni APIs.
+ */
+export function demoInsights(businessId, scenarioId) {
+  const x = demoSnapshot(businessId, scenarioId);
+  const notContacted = x.leads - x.contacted;
+  const notQualified = x.contacted - x.qualified;
+  const qualifiedNotWon = x.qualified - x.won;
+  const safeRate = (part, whole) => whole > 0 ? Math.round((part / whole) * 100) : 0;
+  return Object.freeze({
+    fictional: true,
+    business_id: DEMO_BUSINESS_ID,
+    label: x.label,
+    leads: x.leads,
+    contacted: x.contacted,
+    qualified: x.qualified,
+    won: x.won,
+    notContacted,
+    notQualified,
+    qualifiedNotWon,
+    contactRate: x.contactRate,
+    winRate: x.winRate,
+    qualificationRate: safeRate(x.qualified, x.contacted),
+    closeRate: safeRate(x.won, x.qualified),
+    stages: Object.freeze([
+      Object.freeze({label: 'Registrados', value: x.leads, percent: 100}),
+      Object.freeze({label: 'Contactados', value: x.contacted, percent: x.contactRate}),
+      Object.freeze({label: 'Calificados', value: x.qualified, percent: safeRate(x.qualified, x.leads)}),
+      Object.freeze({label: 'Ganados', value: x.won, percent: x.winRate})
+    ]),
+    nextAction: notContacted > 0
+      ? 'Ejemplo: revisar prospectos aún no contactados antes de buscar más.'
+      : 'Ejemplo: revisar las oportunidades calificadas que siguen abiertas.',
+    disclaimer: 'Datos ficticios. Estos valores no representan ventas recuperadas ni resultados reales.'
+  });
+}
