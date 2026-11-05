@@ -1,0 +1,26 @@
+name: Validar plan de crecimiento
+on:
+  pull_request:
+    paths:
+      - 'docs/PLAN-CRECIMIENTO-50-ENTREGAS.md'
+      - 'scripts/validate-growth-plan.mjs'
+      - '.github/workflows/growth-plan-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/PLAN-CRECIMIENTO-50-ENTREGAS.md'
+      - 'scripts/validate-growth-plan.mjs'
+      - '.github/workflows/growth-plan-validation.yml'
+permissions:
+  contents: read
+jobs:
+  validate-growth-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Comprobar identificadores, PR y avance declarado
+        run: node scripts/validate-growth-plan.mjs
