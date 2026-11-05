@@ -7,7 +7,7 @@ Identidad provisional: texto «CRM». Sin Google Login, suscripciones ni trial.
 | Archivo | Qué hace |
 |---|---|
 | `signup.js` | `POST /api/auth/signup` (público) y `POST /api/onboarding/business` (autenticado). |
-| `migrations/20261018_self_service_onboarding.sql` | Tabla `ed_business_owners` (`user_id` PK/UNIQUE) y RPC `ed_onboard_business(p_name)`. **No aplicada**: revisar y ejecutar manualmente. |
+| `migrations/20261018_self_service_onboarding.sql` | Tabla `ed_business_owners` (`user_id` PK/UNIQUE) y RPC `ed_onboard_business(p_name)`. **Componentes observados en el Supabase conectado el 05/11/2026**: existen la tabla y la RPC. No sustituye una prueba del Worker en producción. |
 | `public/app.js` | Enlace «Crear cuenta», formulario (email, contraseña ≥10, confirmación), pantalla «Crea tu empresa». |
 | `tests/signup.test.js` | Validaciones, Origin/JSON/tamaño, anti-enumeración, sin cookies, sin rol del cliente, idempotencia, revisión estática de la migración. |
 
@@ -20,7 +20,7 @@ Identidad provisional: texto «CRM». Sin Google Login, suscripciones ni trial.
 - Usuarios existentes: con membresía no ven el onboarding. Un cliente sin empresa verá «Crea tu empresa» (antes veía un aviso vacío); admins no se ven afectados.
 
 ## Requisitos externos ANTES de publicar (no validados en producción)
-1. Aplicar la migración en Supabase (SQL Editor) tras revisarla.
+1. Confirmar que el Worker de producción apunta al mismo proyecto Supabase revisado. En el proyecto conectado la tabla y la RPC ya existen; en otra base habría que revisar y aplicar la migración.
 2. Authentication → Providers → Email: **Confirm email = ON** (el Worker no puede verificarlo; solo registra un aviso si detecta sesión en el signup).
 3. Authentication → URL Configuration: añadir `https://<dominio-del-worker>/` a *Redirect URLs* y fijar *Site URL*.
 4. SMTP propio (el SMTP por defecto de Supabase tiene límite bajo y solo envía a miembros del equipo); plantilla de confirmación en español.
@@ -40,3 +40,14 @@ Identidad provisional: texto «CRM». Sin Google Login, suscripciones ni trial.
 ## Antes / después
 - Antes: solo login; sin signup; usuario sin empresa veía aviso «el administrador debe asignarte uno».
 - Después: signup público seguro, confirmación por correo, onboarding atómico e idempotente.
+
+## Verificación de esquema y permisos (solo lectura, 05/11/2026)
+
+Se inspeccionó el proyecto Supabase conectado, sin modificar filas ni permisos:
+
+- `public.ed_business_owners` existe y tiene RLS habilitado.
+- `public.ed_onboard_business(p_name text)` existe, es `SECURITY DEFINER` y su definición consulta `auth.uid()`.
+- El rol `anon` **no** tiene permiso EXECUTE sobre esa RPC; el rol `authenticated` **sí**. Es el contrato previsto para permitir el alta de empresa de un usuario autenticado.
+- Las tablas `businesses` y `business_members` existen y tienen RLS activo.
+
+**No se ha certificado**: coincidencia del entorno de Cloudflare con este proyecto, configuración de confirmación de correo, SMTP, URL de retorno, límites de tasa, idempotencia E2E, acceso cruzado con dos cuentas reales o cobro. Una definición con `SECURITY DEFINER` merece siempre revisión funcional del control de autorización antes del acceso externo. No se creó ni alteró ninguna cuenta de usuario.

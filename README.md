@@ -28,3 +28,11 @@ No incluyas claves de servicio JSON, tokens, correos con contraseñas ni secreto
 ## Nota de despliegue — 30/10/2026
 
 El código de Google Business Profile fue integrado en `main` con el PR #82. La función requiere aprobación de Google, autorización OAuth y migración en Supabase antes de usarse. Este cambio de documentación solicita una nueva compilación desde la versión actual de `main` para diagnosticar el acceso de Cloudflare al repositorio.
+
+## Estado de salida comercial (noviembre de 2026)
+
+- [Presentación comercial de Edwin CRM](public/edwin-crm.html) y [demo con datos ficticios](public/crm-demo.html).
+- [Puerta de lanzamiento comercial y pruebas pendientes](docs/PRELANZAMIENTO-PILOTO-CRM.md).
+- [Registro y primera empresa: esquema verificado y pasos E2E pendientes](REGISTRO-AUTOSERVICIO.md).
+
+**Importante:** las páginas de suscripción y planes siguen siendo simuladores, no aceptan pagos reales. Un merge en GitHub no demuestra por sí solo el despliegue de Cloudflare ni un flujo de registro operativo.
