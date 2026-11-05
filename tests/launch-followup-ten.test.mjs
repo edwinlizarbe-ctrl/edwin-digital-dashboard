@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {followupEstimate} from '../public/crm-followup-estimate.js';
+const page=readFileSync(new URL('../public/crm-followup-simulator.html',import.meta.url),'utf8');
+const landing=readFileSync(new URL('../public/edwin-crm.html',import.meta.url),'utf8');
+const estimate=(leads,notContactedPercent)=>followupEstimate({leads,notContactedPercent});
+test('A31: simula 100 prospectos y 20% sin contacto',()=>{assert.deepEqual([estimate(100,20).contacted,estimate(100,20).notContacted],[80,20]);});
+test('A32: permite el caso sin prospectos sin dividir por cero',()=>{const x=estimate(0,50);assert.equal(x.notContacted,0);assert.equal(x.contacted,0);});
+test('A33: reconoce al 100% de prospectos sin contacto',()=>{assert.equal(estimate(15,100).notContacted,15);});
+test('A34: con tasa 0%, no inventa prospectos sin contactar',()=>{assert.equal(estimate(99,0).notContacted,0);});
+test('A35: admite máximo de capacidad sin desbordamientos',()=>{assert.equal(estimate(100000,37).notContacted,37000);});
+test('A36: rechaza porcentajes mayores que 100 y negativos',()=>{assert.throws(()=>estimate(20,101),RangeError);assert.throws(()=>estimate(20,-1),RangeError);});
+test('A37: rechaza conteos negativos o superiores al máximo',()=>{assert.throws(()=>estimate(-1,20),RangeError);assert.throws(()=>estimate(100001,20),RangeError);});
+test('A38: rechaza entradas fraccionarias, NaN o no numéricas',()=>{for(const x of [1.5,NaN,'100',Infinity])assert.throws(()=>estimate(x,20),RangeError);assert.throws(()=>estimate(100,1.5),RangeError);});
+test('A39: salida inmutable con aviso explícito de estimación',()=>{const x=estimate(100,20);assert.ok(Object.isFrozen(x));assert.equal(x.fictionalEstimate,true);assert.match(x.caution,/No mide ventas/);});
+test('A40: simulador es accesible, local, enlazado y no recolecta información',()=>{
+ assert.match(page,/<form id="estimate-form"/);assert.match(page,/for="leads"/);assert.match(page,/for="percent"/);assert.match(page,/aria-live="polite"/);
+ assert.match(page,/no se envían ni se guardan/i);assert.match(page,/content="noindex, nofollow"/);
+ assert.match(landing,/href="\/crm-followup-simulator\.html"/);
+ assert.doesNotMatch(page,/(?:fetch\(|localStorage|sessionStorage|XMLHttpRequest|<script src="https?:)/i);
+});
