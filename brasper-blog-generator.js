@@ -1,3 +1,4 @@
+import { readLimitedBody } from './read-limited-body.js';
 /**
  * Brásper HTML formatter, no LLM or third party access. Never publishes content.
  */
@@ -188,11 +189,14 @@ export async function handleBlogGenerator(req,env,s){
  const output=(data,status)=>reply(data,status,s.cookies||[]);
  if(req.method!=='POST')return output({error:'Método no permitido.'},405);
  if(req.headers.get('Origin')!==new URL(req.url).origin)return output({error:'Origen no autorizado.'},403);
- if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return output({error:'Se requiere JSON.'},415);
- if(Number(req.headers.get('Content-Length')||0)>110000)return output({error:'Solicitud demasiado grande.'},413);
- const raw=await req.text();
- if(raw.length>110000)return output({error:'Solicitud demasiado grande.'},413);
- let data;try{data=JSON.parse(raw)}catch{return output({error:'JSON inválido.'},400)}
+ if(!/^application\/json(?:\s*;|$)/.test((req.headers.get('Content-Type')||'').toLowerCase()))return output({error:'Se requiere JSON.'},415);
+ let data;
+ try{data=JSON.parse(await readLimitedBody(req,110000));}
+ catch(error){
+  return error?.code==='BODY_TOO_LARGE'
+   ? output({error:'Solicitud demasiado grande.'},413)
+   : output({error:'JSON inválido.'},400);
+ }
  const businessId=String(data?.business_id||'');
  if(!UUID.test(businessId))return output({error:'Empresa inválida.'},403);
  let businesses;
