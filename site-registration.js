@@ -9,11 +9,21 @@ const respond=(obj,status=200,cookies=[])=>{
  for(const cookie of cookies)headers.append('Set-Cookie',cookie);
  return new Response(JSON.stringify(obj),{status,headers});
 };
+function publicDomain(hostname) {
+ // Sitios declarados: no admitir hosts internos, IPs ni nombres DNS imposibles.
+ if(typeof hostname!=='string'||hostname.length>253)return false;
+ const parts=hostname.toLowerCase().split('.');
+ if(parts.length<2 || parts.some(label=>!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)))return false;
+ const tld=parts[parts.length-1];
+ if(!/[a-z]/.test(tld) || ['local','localhost','internal','invalid'].includes(tld))return false;
+ return true;
+}
 export function validateWebsite(raw){
  if(typeof raw!=='string'||raw.length>300)return null;
  try {
   const u=new URL(raw.trim());
-  if(!['https:','http:'].includes(u.protocol)||!u.hostname.includes('.')||u.username||u.password||u.hash||u.port&&u.port!=='443'&&u.port!=='80')return null;
+  // Solo URL pública HTTPS; evita registrar direcciones IP privadas y enlaces con tokens en fragmentos.
+  if(u.protocol!=='https:'||!publicDomain(u.hostname)||u.username||u.password||u.hash||u.port)return null;
   return u.toString();
  }catch{return null;}
 }
@@ -23,7 +33,7 @@ export async function handleSiteCreate(req,env,s){
  if(!s.user||s.user.role==='admin')return reply({error:'Acceso exclusivo de clientes.'},403);
  const origin=req.headers.get('Origin');
  if(origin&&origin!==url.origin)return reply({error:'Origen no autorizado.'},403);
- if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return reply({error:'Se requiere JSON.'},415);
+ if(!/^application\/json(?:\s*;|$)/.test((req.headers.get('Content-Type')||'').toLowerCase()))return reply({error:'Se requiere JSON.'},415);
  let raw;
  try{raw=await readLimitedBody(req,3000);}
  catch(e){return e.code==='BODY_TOO_LARGE'
