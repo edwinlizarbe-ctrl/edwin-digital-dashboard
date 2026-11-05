@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Edwin CRM · Hitos locales de activación</title>
+<style>body{font:16px system-ui,sans-serif;background:#f3f7ff;color:#162b49;max-width:780px;margin:3rem auto;padding:1rem}main{background:#fff;padding:2rem;border-radius:14px;box-shadow:0 6px 20px #1232}label{display:block;margin:1rem 0}input{font:inherit;padding:.5rem;max-width:100%}fieldset{border:1px solid #cad7e9;border-radius:9px}fieldset label{display:flex;gap:.7rem}button{font:inherit;background:#174ec1;color:white;border:0;border-radius:8px;padding:.7rem 1rem}a{color:#174ec1}.note{background:#fff1c7;padding:1rem;border-radius:8px}</style>
+</head><body><main><p><a href="/">← Volver al CRM</a></p><h1>Hitos de activación</h1>
+<p class="note"><strong>Solo en este navegador · No sincronizado.</strong> Es una lista de verificación manual, no una medición de acciones reales del CRM. No introduzcas datos personales.</p>
+<p>Usa identificadores técnicos de negocio y usuario. El registro se separa por ambos identificadores y se guarda exclusivamente en este navegador.</p>
+<label>Identificador de negocio <input id="business" autocomplete="off" maxlength="80" placeholder="negocio_01"></label>
+<label>Identificador de usuario <input id="user" autocomplete="off" maxlength="80" placeholder="usuario_01"></label>
+<button id="load">Abrir lista local</button><p id="message" role="status" aria-live="polite"></p>
+<fieldset id="list" disabled hidden><legend>Hitos declarados manualmente</legend></fieldset>
+<p id="progress" aria-live="polite"></p>
+</main><script type="module">
+import {MILESTONES,readMilestones,setMilestone,validScope} from './crm-activation-milestones.js';
+const business=document.querySelector('#business'),user=document.querySelector('#user'),list=document.querySelector('#list'),message=document.querySelector('#message'),progress=document.querySelector('#progress');
+let scope=null;
+function render(){
+ const ids=readMilestones(localStorage,...scope);list.replaceChildren();
+ for(const item of MILESTONES){const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=ids.includes(item.id);check.addEventListener('change',()=>{
+ try{setMilestone(localStorage,...scope,item.id,check.checked);render();message.textContent='Cambio guardado solo en este navegador.';}catch{message.textContent='No se pudo guardar; revisa el almacenamiento local.';}
+ });label.append(check,document.createTextNode(item.label));list.append(label);}
+ progress.textContent=ids.length+' de '+MILESTONES.length+' hitos declarados. No representa actividad verificada.';
+}
+document.querySelector('#load').addEventListener('click',()=>{
+ if(!validScope(business.value.trim(),user.value.trim())){scope=null;list.hidden=true;list.disabled=true;message.textContent='Usa identificadores de 1 a 80 caracteres: letras, números, guion o guion bajo.';return;}
+ scope=[business.value.trim(),user.value.trim()];try{render();list.hidden=false;list.disabled=false;message.textContent='Lista local abierta.';}catch{list.hidden=true;list.disabled=true;message.textContent='Almacenamiento local no disponible.';}
+});
+</script></body></html>
