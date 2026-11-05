@@ -33,6 +33,7 @@ El código de Google Business Profile fue integrado en `main` con el PR #82. La 
 
 - [Presentación comercial de Edwin CRM](public/edwin-crm.html) y [demo con datos ficticios](public/crm-demo.html).
 - [Puerta de lanzamiento comercial y pruebas pendientes](docs/PRELANZAMIENTO-PILOTO-CRM.md).
+- [Registro verificable de 50 acciones de mejora y control](docs/50-ACCIONES-LANZAMIENTO-20261105.md).
 - [Registro y primera empresa: esquema verificado y pasos E2E pendientes](REGISTRO-AUTOSERVICIO.md).
 
 **Importante:** las páginas de suscripción y planes siguen siendo simuladores, no aceptan pagos reales. Un merge en GitHub no demuestra por sí solo el despliegue de Cloudflare ni un flujo de registro operativo.
