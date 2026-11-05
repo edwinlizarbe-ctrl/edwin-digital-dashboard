@@ -1,0 +1,34 @@
+name: Edwin CRM - barreras de lanzamiento
+on:
+  pull_request:
+    paths:
+      - 'public/edwin-crm.html'
+      - 'public/crm-demo.html'
+      - 'public/crm-demo-data.js'
+      - 'public/index.html'
+      - 'scripts/launch-audit.mjs'
+      - 'tests/launch-audit-ten.test.mjs'
+      - '.github/workflows/launch-audit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'public/edwin-crm.html'
+      - 'public/crm-demo.html'
+      - 'public/crm-demo-data.js'
+      - 'public/index.html'
+      - 'scripts/launch-audit.mjs'
+      - 'tests/launch-audit-ten.test.mjs'
+      - '.github/workflows/launch-audit.yml'
+permissions:
+  contents: read
+jobs:
+  launch-guardrails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Revisar 10 barreras comerciales estaticas
+        run: node scripts/launch-audit.mjs
