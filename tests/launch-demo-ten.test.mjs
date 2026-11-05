@@ -27,7 +27,7 @@ test('A07: tasas derivadas de conteos sintéticos',()=>{
 });
 test('A08: barras con límites y métricas coherentes',()=>{
  for(const s of ['inicio','crecimiento','seguimiento']){const x=sample(s);assert.equal(x.stages.length,4);assert.equal(x.stages[0].percent,100);assert.ok(x.stages.every(z=>z.percent>=0&&z.percent<=100));}
- assert.match(html,/<progress/);
+ assert.match(html,/createElement\('progress'\)/);
 });
 test('A09: demo siempre bloquea empresa no sintética y escenarios desconocidos',()=>{
  assert.throws(()=>demoInsights('empresa-real','inicio'),/no autorizada/);
