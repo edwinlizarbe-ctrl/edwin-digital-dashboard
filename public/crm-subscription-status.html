@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Edwin CRM · Estados de suscripción</title>
+<style>body{font:16px system-ui,sans-serif;background:#f3f7ff;color:#162b49;max-width:780px;margin:3rem auto;padding:1rem}main{background:#fff;padding:2rem;border-radius:14px}label{display:block;margin:1rem 0}select{font:inherit;padding:.6rem}a{color:#174ec1}.note{background:#fff1c7;padding:1rem;border-radius:8px}</style></head>
+<body><main><a href="/">← Volver al CRM</a><h1>Estados de suscripción · guía ilustrativa</h1>
+<p class="note"><strong>SIMULACIÓN LOCAL NO SINCRONIZADA.</strong> No muestra tu suscripción real, no consulta facturación y no ejecuta pagos, cambios de acceso ni cancelaciones.</p>
+<label>Estado hipotético <select id="state"><option value="trial">Prueba</option><option value="active">Activa</option><option value="past_due">Pago pendiente</option><option value="canceled">Cancelada</option></select></label>
+<section aria-live="polite" role="status"><h2 id="title"></h2><p id="description"></p><p id="action"></p></section>
+<p>Esta guía es independiente de cualquier negocio, cuenta o proveedor de pagos. Para conocer tu estado real, consulta una fuente autorizada.</p>
+</main><script type="module">
+import {explainSubscriptionState} from './crm-subscription-status.js';
+const select=document.getElementById('state');
+function render(){const x=explainSubscriptionState({businessId:'demo-local',selectedBusinessId:'demo-local',state:select.value});
+document.getElementById('title').textContent=x.label;document.getElementById('description').textContent=x.description;document.getElementById('action').textContent=x.action;}
+select.addEventListener('change',render);render();
+</script></body></html>
