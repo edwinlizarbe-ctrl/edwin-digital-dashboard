@@ -1,3 +1,4 @@
+import { readLimitedBody } from './read-limited-body.js';
 /**
  * Recuperación de contraseña por correo (Supabase Auth, solo anon key; nunca service_role).
  * - request-reset: POST /auth/v1/recover con redirect_to same-origin allowlisted. Respuesta idéntica exista o no el correo.
@@ -21,12 +22,17 @@ export const RESET_OK = 'Si el correo está registrado, te enviamos instruccione
 
 const foreignOrigin = (req) => { const o = req.headers.get('Origin'); return !!o && o !== new URL(req.url).origin; };
 async function readJson(req, limit = RESET_LIMIT) {
-  if (!(req.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) return { status: 415, error: 'Se requiere JSON.' };
-  const declared = req.headers.get('Content-Length');
-  if (declared && Number(declared) > limit) return { status: 413, error: 'Solicitud demasiado grande.' };
-  const text = await req.text();
-  if (text.length > limit) return { status: 413, error: 'Solicitud demasiado grande.' };
-  try { return { body: JSON.parse(text) }; } catch { return { status: 400, error: 'Solicitud no válida.' }; }
+  const type = (req.headers.get('Content-Type') || '').toLowerCase();
+  if (!/^application\/json(?:\s*;|$)/.test(type)) return { status: 415, error: 'Se requiere JSON.' };
+  let text;
+  try { text = await readLimitedBody(req, limit); }
+  catch (error) {
+    return error?.code === 'BODY_TOO_LARGE'
+      ? { status: 413, error: 'Solicitud demasiado grande.' }
+      : { status: 400, error: 'Solicitud no válida.' };
+  }
+  try { return { body: JSON.parse(text) }; }
+  catch { return { status: 400, error: 'Solicitud no válida.' }; }
 }
 const base = (env) => String(env.SUPABASE_URL).replace(/\/$/, '');
 
