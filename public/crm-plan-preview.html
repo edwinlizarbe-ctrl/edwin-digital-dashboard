@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Edwin CRM · Vista previa de límites</title>
+<style>body{font:16px system-ui,sans-serif;background:#f3f7ff;color:#14223b;max-width:850px;margin:2rem auto;padding:1rem}main{background:white;padding:2rem;border-radius:16px}label{display:block;margin:1rem 0}input,select{font:inherit;padding:.5rem;max-width:100%}input{width:9rem}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:.75rem;text-align:left}.notice{padding:1rem;background:#fff0c1;border-radius:8px}a{color:#1658c4}</style>
+</head><body><main><a href="/">← Volver al CRM</a><h1>Simulador de límites de planes</h1>
+<p class="notice"><strong>SIMULACIÓN LOCAL NO SINCRONIZADA.</strong> Los límites y usos son ejemplos; no representan tu suscripción ni tus datos reales. No se cobran importes, bloquean funciones ni cambian permisos.</p>
+<label>Plan ilustrativo <select id="plan"><option value="inicial">Inicial</option><option value="equipo">Equipo</option><option value="escala">Escala</option></select></label>
+<p>Introduce cantidades hipotéticas para explorar cómo se verían los límites:</p>
+<label>Contactos <input id="contacts" type="number" min="0" max="100000000" step="1" value="80"></label>
+<label>Usuarios <input id="users" type="number" min="0" max="100000000" step="1" value="1"></label>
+<label>Oportunidades <input id="opportunities" type="number" min="0" max="100000000" step="1" value="40"></label>
+<p id="status" role="status" aria-live="polite"></p><table><thead><tr><th>Recurso</th><th>Uso ficticio</th><th>Límite ilustrativo</th><th>Resultado</th></tr></thead><tbody id="rows"></tbody></table>
+<p>Este simulador no consulta APIs, cookies, almacenamiento, empresas ni facturación. No determina derechos de acceso reales.</p>
+</main><script type="module">
+import {previewPlanLimits} from './crm-plan-preview.js';
+const localBusinessId='preview-local-only', plan=document.getElementById('plan'), rows=document.getElementById('rows'), status=document.getElementById('status');
+function render(){
+try{
+const usage=Object.fromEntries(['contacts','users','opportunities'].map(k=>[k,Number(document.getElementById(k).value)]));
+const result=previewPlanLimits({businessId:localBusinessId,selectedBusinessId:localBusinessId,plan:plan.value,usage});
+rows.replaceChildren(...Object.entries(result.metrics).map(([name,m])=>{const tr=document.createElement('tr');for(const value of [name,m.used,m.limit,m.exceeds?'Superaría el límite ilustrativo':'Dentro del límite ilustrativo']){const td=document.createElement('td');td.textContent=String(value);tr.append(td);}return tr;}));
+status.textContent='Vista previa ficticia. Sin sincronización, cobros ni restricciones reales.';
+}catch(e){rows.replaceChildren();status.textContent='Corrige las cantidades: usa números enteros no negativos.';}
+}
+document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',render));render();
+</script></body></html>
