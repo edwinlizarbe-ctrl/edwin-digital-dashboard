@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const html=readFileSync(new URL('../public/edwin-crm.html',import.meta.url),'utf8');
+const count=(pattern)=>(html.match(pattern)||[]).length;
+test('A11: explica ventaja de seguimiento en la propuesta principal',()=>{assert.match(html,/prospecto interesado/);assert.match(html,/no se quede en el olvido/);});
+test('A12: navegación comercial enlaza secciones reales',()=>{assert.match(html,/<nav class="top-nav" aria-label="Navegación comercial">/);for(const id of ['como-funciona','para-quien','preguntas']){assert.match(html,new RegExp('href="#'+id+'"'));assert.match(html,new RegExp('id="'+id+'"'));}});
+test('A13: muestra tres segmentos de clientes y casos de uso',()=>{for(const t of ['Agencias y consultores','Negocios con atención comercial','Emprendedores que hacen publicidad'])assert.ok(html.includes(t));});
+test('A14: distingue características existentes de las pendientes',()=>{assert.match(html,/Qué puedes explorar hoy/);assert.match(html,/En el producto/);assert.match(html,/Aún no disponible para contratar aquí/);});
+test('A15: evita prometer resultados comerciales',()=>{assert.match(html,/no promete ventas garantizadas/i);assert.match(html,/no equivale a su disponibilidad comprobada/);});
+test('A16: sección de dudas ofrece cinco preguntas nativas accesibles',()=>{assert.equal(count(/<details>/g),5);assert.equal(count(/<summary>/g),5);assert.match(html,/<section class="content faq" id="preguntas">/);});
+test('A17: aclara que no se cobra por la página',()=>{assert.match(html,/esta página no recibe pagos ni datos bancarios/);assert.match(html,/Pago recurrente y activación automática/);});
+test('A18: aclara permisos e integración WhatsApp',()=>{assert.match(html,/¿Puedo conectar mi WhatsApp inmediatamente/);assert.match(html,/depende de configuraciones, permisos y pruebas/);});
+test('A19: metadatos compartibles conservan noindex hasta validar lanzamiento',()=>{assert.match(html,/property="og:title"/);assert.match(html,/property="og:description"/);assert.match(html,/content="noindex, nofollow"/);});
+test('A20: mejora accesibilidad móvil sin cookies ni scripts de rastreo',()=>{assert.match(html,/prefers-reduced-motion/);assert.match(html,/prefers-contrast:more/);assert.match(html,/<a class="skip" href="#contenido">/);assert.match(html,/@media\(max-width:700px\)/);assert.doesNotMatch(html,/<script|<form|google-analytics\.com|facebook\.com\/tr\?/i);});
