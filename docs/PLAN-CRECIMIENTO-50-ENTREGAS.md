@@ -67,7 +67,11 @@
 
 **C35 integrada:** PR #131 fusionado en main con 5 checks exitosos para el SHA `ef6262af699e84cfca70ed9f5aac7dde398c74ae` (tests, syntax, regressions, playwright y Workers Builds). Demo exclusivamente sintética, sin sincronización de datos ni despliegue Cloudflare confirmado.
 
-**C47 integrada:** PR #133 (5 checks verdes), simulador local de límites, sin cobros. **C36 integrada:** PR #134 (5 checks verdes), hitos locales por empresa y usuario, no sincronizados. **C46 integrada:** PR #135 (5 checks verdes), estados de suscripción ilustrativos sin facturación. **C38 integrada:** PR #136 (checks de tests, syntax, regressions y playwright verdes), comparador manual con umbral de muestra, no sincronizado. Todas integradas en main; no se ha verificado despliegue Cloudflare.\n\n**Control documental automático:** los cambios de este plan deben pasar `validate-growth-plan` (50 identificadores únicos, PR por entrega integrada y contador consistente); un PR documental sin ese check no se fusiona. Esta verificación no sustituye las pruebas funcionales ni acredita despliegue.\n\n## Protocolo repetible
+**C47 integrada:** PR #133 (5 checks verdes), simulador local de límites, sin cobros. **C36 integrada:** PR #134 (5 checks verdes), hitos locales por empresa y usuario, no sincronizados. **C46 integrada:** PR #135 (5 checks verdes), estados de suscripción ilustrativos sin facturación. **C38 integrada:** PR #136 (checks de tests, syntax, regressions y playwright verdes), comparador manual con umbral de muestra, no sincronizado. Todas integradas en main; no se ha verificado despliegue Cloudflare.
+
+**Control documental automático:** los cambios de este plan deben pasar `validate-growth-plan` (50 identificadores únicos, PR por entrega integrada y contador consistente); un PR documental sin ese check no se fusiona. Esta verificación no sustituye las pruebas funcionales ni acredita despliegue.
+
+## Protocolo repetible
 1. Leer este archivo en main y comprobar commits y PR actuales antes de empezar.
 2. Seleccionar una entrega pendiente sin desarrollo en otra rama. Si hay un PR en borrador, inspeccionarlo y corregirlo en lugar de duplicarlo.
 3. Entregar implementación de usuario o lógica consumida realmente por el sistema, con pruebas positivas, negativas y de aislamiento.
@@ -88,4 +92,9 @@
 | 2026-11-04 | C31–C34 | PR #125 fusionado en main | 6 verificaciones verdes |
 | 2026-11-04 | C41–C45 | PR #126 fusionado en main | 6 verificaciones verdes |
 | 2026-11-04 | C39–C40, C48 | PR #127 fusionado en main | 6 verificaciones verdes |
-| 2026-11-04 | C49 (salto accesible) | PR #128 fusionado en main | 3 verificaciones verdes |\n| 2026-11-05 | C35 | PR #131 fusionado en main | 5 verificaciones verdes |\n| 2026-11-05 | C47 | PR #133 fusionado en main | 5 verificaciones verdes |\n| 2026-11-05 | C36 | PR #134 fusionado en main | 5 verificaciones verdes |\n| 2026-11-05 | C46 | PR #135 fusionado en main | 5 verificaciones verdes |\n| 2026-11-05 | C38 | PR #136 fusionado en main | 4 workflows verdes |
+| 2026-11-04 | C49 (salto accesible) | PR #128 fusionado en main | 3 verificaciones verdes |
+| 2026-11-05 | C35 | PR #131 fusionado en main | 5 verificaciones verdes |
+| 2026-11-05 | C47 | PR #133 fusionado en main | 5 verificaciones verdes |
+| 2026-11-05 | C36 | PR #134 fusionado en main | 5 verificaciones verdes |
+| 2026-11-05 | C46 | PR #135 fusionado en main | 5 verificaciones verdes |
+| 2026-11-05 | C38 | PR #136 fusionado en main | 4 workflows verdes |
