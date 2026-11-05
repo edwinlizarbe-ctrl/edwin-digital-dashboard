@@ -1,0 +1,12 @@
+/* Accesos de demostración: un único menú, sin superponer cinco botones al contenido. */
+.crm-quicklinks{position:fixed;right:16px;bottom:16px;z-index:9999;font:600 13px/1.35 system-ui,sans-serif;color:#fff;max-width:min(310px,calc(100vw - 32px))}
+.crm-quicklinks summary{display:flex;align-items:center;gap:8px;list-style:none;padding:13px 18px;border-radius:12px;background:#174ec1;color:#fff;cursor:pointer;box-shadow:0 6px 22px #0003;user-select:none}
+.crm-quicklinks summary::-webkit-details-marker{display:none}
+.crm-quicklinks summary::before{content:"+";font-size:19px;line-height:1}
+.crm-quicklinks[open] summary::before{content:"−"}
+.crm-quicklinks summary:focus-visible,.crm-quicklinks a:focus-visible{outline:3px solid #23dbd0;outline-offset:3px}
+.crm-quicklinks nav{position:absolute;right:0;bottom:calc(100% + 10px);min-width:246px;max-width:calc(100vw - 32px);border:1px solid #cbd8ed;border-radius:14px;background:#fff;box-shadow:0 12px 42px #101b3540;padding:8px}
+.crm-quicklinks nav a{display:block;border-radius:9px;padding:10px 12px;color:#172846;text-decoration:none;line-height:1.35}
+.crm-quicklinks nav a:hover{background:#eaf2ff;color:#0d419c}
+.crm-quicklinks nav a:first-child{color:#134dba;font-weight:800;background:#edf4ff}
+@media(max-width:480px){.crm-quicklinks{right:12px;bottom:12px}.crm-quicklinks summary{padding:11px 13px}}
