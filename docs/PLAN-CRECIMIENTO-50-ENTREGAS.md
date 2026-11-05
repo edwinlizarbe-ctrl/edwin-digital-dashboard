@@ -2,7 +2,7 @@
 
 **Objetivo:** capacidades útiles que eleven captación, conversión, seguimiento, activación, calidad comercial y preparación SaaS. Estas son **entregas pendientes o desarrolladas**, no 50 cambios publicados por el mero hecho de escribir el plan.
 
-**Avance comprobado al 2026-11-04:** 41/50 entregas integradas en main (sin confirmación de despliegue Cloudflare); C21–C22, C35–C38, C46–C47 y C50 pendientes. Se han publicado C01–C10 (#115), C11–C16 (#116) y C17–C20 (#118). Cada bloque tiene sus propias pruebas. No se ha verificado aquí un despliegue de Cloudflare.
+**Avance comprobado al 2026-11-04:** 42/50 entregas integradas en main (sin confirmación de despliegue Cloudflare); C21–C22, C36–C38, C46–C47 y C50 pendientes. Se han publicado C01–C10 (#115), C11–C16 (#116) y C17–C20 (#118). Cada bloque tiene sus propias pruebas. No se ha verificado aquí un despliegue de Cloudflare.
 
 **Reglas operativas:** trabajar por bloques pequeños, revisar PR abierto para evitar duplicar otras automatizaciones, pruebas CI verdes antes del merge, aislamiento business_id/JWT, no compartir PII entre empresas, no enviar emails/WhatsApp ni gastar en anuncios ni cobrar sin acción autorizada; no tocar secretos, RLS ni datos existentes. Fusionar GitHub no prueba despliegue Cloudflare. Cada PR publicado debe figurar en el historial con su número y estado real.
 
@@ -44,7 +44,7 @@
 | C32 | Activación y retención | Detectar si aún no hay primera oportunidad registrada | Publicada · PR #125 · CI verde |
 | C33 | Activación y retención | Explicar cómo conectar una fuente de analítica autorizada | Publicada · PR #125 · CI verde |
 | C34 | Activación y retención | Guiar desde una pantalla vacía hacia la primera acción | Publicada · PR #125 · CI verde |
-| C35 | Activación y retención | Ofrecer demo aislada con métricas claramente ficticias | Pendiente |
+| C35 | Activación y retención | Ofrecer demo aislada con métricas claramente ficticias | Integrada · PR #131 · 5 checks verdes |
 | C36 | Activación y retención | Registrar hitos de activación sin información personal | Pendiente |
 | C37 | Activación y retención | Mostrar seguimiento de actividad comercial por períodos comparables | Pendiente |
 | C38 | Activación y retención | Separar datos actuales de cohortes con muestras insuficientes | Pendiente |
@@ -64,6 +64,8 @@
 **C23 publicada:** PR #120 fusionado con 3 verificaciones verdes. **C24–C27 publicadas:** PR #121 fusionado con 3 verificaciones verdes. **C29–C30 publicadas:** PR #122 fusionado con 3 verificaciones verdes. **C28 publicada:** PR #123 fusionado con 3 verificaciones verdes; la exportación CSV no incluye la URL ni PII y neutraliza fórmulas.
 
 **C31–C34 publicadas:** PR #125 fusionado en main con seis verificaciones verdes; mejora guía de activación con progreso verificable, primera oportunidad, GA4 y próxima acción. **C41–C45 publicadas:** PR #126 fusionado tras seis verificaciones verdes (reporte comercial agregado exportable y períodos comparables). **C39, C40 y C48 integradas:** PR #127 fusionado tras seis checks verdes. **C49 integrada:** PR #128 fusionado tras tres checks verdes; añade un enlace de salto al contenido con foco visible y pruebas de teclado. La implementación de C49 cubre la navegación global al contenido, no una auditoría completa de accesibilidad.
+
+**C35 integrada:** PR #131 fusionado en main con 5 checks exitosos para el SHA `ef6262af699e84cfca70ed9f5aac7dde398c74ae` (tests, syntax, regressions, playwright y Workers Builds). Demo exclusivamente sintética, sin sincronización de datos ni despliegue Cloudflare confirmado.
 
 ## Protocolo repetible
 1. Leer este archivo en main y comprobar commits y PR actuales antes de empezar.
