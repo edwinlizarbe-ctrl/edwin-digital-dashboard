@@ -1,5 +1,7 @@
 # Edwin CRM · 50 acciones de mejora y control de lanzamiento
 
+**Resultado verificado en GitHub: 50/50 acciones integradas en `main` mediante PR #141, #142, #143, #144 y #145. Esto no acredita despliegue de Cloudflare Production.**
+
 **Fecha:** 5 de noviembre de 2026. **Alcance:** acciones A01–A50 de este lote, distintas de las capacidades C01–C50 del plan anterior.
 
 Las 50 acciones incluyen **funciones visibles, correcciones de seguridad y verificaciones automatizadas**. No equivalen a 50 nuevos módulos ni a 50 suscripciones conseguidas. Cada fila corresponde a un caso comprobable en código o pruebas. Las acciones pendientes de CI no se cuentan como publicadas.
@@ -8,16 +10,16 @@ Las 50 acciones incluyen **funciones visibles, correcciones de seguridad y verif
 
 | Acción | Qué se mejoró o verificó | Evidencia | Publicación |
 |---|---|---|---|
-| A01 | Selector de escenarios con etiqueta | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
-| A02 | Restablecimiento accesible del ejemplo | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
-| A03 | Enlaces de retorno a presentación y CRM | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
-| A04 | Demo excluida del índice de buscadores | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
-| A05 | Cálculo de prospectos sin contactar | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
-| A06 | Cálculo de calificados sin cierre | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
-| A07 | Tasas sintéticas de calificación y cierre | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
-| A08 | Visualización de barras por etapa | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
-| A09 | Bloqueo de empresas reales y escenarios inválidos | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
-| A10 | Resultado sintético inmutable y sin solicitudes externas | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | En validación CI |
+| A01 | Selector de escenarios con etiqueta | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
+| A02 | Restablecimiento accesible del ejemplo | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
+| A03 | Enlaces de retorno a presentación y CRM | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
+| A04 | Demo excluida del índice de buscadores | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
+| A05 | Cálculo de prospectos sin contactar | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
+| A06 | Cálculo de calificados sin cierre | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
+| A07 | Tasas sintéticas de calificación y cierre | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
+| A08 | Visualización de barras por etapa | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
+| A09 | Bloqueo de empresas reales y escenarios inválidos | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
+| A10 | Resultado sintético inmutable y sin solicitudes externas | [PR #141](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/141) | Fusionado en main |
 | A11 | Propuesta clara de seguimiento comercial | [PR #142](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/142) | Fusionado en main |
 | A12 | Navegación a secciones existentes | [PR #142](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/142) | Fusionado en main |
 | A13 | Segmentos de negocio y casos de uso | [PR #142](https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/142) | Fusionado en main |
