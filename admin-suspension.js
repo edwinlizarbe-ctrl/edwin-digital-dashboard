@@ -1,3 +1,4 @@
+import { readLimitedBody } from './read-limited-body.js';
 // Administrator-controlled, reversible account suspension.
 // This module never deletes Supabase identities or touches external messaging integrations.
 const reply=(data,status=200,cookies=[])=>{const h=new Headers({'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});for(const c of cookies)h.append('Set-Cookie',c);return new Response(JSON.stringify(data),{status,headers:h});};
@@ -14,8 +15,14 @@ export async function isSuspendedUser(env,userId){
 export async function manageSuspension(req,env,s){
   if(s.user.role!=='admin')return reply({error:'Acceso exclusivo del administrador.'},403,s.cookies);
   if(req.method!=='POST'||req.headers.get('Origin')&&req.headers.get('Origin')!==new URL(req.url).origin)return reply({error:'Solicitud no autorizada.'},403,s.cookies);
-  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))return reply({error:'Se requiere JSON.'},415,s.cookies);
-  let data;try{data=await req.json();}catch{return reply({error:'Datos no válidos.'},400,s.cookies);}
+  if(!/^application\/json(?:\s*;|$)/.test((req.headers.get('Content-Type')||'').toLowerCase()))return reply({error:'Se requiere JSON.'},415,s.cookies);
+  let data;
+  try{data=JSON.parse(await readLimitedBody(req,2048));}
+  catch(error){
+    return error?.code==='BODY_TOO_LARGE'
+      ? reply({error:'Solicitud demasiado grande.'},413,s.cookies)
+      : reply({error:'Datos no válidos.'},400,s.cookies);
+  }
   const id=String(data?.user_id||''),action=String(data?.action||'');
   if(!uuid(id)||!['suspend','reactivate'].includes(action))return reply({error:'Solicitud inválida.'},400,s.cookies);
   if(id===s.user.id)return reply({error:'No puedes suspender tu propia cuenta administradora.'},403,s.cookies);

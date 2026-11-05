@@ -1,3 +1,4 @@
+import { readLimitedBody } from './read-limited-body.js';
 /* Edwin CRM: reversible administrator lifecycle controls.
    No hard-deletes. Secret service credentials never reach the browser. */
 const headersFor=(key)=>({apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',Accept:'application/json'});
@@ -34,11 +35,15 @@ export async function handleAdminLifecycle(req,env,s){
   if(req.method!=='POST')return response({error:'Método no autorizado.'},405,s.cookies);
   const origin=req.headers.get('Origin');
   if(origin&&origin!==url.origin)return response({error:'Origen no autorizado.'},403,s.cookies);
-  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
+  if(!/^application\/json(?:\s*;|$)/.test((req.headers.get('Content-Type')||'').toLowerCase()))
    return response({error:'Se requiere JSON.'},415,s.cookies);
-  const raw=await req.text();
-  if(raw.length>2500)return response({error:'Solicitud demasiado grande.'},413,s.cookies);
-  let input;try{input=JSON.parse(raw)}catch{return response({error:'Solicitud inválida.'},400,s.cookies);}
+  let input;
+  try{input=JSON.parse(await readLimitedBody(req,2500));}
+  catch(error){
+   return error?.code==='BODY_TOO_LARGE'
+    ? response({error:'Solicitud demasiado grande.'},413,s.cookies)
+    : response({error:'Solicitud inválida.'},400,s.cookies);
+  }
   const id=String(input?.id||''),entity=String(input?.entity||''),action=String(input?.action||'');
   if(!validId(id))return response({error:'Identificador inválido.'},400,s.cookies);
   if(entity==='business'&&['suspend','reactivate'].includes(action)){
