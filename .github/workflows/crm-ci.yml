@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - '**/*.js'
+      - '**/*.mjs'
       - 'public/**'
       - 'migrations/**'
       - 'package.json'
@@ -24,6 +25,6 @@ jobs:
       - name: Validar sintaxis de todos los módulos JavaScript
         run: |
           set -eu
-          find . -name '*.js' -not -path './node_modules/*' -not -path './.git/*' -print0 | xargs -0 -n 1 node --check
+          find . -type f \( -name '*.js' -o -name '*.mjs' \) -not -path './node_modules/*' -not -path './.git/*' -print0 | xargs -0 -n 1 node --check
       - name: Pruebas unitarias de todos los módulos
         run: node --test tests/*.test.js tests/*.test.mjs
