@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import{compareCohorts}from'../public/crm-cohort-guard.js';
+const base={businessId:'bizA',selectedBusinessId:'bizA',current:{total:40,completed:20},previous:{total:20,completed:5}};
+test('C38 compara tasas solo con muestras suficientes',()=>{const x=compareCohorts(base);assert.equal(x.sufficient,true);assert.equal(x.currentRate,50);assert.equal(x.previousRate,25);assert.equal(x.differencePoints,25);assert.ok(Object.isFrozen(x));});
+test('C38 oculta tasas si una muestra es insuficiente',()=>{const x=compareCohorts({...base,previous:{total:19,completed:19}});assert.equal(x.sufficient,false);assert.equal('currentRate'in x,false);assert.equal('differencePoints'in x,false);});
+test('C38 rechaza datos inválidos, divisiones imposibles y umbrales inseguros',()=>{for(const p of [{...base,current:{total:4,completed:5}},{...base,current:{total:NaN,completed:0}},{...base,minSample:0},{...base,previous:{total:-1,completed:0}}])assert.throws(()=>compareCohorts(p));});
+test('C38 aísla business_id y no muta los datos originales',()=>{assert.throws(()=>compareCohorts({...base,selectedBusinessId:'bizB'}));const before=structuredClone(base);compareCohorts(base);assert.deepEqual(base,before);});
