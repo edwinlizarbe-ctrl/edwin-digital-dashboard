@@ -1,3 +1,4 @@
+import { readLimitedBody } from './read-limited-body.js';
 import { manageSuspension, isSuspendedUser } from './admin-suspension.js';
 import { handleAdminLifecycle } from './admin-lifecycle.js';
 import { adminInvite, adminInviteBlogEditor, adminBlogEditorStatus, acceptInvite } from './admin-invites.js';
@@ -104,7 +105,7 @@ function companyJsonRequest(req,limit=120000){
     (!req.headers.get('Content-Length')||Number(req.headers.get('Content-Length'))<=limit);
 }
 async function companyParse(req,limit=120000){
-  const body=await req.text();if(body.length>limit)throw Error('Archivo demasiado grande.');
+  const body=await readLimitedBody(req,limit);
   return JSON.parse(body);
 }
 async function companyPatch(env,session,table,filter,changes){
@@ -152,10 +153,14 @@ async function handleApi(req, env) {
   if (path === '/api/auth/reset-password') return handleResetPassword(req, env);
   if (path === '/api/auth/login' && method === 'POST') {
     if (corsPostDenied(req)) return json({ error: 'Origen no autorizado' }, 403);
-    if (Number(req.headers.get('Content-Length')) > 8192) return json({ error: 'Solicitud demasiado grande' }, 413);
-    if (!(req.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) return json({ error: 'Se requiere JSON' }, 415);
+    if (!/^application\/json(?:\s*;|$)/.test((req.headers.get('Content-Type') || '').toLowerCase())) return json({ error: 'Se requiere JSON' }, 415);
     let payload;
-    try { payload = await req.json(); } catch { return json({ error: 'Solicitud no válida' }, 400); }
+    try { payload = JSON.parse(await readLimitedBody(req,8192)); }
+    catch (error) {
+      return error?.code==='BODY_TOO_LARGE'
+        ? json({ error: 'Solicitud demasiado grande' }, 413)
+        : json({ error: 'Solicitud no válida' }, 400);
+    }
     if (typeof payload.email !== 'string' || typeof payload.password !== 'string' || payload.password.length > 512) return json({ error: 'Correo o contraseña no válidos' }, 400);
     const r = await supaAuth(env, 'token?grant_type=password', {
       method: 'POST', body: JSON.stringify({ email: payload.email.trim(), password: payload.password }),
@@ -202,10 +207,13 @@ async function handleApi(req, env) {
   if (path === '/api/auth/change-password' && method === 'POST') {
     if (corsPostDenied(req)) return json({ error: 'Origen no autorizado.' }, 403, s.cookies);
     if (!(req.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) return json({ error: 'Se requiere JSON.' }, 415, s.cookies);
-    const text=await req.text();
-    if (text.length > 2048) return json({ error: 'Solicitud demasiado grande.' }, 413, s.cookies);
     let input;
-    try { input = JSON.parse(text); } catch { return json({ error: 'Solicitud no válida.' }, 400, s.cookies); }
+    try { input = JSON.parse(await readLimitedBody(req,2048)); }
+    catch (error) {
+      return error?.code==='BODY_TOO_LARGE'
+        ? json({ error: 'Solicitud demasiado grande.' }, 413, s.cookies)
+        : json({ error: 'Solicitud no válida.' }, 400, s.cookies);
+    }
     const currentPassword=input?.currentPassword, newPassword=input?.newPassword;
     if (typeof currentPassword!=='string' || currentPassword.length<1 || currentPassword.length>512 || typeof newPassword!=='string' || newPassword.length<10 || newPassword.length>128) {
       return json({ error: 'Completa tu contraseña actual y una nueva de 10 a 128 caracteres.' }, 400, s.cookies);
