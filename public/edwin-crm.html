@@ -6,6 +6,10 @@
   <meta name="theme-color" content="#08162e">
   <meta name="description" content="Edwin CRM ayuda a organizar prospectos, priorizar seguimientos y visualizar el avance comercial sin complicaciones. Conoce la demostración.">
   <meta name="robots" content="noindex, nofollow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Edwin CRM · Cada prospecto cuenta">
+  <meta property="og:description" content="Organiza oportunidades, prioriza seguimientos y conoce tus avances comerciales.">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Edwin CRM | Cada prospecto cuenta</title>
   <style>
     :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#08162e;color:#f4f7ff}
@@ -33,13 +37,27 @@
     footer .wrap{padding-top:28px;padding-bottom:36px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;color:#b9c7dc;font-size:13px}
     @media(max-width:700px){.hero{padding:58px 0 45px}.metrics,.cards{grid-template-columns:1fr}.hero-card{margin-top:25px}.metric{padding:13px 17px}.actions .cta{width:100%}.wrap{padding:0 19px}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+    .top-nav{display:flex;align-items:center;gap:19px;flex-wrap:wrap}.top-nav a:not(.header-link){font-size:13px;text-decoration:none;color:#d5e2f4}.top-nav a:hover{text-decoration:underline}
+    .readiness{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .readiness article{padding:24px;border:1px solid #829fd343;border-radius:17px;background:#122747}
+    .readiness h3{margin:0 0 12px;font-size:19px}.readiness ul{margin:0;padding-left:21px;color:#ccd8e8}.readiness li{margin:9px 0}
+    .faq details{margin:10px 0;background:#122747;border:1px solid #829fd343;border-radius:12px;padding:16px 19px}
+    .faq summary{cursor:pointer;font-weight:750;color:#ecf4ff}.faq details p{margin:12px 0 0;color:#d7e1ef}
+    @media(max-width:780px){.top-nav{gap:12px;justify-content:flex-end}.top-nav a:not(.header-link){display:none}}
+    @media(max-width:700px){.readiness{grid-template-columns:1fr}.readiness article{padding:19px}}
+    @media(prefers-contrast:more){.subtle,.cards p,.readiness ul{color:#fff}.top-nav a{color:#fff!important}}
   </style>
 </head>
 <body>
   <a class="skip" href="#contenido">Saltar al contenido</a>
   <header><div class="wrap">
     <a class="brand" href="/edwin-crm.html" aria-label="Edwin CRM, inicio">Edwin <b>CRM</b></a>
-    <a class="header-link" href="/">Ingresar al CRM</a>
+    <nav class="top-nav" aria-label="Navegación comercial">
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#para-quien">Para quién</a>
+      <a href="#preguntas">Preguntas</a>
+      <a class="header-link" href="/">Acceso a clientes</a>
+    </nav>
   </div></header>
   <main id="contenido">
     <div class="hero"><div class="wrap">
@@ -68,6 +86,42 @@
         <article><span class="num">PASO 02</span><h3>Detecta lo pendiente</h3><p>Utiliza alertas por antigüedad y prioridades explicables para enfocar tu día.</p></article>
         <article><span class="num">PASO 03</span><h3>Comprueba el avance</h3><p>Consulta el embudo y los reportes por etapa, canal y período según los datos disponibles.</p></article>
       </div>
+    </div></section>
+
+    <section class="content audience" id="para-quien"><div class="wrap">
+      <h2>Diseñado para negocios que necesitan dar seguimiento.</h2>
+      <p class="intro">El CRM puede ayudarte a organizar el proceso comercial cuando recibes prospectos de distintos canales y necesitas saber qué ocurrió después del primer contacto.</p>
+      <div class="cards">
+        <article><span class="num">SERVICIOS</span><h3>Agencias y consultores</h3><p>Registra solicitudes, revisa oportunidades pendientes y da continuidad a tus propuestas.</p></article>
+        <article><span class="num">COMERCIO</span><h3>Negocios con atención comercial</h3><p>Conserva las etapas declaradas y asigna prioridades al seguimiento diario.</p></article>
+        <article><span class="num">EQUIPOS PEQUEÑOS</span><h3>Emprendedores que hacen publicidad</h3><p>Compara el origen registrado de las oportunidades sin confundirlo con ventas atribuidas.</p></article>
+      </div>
+    </div></section>
+    <section class="content expectations" id="alcance"><div class="wrap">
+      <h2>Qué puedes explorar hoy y qué sigue en preparación</h2>
+      <div class="readiness">
+        <article><h3>En el producto</h3><ul>
+          <li>Embudo de oportunidades con etapas comerciales.</li>
+          <li>Prioridades explicables y controles de seguimiento.</li>
+          <li>Reportes agregados según datos disponibles.</li>
+          <li>Demostración separada de empresas reales.</li>
+        </ul></article>
+        <article><h3>Aún no disponible para contratar aquí</h3><ul>
+          <li>Pago recurrente y activación automática.</li>
+          <li>Promesas de integración universal de WhatsApp.</li>
+          <li>Resultados garantizados de venta o publicidad.</li>
+          <li>Prueba pública de autoservicio sin validación de producción.</li>
+        </ul></article>
+      </div>
+      <p class="subtle">La existencia de una función en GitHub no equivale a su disponibilidad comprobada para todas las cuentas.</p>
+    </div></section>
+    <section class="content faq" id="preguntas"><div class="wrap">
+      <h2>Preguntas frecuentes</h2>
+      <details><summary>¿Edwin CRM vende por mí de forma automática?</summary><p>No. Ayuda a organizar oportunidades y priorizar seguimientos; no garantiza resultados ni reemplaza al equipo comercial.</p></details>
+      <details><summary>¿Puedo conectar mi WhatsApp inmediatamente?</summary><p>No podemos prometerlo todavía. La integración depende de configuraciones, permisos y pruebas específicas por empresa.</p></details>
+      <details><summary>¿La demostración contiene clientes reales?</summary><p>No. Son tres escenarios completamente ficticios que no se conectan a tus datos.</p></details>
+      <details><summary>¿Puedo pagar una suscripción desde esta página?</summary><p>Aún no. La facturación y el proceso de activación comercial están en preparación; esta página no recibe pagos ni datos bancarios.</p></details>
+      <details><summary>¿Cuál es el primer paso para conocerlo?</summary><p>Abre la demostración y revisa el embudo simulado. Cuando se habilite el alta pública, se comunicará con condiciones y precios verificados.</p></details>
     </div></section>
     <section class="contrast" id="piloto"><div class="wrap">
       <h2>Conoce Edwin CRM antes de decidir.</h2>
