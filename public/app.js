@@ -1281,7 +1281,7 @@ async function loadAccounts(){
     return `<div class="account-access-entry"><div class="client-site-row account-access-row">
     <div class="client-avatar compact">${icon('users',19)}</div>
     <div class="account-access-info"><strong>${clean(u.email)}</strong><small>Empresa: ${clean(Array.isArray(u.business_names)?(u.business_names.join(', ')||'Sin empresa vinculada'):'Actualiza usuarios para ver su empresa')}</small><small>${archived?'Cuenta eliminada (recuperable) · ':''}Rol: ${clean(u.role||'Cliente')} · Alta: ${clean(date(u.created_at))} · Último acceso: ${clean(date(u.last_sign_in_at))}</small></div>
-    <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button>${archived?'':`<button class="button button-outline" type="button" data-act="account-password-eye" data-id="${clean(u.id)}" data-email="${clean(u.email)}" title="Ver solo una clave temporal recién generada; no revela contraseñas actuales" aria-label="Contraseña de ${clean(u.email)}">${icon('eye',16)} Contraseña</button><button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button><button class="button button-outline" data-act="account-suspension" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-status="${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'suspended':'active'}">${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'Reactivar':'Suspender'}</button>`}<button class="button button-outline" data-act="account-archive" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-archived="${archived}">${archived?'Restaurar cuenta':'Eliminar cuenta'}</button></div>
+    <div class="account-access-actions"><button class="button button-outline" data-act="account-email-history" data-id="${clean(u.id)}">Historial de correo</button>${archived?'':`<button class="button button-outline" data-act="account-temp" data-id="${clean(u.id)}" data-email="${clean(u.email)}">Restablecer clave</button><button class="button button-outline" data-act="account-suspension" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-status="${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'suspended':'active'}">${u.banned_until&&Date.parse(u.banned_until)>Date.now()?'Reactivar':'Suspender'}</button>`}<button class="button button-outline" data-act="account-archive" data-id="${clean(u.id)}" data-email="${clean(u.email)}" data-archived="${archived}">${archived?'Restaurar cuenta':'Eliminar cuenta'}</button></div>
   </div>${matchesCredential?`<div class="temporary-credential" role="status" style="margin:0 0 14px 44px;padding:12px 16px"><strong>Clave temporal nueva de ${clean(u.email)}</strong><div class="temporary-credential-content"><code aria-label="${state.temporaryPasswordVisible?'Contraseña visible':'Contraseña oculta'}">${state.temporaryPasswordVisible?clean(credential.password):'••••••••••••••••'}</code><button class="button button-outline" type="button" data-act="account-toggle-temp">${icon('eye',16)} ${state.temporaryPasswordVisible?'Ocultar':'Mostrar'}</button><button class="button button-primary" type="button" data-act="account-copy-temp">Copiar clave</button></div><small>La clave anterior dejó de funcionar. Entrégala en privado y pide al cliente que la cambie.</small></div>`:''}</div>`}).join('');
   return `${heading('Superadministrador','Accesos de clientes','Directorio de correos de acceso y recuperación segura de contraseñas, sin mostrar credenciales privadas.')}
     <div class="account-access-toolbar"><button class="button button-outline" data-act="accounts-refresh" ${state.accountsLoading?'disabled':''}>${icon('refresh',16)} ${state.accountsLoading?'Consultando…':'Actualizar usuarios'}</button><span>${fmt(list.length)} cuentas visibles</span></div>
@@ -2276,23 +2276,6 @@ function sidebar(){
         state.accountNotice=suspended?'Cuenta reactivada.':'Cuenta suspendida.';
         await loadAccounts();
       }catch(e){state.accountsError=e.message;render();}
-    }
-    else if(action==='account-password-eye'&&isAdmin()){
-      const email=b.dataset.email||'',id=b.dataset.id||'';
-      if(state.temporaryAccess&&(state.temporaryAccess.id===id||(!state.temporaryAccess.id&&state.temporaryAccess.email?.toLowerCase()===email.toLowerCase()))){
-        state.temporaryPasswordVisible=!state.temporaryPasswordVisible;
-        render();
-      }else{
-        if(!confirm('La contraseña actual de '+email+' no se puede ver por seguridad. ¿Generar una NUEVA clave temporal para mostrarla? La anterior dejará de funcionar.'))return;
-        state.temporaryAccess=null;state.temporaryPasswordVisible=false;state.accountNotice='';state.accountsError='';
-        try{
-          const out=await api('/api/admin/accounts/temporary-password',{method:'POST',body:JSON.stringify({user_id:id})});
-          state.temporaryAccess={id,email:out.email,password:out.temporary_password};
-          state.temporaryPasswordVisible=true;
-          state.accountNotice='Contraseña temporal nueva generada para este usuario.';
-        }catch(e){state.accountsError=e.message;}
-        render();
-      }
     }
     else if(action==='account-temp'&&isAdmin()){
       const email=b.dataset.email||'',id=b.dataset.id||'';
