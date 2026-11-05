@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Estima de manera local cuántos de tus prospectos podrían quedar sin primer contacto, sin compartir tus datos.">
+  <title>Edwin CRM · Simulador de seguimiento</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light;color:#16223c;background:#f3f7ff}
+    *{box-sizing:border-box}body{margin:0;line-height:1.5}a{color:#1554b8}
+    .wrap{max-width:840px;margin:0 auto;padding:28px 18px 64px}
+    .back{display:inline-block;margin-bottom:22px}
+    main{background:#fff;padding:clamp(22px,5vw,38px);border:1px solid #d7e2f0;border-radius:19px;box-shadow:0 10px 32px #1d3b6715}
+    h1{font-size:clamp(28px,5vw,42px);letter-spacing:-.04em;line-height:1.15;margin:0}
+    h2{font-size:19px;margin:29px 0 14px}
+    p{color:#3a4d6a}.notice{padding:14px;border-radius:10px;border-left:4px solid #2563eb;background:#eaf2ff}
+    form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:24px 0}
+    label{display:block;font-weight:750;margin-bottom:6px;color:#243959}
+    input{width:100%;padding:12px 13px;font:inherit;border:1px solid #93a9c9;border-radius:10px;background:white;color:#132847}
+    .hint{display:block;font-size:12px;color:#4d617e;margin-top:7px}
+    .actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:12px}
+    button{cursor:pointer;border:0;border-radius:10px;background:#135bd5;color:#fff;padding:12px 19px;font:700 15px system-ui}
+    button[type=reset]{background:#e8eef8;color:#153765}
+    button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #1869dc;outline-offset:3px}
+    .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .cards article{background:#f4f8ff;border:1px solid #d5e2f3;border-radius:12px;padding:18px}
+    .cards span{font-size:13px;color:#435773;display:block}.cards strong{display:block;font-size:clamp(24px,3.7vw,33px);color:#164eab}
+    .error{color:#a52722;font-weight:700;min-height:0}.privacy{font-size:13px;color:#425b7a}
+    @media(max-width:600px){form,.cards{grid-template-columns:1fr}}
+    @media print{button,.back{display:none}main{border:0;box-shadow:none}}
+  </style>
+</head>
+<body><div class="wrap">
+  <a class="back" href="/edwin-crm.html">← Volver a Edwin CRM</a>
+  <main>
+    <h1>¿Cuántos prospectos te podrían faltar por contactar?</h1>
+    <p class="notice"><strong>Simulación personal.</strong> Este cálculo utiliza únicamente los números que tú introduces. No se conecta a tus campañas, clientes o ingresos reales.</p>
+    <form id="estimate-form" novalidate>
+      <div>
+        <label for="leads">Prospectos recibidos en un mes</label>
+        <input id="leads" name="leads" type="number" inputmode="numeric" min="0" max="100000" step="1" value="100" required aria-describedby="leads-help">
+        <span id="leads-help" class="hint">Valor ilustrativo inicial: 100. Máximo: 100.000.</span>
+      </div>
+      <div>
+        <label for="percent">Porcentaje estimado sin primer contacto</label>
+        <input id="percent" name="percent" type="number" inputmode="numeric" min="0" max="100" step="1" value="20" required aria-describedby="percent-help">
+        <span id="percent-help" class="hint">Valor ilustrativo inicial: 20%. Usa una estimación propia.</span>
+      </div>
+      <div class="actions">
+        <button type="submit">Calcular ejemplo</button>
+        <button type="reset">Restablecer</button>
+      </div>
+    </form>
+    <p class="error" id="error" role="alert"></p>
+    <section aria-labelledby="results-title">
+      <h2 id="results-title">Resultado estimado</h2>
+      <div class="cards" id="results" aria-live="polite"></div>
+      <p id="explanation" class="privacy"></p>
+    </section>
+    <p class="privacy">Privacidad: los números solo se calculan en este navegador; no se envían ni se guardan. No estimamos ventas, dinero recuperado ni eficacia publicitaria.</p>
+    <p><a href="/crm-demo.html">Explorar el embudo ficticio de Edwin CRM</a></p>
+  </main>
+</div>
+<script type="module">
+  import {followupEstimate} from './crm-followup-estimate.js';
+  const form=document.getElementById('estimate-form'),leads=document.getElementById('leads'),percent=document.getElementById('percent');
+  const results=document.getElementById('results'),error=document.getElementById('error'),explanation=document.getElementById('explanation');
+  const formatter=new Intl.NumberFormat('es-PE');
+  function show(label,value) {
+    const article=document.createElement('article'),span=document.createElement('span'),strong=document.createElement('strong');
+    span.textContent=label;strong.textContent=formatter.format(value);article.append(span,strong);return article;
+  }
+  function calculate() {
+    try {
+      const x=followupEstimate({leads:leads.valueAsNumber,notContactedPercent:percent.valueAsNumber});
+      results.replaceChildren(
+        show('Prospectos del ejemplo',x.leads),
+        show('Con primer contacto estimado',x.contacted),
+        show('Sin contactar estimados',x.notContacted)
+      );
+      error.textContent='';explanation.textContent=x.caution;
+    }catch(err) {
+      results.replaceChildren();explanation.textContent='';
+      error.textContent=err instanceof RangeError?err.message:'No se pudo realizar el cálculo.';
+    }
+  }
+  form.addEventListener('submit',event=>{event.preventDefault();calculate();});
+  form.addEventListener('reset',()=>{queueMicrotask(calculate);});
+  calculate();
+</script>
+</body></html>
