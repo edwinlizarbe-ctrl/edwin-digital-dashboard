@@ -1,3 +1,4 @@
+import { readLimitedBody } from './read-limited-body.js';
 /*
  * eDigital - contextual AI assistant. Uses ONLY the signed-in customer's company.
  * OpenAI credential (OPENAI_API_KEY) must remain a Cloudflare Worker secret.
@@ -42,12 +43,15 @@ export async function handleAssistantApi(req,env,s) {
   if(url.pathname!=='/api/assistant/chat'||method!=='POST')return assistantReply({error:'Ruta no disponible.'},404);
   const origin=req.headers.get('Origin');
   if(origin&&origin!==url.origin)return assistantReply({error:'Origen no autorizado.'},403);
-  if(!(req.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
+  if(!/^application\/json(?:\s*;|$)/.test((req.headers.get('Content-Type')||'').toLowerCase()))
     return assistantReply({error:'Solo se admite JSON.'},415);
-  if(Number(req.headers.get('Content-Length')||0)>6000)return assistantReply({error:'Consulta demasiado grande.'},413);
   let body;
-  try{const raw=await req.text();if(raw.length>6000)throw new Error('large');body=JSON.parse(raw);}
-  catch{return assistantReply({error:'Consulta inválida.'},400);}
+  try{body=JSON.parse(await readLimitedBody(req,6000));}
+  catch(error){
+    return error?.code==='BODY_TOO_LARGE'
+      ? assistantReply({error:'Consulta demasiado grande.'},413)
+      : assistantReply({error:'Consulta inválida.'},400);
+  }
   const question=String(body?.question||'').trim(),businessId=String(body?.business_id||'');
   if(!question||question.length>450||!assistantUuid(businessId))
     return assistantReply({error:'Escribe una pregunta breve desde una empresa válida.'},400);
