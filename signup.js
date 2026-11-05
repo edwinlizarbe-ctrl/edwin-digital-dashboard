@@ -96,7 +96,7 @@ export async function handleSignup(req, env) {
 
 export async function handleOnboardingBusiness(req, env, s) {
   // Una sesión ausente o malformada debe devolver un error controlado, jamás lanzar al leer cookies.
-  const cookies = Array.isArray(s?.cookies) ? cookies : [];
+  const cookies = Array.isArray(s?.cookies) ? s.cookies : [];
   if (req.method.toUpperCase() !== 'POST') return reply({ error: 'Método no permitido.' }, 405, cookies);
   if (foreignOrigin(req)) return reply({ error: 'Origen no autorizado.' }, 403, cookies);
   if (!s?.user?.id || s.user.role !== 'client' || typeof s.access !== 'string' || !s.access) return reply({ error: 'Solo las cuentas de cliente pueden crear una empresa.' }, 403, cookies);
