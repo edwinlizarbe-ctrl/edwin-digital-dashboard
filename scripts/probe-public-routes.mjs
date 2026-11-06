@@ -8,6 +8,7 @@ function isNonPublicHost(hostname) {
   return isIP(host.replace(/^\[|\]$/g, '')) !== 0;
 }
 const ROUTES = Object.freeze(['/', '/edwin-crm.html', '/crm-demo.html']);
+const PAGE_TITLES = Object.freeze(['Edwin CRM · Panel', 'Edwin CRM | Cada prospecto cuenta', 'Edwin CRM · Demostración de seguimiento comercial']);
 export function validateBaseUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error('Se requiere una URL HTTPS válida.'); }
@@ -19,17 +20,19 @@ export function validateBaseUrl(value) {
 export async function probePublicRoutes(base, fetcher = fetch) {
   const origin = validateBaseUrl(base);
   const results = [];
-  for (const route of ROUTES) {
+  for (const [index, route] of ROUTES.entries()) {
     try {
       const response = await fetcher(origin + route, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(8000), headers: { Accept: 'text/html' } });
       const type = response.headers.get('content-type') || '';
-      const ok = response.status === 200 && /^text\/html(?:\s*;|$)/i.test(type);
-      results.push({ route, ok, status: response.status, contentType: type.split(';')[0] });
+      const htmlOk = response.status === 200 && /^text\/html(?:\s*;|$)/i.test(type);
+      const body = htmlOk ? await response.text() : '';
+      const pageOk = htmlOk && body.includes('<title>' + PAGE_TITLES[index] + '</title>');
+      results.push({ route, ok: pageOk, status: response.status, contentType: type.split(';')[0], ...(htmlOk && !pageOk ? { error: 'unexpected_page' } : {}) });
     } catch (error) {
       results.push({ route, ok: false, status: null, error: error?.name === 'TimeoutError' ? 'timeout' : 'network_error' });
     }
   }
-  return { origin, passed: results.every((r) => r.ok), results, limitation: 'Solo verifica respuestas HTTP públicas; no confirma commit desplegado, login, Auth, RLS ni pagos.' };
+  return { origin, passed: results.every((r) => r.ok), results, limitation: 'Verifica títulos de las tres páginas públicas y respuestas HTTP; no confirma commit desplegado, login, Auth, RLS ni pagos.' };
 }
 if (process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).href) {
   const base = process.argv[2];
