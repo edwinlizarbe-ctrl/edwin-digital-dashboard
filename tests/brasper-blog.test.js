@@ -72,14 +72,16 @@ test('métodos, origen y contenido inválido rechazados',async()=>{
   assert.equal(calls.length,0);
  });
 });
-test('módulo Blog está presente en sidebar Brásper, separado de otras empresas',()=>{
+test('Blog no figura en los menús del CRM y su generador heredado conserva datos',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const worker=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
  const index=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const view=readFileSync(new URL('../public/brasper-blog.js',import.meta.url),'utf8');
- assert.match(app,/blog: \['Blog'/);
- assert.match(app,/navLink\('blog'\)\+navLink\('mailing'\)/);
- assert.match(app,/state\.page==='blog'&&!isAdmin/);
+ const nav=app.slice(app.indexOf('function sidebar(){'),app.indexOf('function sidebar(){')+1600);
+ assert.doesNotMatch(app,/blog: \['Blog'/);
+ assert.doesNotMatch(nav,/navLink\('blog'\)|'blog','settings'/);
+ assert.match(app,/if\(state\.page==='blog'\)state\.page=isAdmin\(\)\?'adminHome':'overview'/);
+ assert.match(app,/navLink\('mailing'\)/);
  assert.match(app,/edwinBrasperBlog\?\.page/);
  assert.match(worker,/path === '\/api\/brasper\/blog\/generate'/);
  assert.match(index,/brasper-blog\.js/);assert.match(index,/brasper-blog\.css/);
