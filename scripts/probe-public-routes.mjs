@@ -25,9 +25,33 @@ export async function probePublicRoutes(base, fetcher = fetch) {
       const response = await fetcher(origin + route, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(8000), headers: { Accept: 'text/html' } });
       const type = response.headers.get('content-type') || '';
       const htmlOk = response.status === 200 && /^text\/html(?:\s*;|$)/i.test(type);
-      const body = htmlOk ? await response.text() : '';
-      const pageOk = htmlOk && body.includes('<title>' + PAGE_TITLES[index] + '</title>');
-      results.push({ route, ok: pageOk, status: response.status, contentType: type.split(';')[0], ...(htmlOk && !pageOk ? { error: 'unexpected_page' } : {}) });
+      // Avoid loading an arbitrarily large HTML response into memory during diagnostics.
+      const declaredBytes = Number(response.headers.get('content-length'));
+      const oversized = htmlOk && Number.isFinite(declaredBytes) && declaredBytes > 0 && declaredBytes > 262144;
+      let body = '';
+      if (htmlOk && !oversized) {
+        if (response.body?.getReader) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let bytes = 0;
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              bytes += value.byteLength;
+              if (bytes > 262144) { body = ''; break; }
+              body += decoder.decode(value, { stream: true });
+            }
+            if (bytes <= 262144) body += decoder.decode();
+          } finally { await reader.cancel().catch(() => {}); }
+        } else {
+          // Supports minimal test fetchers without a ReadableStream.
+          body = await response.text();
+          if (new TextEncoder().encode(body).byteLength > 262144) body = '';
+        }
+      }
+      const pageOk = htmlOk && !oversized && body.includes('<title>' + PAGE_TITLES[index] + '</title>');
+      results.push({ route, ok: pageOk, status: response.status, contentType: type.split(';')[0], ...(htmlOk && !pageOk ? { error: oversized || !body ? 'invalid_or_oversized_html' : 'unexpected_page' } : {}) });
     } catch (error) {
       results.push({ route, ok: false, status: null, error: error?.name === 'TimeoutError' ? 'timeout' : 'network_error' });
     }
