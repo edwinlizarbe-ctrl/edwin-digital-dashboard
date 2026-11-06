@@ -119,6 +119,6 @@ test('loadAccess renders server state and fails closed on errors',async()=>{
 });
 test('retired Blog and Email Marketing assets are not loaded in client CRM',()=>{
  const h=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- assert.doesNotMatch(h,/brasper-blog\\.(css|js)|email-marketing\\.(css|js)|email-xlsx\\.js/);
+ assert.doesNotMatch(h,/brasper-blog\.(css|js)|email-marketing\.(css|js)|email-xlsx\.js/);
  assert.match(h,/edwin-crm-global-no-blog-no-mailing-20261106/);
 });
