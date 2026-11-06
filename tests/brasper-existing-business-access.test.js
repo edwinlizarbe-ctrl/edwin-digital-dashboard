@@ -46,12 +46,15 @@ test('invitación de administrador usa API de empresa existente y no modifica pe
  assert.doesNotMatch(handler,/create-client|update-role|blog_editor['"]?\s*:/);
  assert.match(handler,/marketing\.brasper@gmail\.com/);
 });
-test('el cliente de Brasper conserva menú completo, campañas, conexión y blog',()=>{
+test('el cliente de Brasper conserva menú comercial e integraciones, sin Blog',()=>{
  assert.match(app,/\['overview','analytics','acquisition'\]/);
  assert.match(app,/\['meta','Meta Ads'\],\['google','Google Ads'\]/);
  assert.match(app,/\['leads','whatsapp','reports'\]/);
  assert.match(app,/\['integrations','company','settings'\]/);
- assert.match(app,/navLink\('blog'\)\+navLink\('mailing'\)/);
+ assert.match(app,/\?navLink\('mailing'\):''/);
+ const nav=app.slice(app.indexOf('function sidebar(){'),app.indexOf('function sidebar(){')+1300);
+ assert.doesNotMatch(nav,/navLink\('blog'\)|'blog','settings'/);
+ assert.match(app,/if\(state\.page==='blog'\)state\.page=isAdmin\(\)\?'adminHome':'overview'/);
 });
 test('el editor de blogs sigue aislado de APIs comerciales',()=>{
  assert.match(worker,/if\(s\.user\.role==='blog_editor'\)/);
