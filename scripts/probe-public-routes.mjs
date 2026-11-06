@@ -2,7 +2,7 @@ import { isIP } from 'node:net';
 
 function isNonPublicHost(hostname) {
   const host = hostname.toLowerCase().replace(/\.$/, '');
-  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || !host.includes('.')) return true;
+  if (host === 'localhost' || !host.includes('.') || ['.localhost', '.local', '.internal', '.lan', '.home.arpa', '.onion', '.test', '.invalid'].some((suffix) => host.endsWith(suffix))) return true;
   // IP literals are disallowed, including IPv6 and encoded IPv4 variants normalized by URL.
   // This probe is intended for named public HTTPS sites, not arbitrary network hosts.
   return isIP(host.replace(/^\[|\]$/g, '')) !== 0;

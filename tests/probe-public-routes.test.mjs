@@ -97,3 +97,22 @@ test('rechaza títulos duplicados o títulos parecidos para evitar falsos positi
   assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
   assert.ok(!JSON.stringify(result).includes('business_id'));
 });
+
+test('rechaza dominios reservados y redes locales sin consultar destinos', async () => {
+  const forbidden = [
+    'https://router.lan', 'https://app.home.arpa', 'https://hidden.onion',
+    'https://staging.test', 'https://unknown.invalid',
+    'https://LAN.', 'https://api.LOCALHOST.'
+  ];
+  let requests = 0;
+  for (const url of forbidden) {
+    await assert.rejects(probePublicRoutes(url, async () => {
+      requests++;
+      return response();
+    }), /dominio público HTTPS/);
+  }
+  assert.equal(requests, 0);
+  assert.equal(validateBaseUrl('https://crm.example'), 'https://crm.example');
+  assert.equal(validateBaseUrl('https://edwincrm.com'), 'https://edwincrm.com');
+  assert.ok(!JSON.stringify({ requests }).includes('business_id'));
+});
