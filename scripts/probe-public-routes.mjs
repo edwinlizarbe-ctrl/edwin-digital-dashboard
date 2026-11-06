@@ -17,6 +17,11 @@ export function validateBaseUrl(value) {
   }
   return url.origin;
 }
+function hasExpectedTitle(html, expected) {
+  // Allow harmless HTML formatting while requiring exactly one matching page title.
+  const titles = [...html.matchAll(/<title(?:\s[^>]*)?>([^<]*)<\/title\s*>/gi)];
+  return titles.length === 1 && titles[0][1].trim() === expected;
+}
 export async function probePublicRoutes(base, fetcher = fetch) {
   const origin = validateBaseUrl(base);
   const results = [];
@@ -50,7 +55,7 @@ export async function probePublicRoutes(base, fetcher = fetch) {
           if (new TextEncoder().encode(body).byteLength > 262144) body = '';
         }
       }
-      const pageOk = htmlOk && !oversized && body.includes('<title>' + PAGE_TITLES[index] + '</title>');
+      const pageOk = htmlOk && !oversized && hasExpectedTitle(body, PAGE_TITLES[index]);
       results.push({ route, ok: pageOk, status: response.status, contentType: type.split(';')[0], ...(htmlOk && !pageOk ? { error: oversized || !body ? 'invalid_or_oversized_html' : 'unexpected_page' } : {}) });
     } catch (error) {
       results.push({ route, ok: false, status: null, error: error?.name === 'TimeoutError' ? 'timeout' : 'network_error' });

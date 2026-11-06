@@ -77,3 +77,23 @@ test('corta el stream al superar el límite aunque content-length sea falso', as
   assert.equal(cancels, 3);
   assert.ok(result.results.every(x => !x.ok));
 });
+
+
+test('acepta títulos HTML equivalentes con espacios, atributos y mayúsculas', async () => {
+  let index = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => ({
+    status: 200, headers: new Headers({ 'content-type': 'text/html' }),
+    text: async () => '<TITLE data-source="static">  ' + titles[index++] + '  </TITLE>'
+  }));
+  assert.equal(result.passed, true);
+});
+test('rechaza títulos duplicados o títulos parecidos para evitar falsos positivos', async () => {
+  let index = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => ({
+    status: 200, headers: new Headers({ 'content-type': 'text/html' }),
+    text: async () => '<title>' + titles[index++] + '</title><title>Login</title>'
+  }));
+  assert.equal(result.passed, false);
+  assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
+  assert.ok(!JSON.stringify(result).includes('business_id'));
+});
