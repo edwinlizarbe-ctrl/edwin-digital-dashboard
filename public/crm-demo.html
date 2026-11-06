@@ -12,6 +12,8 @@
     :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#16233d;background:#f3f7ff;color-scheme:light}
     *{box-sizing:border-box}body{margin:0;min-height:100vh;line-height:1.55}
     a{color:#164fb8}a:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid #1769d8;outline-offset:3px}
+    .skip-link{position:absolute;left:12px;top:-100px;z-index:10;background:#fff;color:#164fb8;padding:10px 14px;border:2px solid #164fb8;border-radius:8px}
+    .skip-link:focus{top:12px}
     .wrap{max-width:960px;margin:auto;padding:28px 20px 60px}
     .nav{display:flex;gap:15px;flex-wrap:wrap;margin-bottom:24px;font-size:14px}
     main{background:white;border:1px solid #d9e4f4;border-radius:18px;padding:clamp(20px,5vw,38px);box-shadow:0 8px 25px #142c4c0d}
@@ -40,12 +42,13 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#demo-content">Saltar al contenido de la demostración</a>
   <div class="wrap">
     <nav class="nav" aria-label="Navegación de la demostración">
       <a href="/edwin-crm.html">← Conocer Edwin CRM</a>
       <a href="/">Ingresar al CRM</a>
     </nav>
-    <main>
+    <main id="demo-content" tabindex="-1">
       <h1>Así funciona el seguimiento comercial</h1>
       <p class="badge" role="status">DATOS 100% FICTICIOS · No corresponden a clientes, ventas ni campañas reales.</p>
       <p>Selecciona uno de tres ejemplos para explorar cómo se organizan las oportunidades. Esta pantalla no consulta cuentas del CRM ni guarda información.</p>
