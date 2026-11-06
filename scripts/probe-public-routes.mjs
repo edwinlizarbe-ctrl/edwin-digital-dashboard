@@ -1,9 +1,18 @@
+import { isIP } from 'node:net';
+
+function isNonPublicHost(hostname) {
+  const host = hostname.toLowerCase().replace(/\.$/, '');
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || !host.includes('.')) return true;
+  // IP literals are disallowed, including IPv6 and encoded IPv4 variants normalized by URL.
+  // This probe is intended for named public HTTPS sites, not arbitrary network hosts.
+  return isIP(host.replace(/^\[|\]$/g, '')) !== 0;
+}
 const ROUTES = Object.freeze(['/', '/edwin-crm.html', '/crm-demo.html']);
 export function validateBaseUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error('Se requiere una URL HTTPS válida.'); }
-  if (url.protocol !== 'https:' || !url.hostname || url.username || url.password || url.search || url.hash || (url.pathname !== '/' && url.pathname !== '')) {
-    throw new Error('Usa únicamente el origen HTTPS público, sin credenciales, rutas ni parámetros.');
+  if (url.protocol !== 'https:' || !url.hostname || url.username || url.password || url.search || url.hash || url.port || isNonPublicHost(url.hostname) || (url.pathname !== '/' && url.pathname !== '')) {
+    throw new Error('Usa un dominio público HTTPS, sin IP, puertos, credenciales, rutas ni parámetros.');
   }
   return url.origin;
 }
