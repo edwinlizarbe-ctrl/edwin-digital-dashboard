@@ -55,3 +55,25 @@ test('rechaza HTML vacío y página de login genérica sin exponer datos de empr
   assert.ok(result.results.every((r) => r.error === 'unexpected_page'));
   assert.ok(!JSON.stringify(result).includes('business_id'));
 });
+
+
+test('rechaza HTML declarado demasiado grande sin leer el cuerpo', async () => {
+  let reads = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => ({
+    status: 200, headers: new Headers({'content-type':'text/html','content-length':'999999'}),
+    text: async () => { reads++; return '<title>'+titles[0]+'</title>'; }
+  }));
+  assert.equal(result.passed, false);
+  assert.equal(reads, 0);
+  assert.ok(result.results.every(x => x.error === 'invalid_or_oversized_html'));
+});
+test('corta el stream al superar el límite aunque content-length sea falso', async () => {
+  let cancels = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => ({
+    status: 200, headers: new Headers({'content-type':'text/html','content-length':'10'}),
+    body: {getReader: () => ({read: async () => ({done:false,value:new Uint8Array(262145)}),cancel:async()=>{cancels++;}})}
+  }));
+  assert.equal(result.passed, false);
+  assert.equal(cancels, 3);
+  assert.ok(result.results.every(x => !x.ok));
+});
