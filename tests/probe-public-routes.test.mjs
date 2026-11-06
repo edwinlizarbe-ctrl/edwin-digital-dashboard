@@ -26,3 +26,18 @@ test('fallo de red no detiene comprobaciones posteriores', async () => {
   assert.equal(result.results.length, 3);
   assert.equal(result.results[0].error, 'network_error');
 });
+
+test('impide inspeccionar hosts locales, IP y servicios internos', () => {
+  for (const url of [
+    'https://localhost', 'https://app.localhost', 'https://service.internal',
+    'https://printer.local', 'https://intranet',
+    'https://127.0.0.1', 'https://10.0.0.2', 'https://192.168.1.2',
+    'https://[::1]', 'https://crm.example:8443'
+  ]) assert.throws(() => validateBaseUrl(url), url);
+  assert.equal(validateBaseUrl('https://crm.example/'), 'https://crm.example');
+});
+test('un host no permitido nunca ejecuta solicitudes ni accede a empresas', async () => {
+  let requests = 0;
+  await assert.rejects(probePublicRoutes('https://localhost', async () => { requests++; return response(); }));
+  assert.equal(requests, 0);
+});
