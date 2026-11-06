@@ -72,7 +72,7 @@ test('métodos, origen y contenido inválido rechazados',async()=>{
   assert.equal(calls.length,0);
  });
 });
-test('Blog no figura en los menús del CRM y su generador heredado conserva datos',()=>{
+test('Blog y Email Marketing no figuran en el CRM y el generador heredado conserva datos',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const worker=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
  const index=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
@@ -80,11 +80,13 @@ test('Blog no figura en los menús del CRM y su generador heredado conserva dato
  const nav=app.slice(app.indexOf('function sidebar(){'),app.indexOf('function sidebar(){')+1600);
  assert.doesNotMatch(app,/blog: \['Blog'/);
  assert.doesNotMatch(nav,/navLink\('blog'\)|'blog','settings'/);
- assert.match(app,/if\(state\.page==='blog'\)state\.page=isAdmin\(\)\?'adminHome':'overview'/);
- assert.match(app,/navLink\('mailing'\)/);
- assert.match(app,/edwinBrasperBlog\?\.page/);
+ assert.match(app,/if\(state\.page==='blog'\|\|state\.page==='mailing'\)state\.page=isAdmin\(\)\?'adminHome':'overview'/);
+ assert.doesNotMatch(app,/navLink\('mailing'\)/);
+ assert.doesNotMatch(app,/edwinBrasperBlog\?\.page/);
+ assert.match(app,/Acceso editorial deshabilitado/);
+ assert.match(app,/if\(state\.page==='blog'\|\|state\.page==='mailing'\)/);
  assert.match(worker,/path === '\/api\/brasper\/blog\/generate'/);
- assert.match(index,/brasper-blog\.js/);assert.match(index,/brasper-blog\.css/);
+ assert.doesNotMatch(index,/brasper-blog\.js|brasper-blog\.css|email-marketing\.js|email-marketing\.css|email-xlsx\.js/);
  assert.match(view,/iframe id="bp-blog-preview"/);
  assert.match(view,/sandbox=""/);
  assert.match(view,/data-bp-action="copy"/);

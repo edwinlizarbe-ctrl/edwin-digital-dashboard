@@ -50,8 +50,10 @@ test('source gate denies ALL non-Blog APIs for restricted users before other han
  assert.match(w,/if\(s\.user\.role==='blog_editor'\)/);
  assert(w.indexOf("if(s.user.role==='blog_editor')")<w.indexOf("if(path==='/api/admin/accounts/suspension')"));
  assert.match(w,/Este perfil solo puede utilizar Blog de Brásper/);
- assert.match(a,/Do not fetch businesses, analytics, leads, sites or integrations/);
- assert.match(a,/bp-editor-layout/);
+ assert.match(a,/Acceso editorial deshabilitado/);
+ assert.match(a,/if\(isBlogEditor\(\)\)\{/);
+ assert.doesNotMatch(a,/bp-editor-layout|edwinBrasperBlog\?\.page/);
+ assert.doesNotMatch(a,/api\('\/api\/brasper\/blog\/access'\)/);
  assert.match(invite,/adminInviteBlogEditor/);
  assert.match(invite,/role:'blog_editor'/);
 });
