@@ -39,9 +39,9 @@ test('CSV: reconoce Excel en español con ;, acentos y comillas',()=>{
  assert.equal(r.skipped,0);
 });
 test('CSV: rechaza texto extra tras una celda entrecomillada',()=>{
- assert.throws(()=>parse('Nombre,Correo\\n"Ana"extra,ana@example.com'),/comillas|cerrar/i);
- assert.throws(()=>parse('Nombre,Correo\\n"Ana"""extra,ana@example.com'),/comillas|cerrar/i);
- const ok=parse('Nombre,Correo\\n"Ana Torres"  ,ana@example.com');
+ assert.throws(()=>parse('Nombre,Correo\n"Ana"extra,ana@example.com'),/comillas|cerrar/i);
+ assert.throws(()=>parse('Nombre,Correo\n"Ana"""extra,ana@example.com'),/comillas|cerrar/i);
+ const ok=parse('Nombre,Correo\n"Ana Torres"  ,ana@example.com');
  assert.equal(ok.rows[0].name,'Ana Torres');
 });
 test('CSV: combina nombre y apellido, soporta tabulador y mapea etapa',()=>{
