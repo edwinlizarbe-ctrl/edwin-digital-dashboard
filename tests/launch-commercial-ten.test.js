@@ -13,3 +13,14 @@ test('A17: aclara que no se cobra por la página',()=>{assert.match(html,/esta p
 test('A18: aclara permisos e integración WhatsApp',()=>{assert.match(html,/¿Puedo conectar mi WhatsApp inmediatamente/);assert.match(html,/depende de configuraciones, permisos y pruebas/);});
 test('A19: metadatos compartibles conservan noindex hasta validar lanzamiento',()=>{assert.match(html,/property="og:title"/);assert.match(html,/property="og:description"/);assert.match(html,/content="noindex, nofollow"/);});
 test('A20: mejora accesibilidad móvil sin cookies ni scripts de rastreo',()=>{assert.match(html,/prefers-reduced-motion/);assert.match(html,/prefers-contrast:more/);assert.match(html,/<a class="skip" href="#contenido">/);assert.match(html,/@media\(max-width:700px\)/);assert.doesNotMatch(html,/<script|<form|google-analytics\.com|facebook\.com\/tr\?/i);});
+
+test('commercial landing keeps CTA and FAQ visible in forced-colors mode',()=>{
+  assert.match(html,/@media\(forced-colors:active\)/);
+  assert.match(html,/\.cta,\.header-link,\.faq details\{border:1px solid ButtonText\}/);
+  assert.match(html,/\.cta:focus-visible,\.faq summary:focus-visible\{outline:3px solid Highlight/);
+  assert.match(html,/\.eyebrow\{border:1px solid CanvasText\}/);
+});
+test('forced-colors changes do not introduce external tracking, payment or personal-data capture',()=>{
+  assert.doesNotMatch(html,/<script|<form|<iframe|checkout|stripe\.com|google-analytics\.com/i);
+  assert.match(html,/content="noindex, nofollow"/);
+});
