@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handleSignup, handleOnboardingBusiness} from '../signup.js';
+import {handleSignup, handleOnboardingBusiness, validateBusinessName} from '../signup.js';
 const base='https://crm.example.workers.dev';
 const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_ANON_KEY:'test-anon'};
 const session={user:{id:'11111111-1111-4111-8111-111111111111',role:'client'},access:'test-jwt',cookies:[]};
@@ -40,4 +40,22 @@ test('A49: una sesión sin JWT de acceso no puede llamar al RPC',async()=>{
 test('A50: una carga UTF-8 excesiva se rechaza por bytes aunque no por caracteres',async()=>{
  const body={...good,email:'é'.repeat(2100)};
  await withoutFetch(async()=>{const r=await handleSignup(req('/api/auth/signup',body),env);assert.equal(r.status,413);});
+});
+
+// No deben confundirse empresas por caracteres invisibles o inversión de dirección.
+test('onboarding acepta nombres legítimos con tildes y espacios normalizados',()=>{
+ assert.deepEqual(validateBusinessName({name:'  Clínica   Perú  '}),{name:'Clínica Perú'});
+});
+test('onboarding rechaza marcas zero-width y controles bidi invisibles',()=>{
+ for(const name of ['Mi\u200bEmpresa','Mi\u200dEmpresa','Mi\u202eEmpresa','Mi\u2066Empresa','Mi\ufeffEmpresa']){
+  assert.match(validateBusinessName({name}).error,/caracteres no permitidos/);
+ }
+});
+test('onboarding no envía nombres engañosos a Supabase ni revela cookies ajenas',async()=>{
+ await withoutFetch(async()=>{
+  const response=await handleOnboardingBusiness(req('/api/onboarding/business',{name:'Empresa\u202eXYZ'}),env,{...session,cookies:[]});
+  assert.equal(response.status,400);
+  assert.equal(response.headers.get('set-cookie'),null);
+  assert.equal(response.headers.get('cache-control'),'no-store');
+ });
 });
