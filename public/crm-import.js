@@ -21,7 +21,7 @@
         row = [];
         if (c === '\r' && text[i + 1] === '\n') i++;
       } else {
-        if (closedQuote && !/\\s/.test(c)) throw new Error('El CSV contiene texto después de cerrar comillas.');
+        if (closedQuote && !/\s/.test(c)) throw new Error('El CSV contiene texto después de cerrar comillas.');
         value += c;
       }
     }
