@@ -54,7 +54,16 @@
     if (typeof text !== 'string' || !text.trim()) throw new Error('El archivo CSV está vacío.');
     if (text.length > MAX_CHARS) throw new Error('El archivo es demasiado grande. Máximo 2 MB.');
     const cleanText = text.replace(/^\uFEFF/, '');
-    const formats = [',',';','\t'].map(sep => ({ sep, rows: readRows(cleanText,sep) }));
+    const formats = []; let firstParseError = null;
+    for (const sep of [',',';','\t']) {
+      try {
+        const rows = readRows(cleanText, sep);
+        if (rows[0]?.length >= 2) formats.push({ sep, rows });
+      } catch (error) {
+        if (!firstParseError) firstParseError = error;
+      }
+    }
+    if (!formats.length && firstParseError) throw firstParseError;
     formats.sort((a,b)=> b.rows[0]?.length - a.rows[0]?.length);
     const table=formats[0].rows;
     if (!table.length || table[0].length < 2) throw new Error('El archivo debe contener columnas CSV separadas por coma, punto y coma o tabulador.');
