@@ -39,10 +39,10 @@ export function validateSignupInput(input) {
 }
 export function validateBusinessName(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input) || typeof input.name !== 'string') return { error: 'Escribe el nombre de tu empresa.' };
+  // Validar antes de normalizar: trim() puede eliminar FEFF y ocultar controles.
+  if (/[<>\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/i.test(input.name)) return { error: 'El nombre contiene caracteres no permitidos.' };
   const name = normalizeBusinessName(input.name);
   if (name.length < 2 || name.length > 80) return { error: 'El nombre debe tener entre 2 y 80 caracteres.' };
-  // Evitar nombres visualmente engañosos: controles bidi, zero-width y marcas invisibles.
-  if (/[<>\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/i.test(name)) return { error: 'El nombre contiene caracteres no permitidos.' };
   if (isReservedBusinessName(name)) return { error: 'Ese nombre está reservado. Elige otro nombre para tu empresa.' };
   return { name };
 }
