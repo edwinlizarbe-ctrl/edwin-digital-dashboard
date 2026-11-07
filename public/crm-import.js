@@ -5,21 +5,25 @@
   const MAX_CHARS = 2_000_000;
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
   function readRows(text, sep) {
-    const rows = []; let row = [], value = '', quoted = false;
+    const rows = []; let row = [], value = '', quoted = false, closedQuote = false;
     for (let i = 0; i < text.length; i++) {
       const c = text[i];
       if (c === '"') {
         if (quoted && text[i + 1] === '"') { value += '"'; i++; }
-        else if (quoted || !value.trim()) quoted = !quoted;
-        else value += c;
+        else if (quoted) { quoted = false; closedQuote = true; }
+        else if (!value.trim() && !closedQuote) quoted = true;
+        else throw new Error('El CSV contiene comillas inválidas.');
       } else if (c === sep && !quoted) {
-        row.push(value.trim()); value = '';
+        row.push(value.trim()); value = ''; closedQuote = false;
       } else if ((c === '\n' || c === '\r') && !quoted) {
-        row.push(value.trim()); value = '';
+        row.push(value.trim()); value = ''; closedQuote = false;
         if (row.some(x => x !== '')) rows.push(row);
         row = [];
         if (c === '\r' && text[i + 1] === '\n') i++;
-      } else { value += c; }
+      } else {
+        if (closedQuote && !/\\s/.test(c)) throw new Error('El CSV contiene texto después de cerrar comillas.');
+        value += c;
+      }
     }
     if (quoted) throw new Error('El CSV contiene comillas sin cerrar.');
     row.push(value.trim());
