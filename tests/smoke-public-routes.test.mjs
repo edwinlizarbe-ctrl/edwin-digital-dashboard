@@ -17,6 +17,18 @@ test('negative: redirects, errors and non-HTML are failures',async()=>{
  });
  assert.equal(result.filter(x=>x.ok).length,0);
 });
+test('positive: public DNS names remain accepted without changing the requested origin',()=>{
+ assert.equal(validateOrigin('https://crm.example.org'),'https://crm.example.org');
+ assert.equal(validateOrigin('https://crm.example.org/'),'https://crm.example.org');
+});
+test('isolation: reject IP literals, local suffixes and internal names before any fetch',async()=>{
+ for(const origin of ['https://10.0.0.1','https://192.168.1.10','https://169.254.169.254','https://8.8.8.8','https://[::1]','https://[fd00::1]','https://service.internal','https://portal.localhost','https://host.local']){
+  assert.throws(()=>validateOrigin(origin),origin);
+  let calls=0;
+  await assert.rejects(()=>smokePublicRoutes(origin,()=>{calls++;throw Error('must not call')}));
+  assert.equal(calls,0,origin);
+ }
+});
 test('isolation: reject credentials, non-HTTPS, paths, query, local targets and custom ports before network',async()=>{
  for(const origin of ['http://crm.example.org','https://user:pass@crm.example.org','https://crm.example.org/login','https://crm.example.org/?token=abc','https://localhost','https://127.0.0.1','https://crm.example.org:8443']){
   assert.throws(()=>validateOrigin(origin));

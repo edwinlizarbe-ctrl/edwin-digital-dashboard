@@ -1,3 +1,4 @@
+import {isIP} from 'node:net';
 // Read-only public-route smoke test. No credentials, cookies, POSTs or writes.
 const ROUTES = ['/', '/edwin-crm.html', '/crm-demo.html', '/crm-followup-simulator.html'];
 export function validateOrigin(value) {
@@ -5,7 +6,10 @@ export function validateOrigin(value) {
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.pathname !== '/' || !url.hostname || url.port) {
     throw new Error('Provide an HTTPS origin only, without credentials, path, port or query');
   }
-  if (['localhost','127.0.0.1','::1'].includes(url.hostname) || url.hostname.endsWith('.local')) throw new Error('Local origins are not permitted');
+  const host = url.hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  if (isIP(host) || host === 'localhost' || ['.localhost', '.local', '.internal'].some(suffix => host.endsWith(suffix))) {
+    throw new Error('IP literals and local/internal hostnames are not permitted');
+  }
   return url.origin;
 }
 export async function smokePublicRoutes(origin, fetcher = fetch) {
