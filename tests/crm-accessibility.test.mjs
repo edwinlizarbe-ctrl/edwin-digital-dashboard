@@ -5,8 +5,8 @@ const html=readFileSync(new URL('../public/index.html', import.meta.url),'utf8')
 const css=readFileSync(new URL('../public/crm-accessibility.css', import.meta.url),'utf8');
 test('C49: keyboard skip link targets the focusable main application region',()=>{
   assert.match(html,/<a class="crm-skip-link" href="#app">Saltar al contenido principal<\/a>/);
-  assert.match(html,/<div id="app" tabindex="-1">/);
-  assert.doesNotMatch(html,/<div id="app"[^>]*aria-live=/);
+  assert.match(html,/<main id="app" tabindex="-1">/);
+  assert.doesNotMatch(html,/<main id="app"[^>]*aria-live=/);
   assert.match(html,/<div class="initial-load" role="status">Cargando Edwin CRM…<\/div>/);
   assert.match(html,/<link rel="stylesheet" href="\/crm-accessibility\.css\?v=growth-c49-20261104"/);
 });

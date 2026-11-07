@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
 
 test('CRM application root is not a live region', () => {
-  const root = html.match(/<div\s+id="app"(?=\s|>)[^>]*>/);
+  const root = html.match(/<main\s+id="app"(?=\s|>)[^>]*>/);
   assert.ok(root);
   assert.doesNotMatch(root[0], /\baria-live\s*=/i);
   assert.doesNotMatch(root[0], /\brole\s*=\s*["'](?:status|alert)["']/i);

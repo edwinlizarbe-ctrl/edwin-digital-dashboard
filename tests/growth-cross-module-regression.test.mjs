@@ -64,7 +64,7 @@ test('C50: campaign CSV contains no original URL, and neutralizes spreadsheet fo
 test('C50: accessible navigation stays wired to the content landmark',()=>{
   const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
   assert.match(html,/<a class="crm-skip-link" href="#app">Saltar al contenido principal<\/a>/);
-  assert.match(html,/<div id="app" tabindex="-1">/);
-  assert.doesNotMatch(html,/<div id="app"[^>]*aria-live=/);
+  assert.match(html,/<main id="app" tabindex="-1">/);
+  assert.doesNotMatch(html,/<main id="app"[^>]*aria-live=/);
   assert.match(html,/<div class="initial-load" role="status">Cargando Edwin CRM…<\/div>/);
 });
