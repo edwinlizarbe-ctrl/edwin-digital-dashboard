@@ -20,7 +20,7 @@ export async function smokePublicRoutes(origin, fetcher = fetch) {
     try {
       const response = await fetcher(base + path, {method:'GET', redirect:'manual', credentials:'omit', cache:'no-store', headers:{Accept:'text/html'}, signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS)});
       const type = response.headers.get('content-type') || '';
-      const ok = response.status === 200 && /text\/html/i.test(type);
+      const ok = response.status === 200 && /^text\/html(?:\s*;|\s*$)/i.test(type.trim());
       results.push({path, status:response.status, ok});
     } catch {
       results.push({path, status:null, ok:false});
