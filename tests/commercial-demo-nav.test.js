@@ -8,7 +8,7 @@ const nav = landing.match(/<nav class="top-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1] ??
 
 test('commercial navigation offers a direct link to the synthetic demo', () => {
   assert.match(nav, /<a href="\/crm-demo\.html">Ver demo<\/a>/);
-  assert.match(landing, /<main id="contenido">/);
+  assert.match(landing, /<main\s+id="contenido"\s+tabindex="-1">/);
   assert.match(landing, /href="#contenido"/);
 });
 
