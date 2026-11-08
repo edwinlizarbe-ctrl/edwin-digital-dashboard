@@ -20,7 +20,10 @@ export async function smokePublicRoutes(origin, fetcher = fetch) {
     try {
       const response = await fetcher(base + path, {method:'GET', redirect:'manual', credentials:'omit', cache:'no-store', headers:{Accept:'text/html'}, signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS)});
       const type = response.headers.get('content-type') || '';
-      const ok = response.status === 200 && /^text\/html(?:\s*;|\s*$)/i.test(type.trim());
+      const length = response.headers.get('content-length');
+      // A declared empty document is not a usable landing page; absent length is normal for chunked responses.
+      const nonempty = length === null || !/^\s*0\s*$/.test(length);
+      const ok = response.status === 200 && /^text\/html(?:\s*;|\s*$)/i.test(type.trim()) && nonempty;
       results.push({path, status:response.status, ok});
     } catch {
       results.push({path, status:null, ok:false});
