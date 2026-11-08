@@ -107,3 +107,24 @@ test('isolation: zero-length detection never changes GET safety options or makes
  assert.equal(calls.length,4);
  assert.ok(calls.every(({url,opts})=>new URL(url).hostname==='crm.example.org'&&opts.method==='GET'&&opts.credentials==='omit'&&opts.redirect==='manual'));
 });
+
+test('negative: malformed, negative and zero declared lengths are never treated as valid HTML',async()=>{
+ for(const length of ['0',' 0 ','-1','NaN','1oops','1, 2','']) {
+  const results=await smokePublicRoutes('https://crm.example.org',async()=>({status:200,headers:new Map([['content-type','text/html'],['content-length',length]])}));
+  assert.ok(results.every(r=>!r.ok),JSON.stringify(length));
+ }
+});
+test('positive: a valid positive Content-Length remains accepted',async()=>{
+ const results=await smokePublicRoutes('https://crm.example.org',async()=>({status:200,headers:new Map([['content-type','text/html'],['content-length','1024']])}));
+ assert.ok(results.every(r=>r.ok));
+});
+test('isolation: rejected length does not alter safe GET options or cause extra requests',async()=>{
+ const calls=[];
+ const results=await smokePublicRoutes('https://crm.example.org',async(url,opts)=>{
+  calls.push({url,opts});
+  return {status:200,headers:new Map([['content-type','text/html'],['content-length','-5']])};
+ });
+ assert.equal(calls.length,4);
+ assert.ok(results.every(r=>!r.ok));
+ assert.ok(calls.every(({url,opts})=>new URL(url).hostname==='crm.example.org'&&opts.method==='GET'&&opts.credentials==='omit'&&opts.redirect==='manual'&&opts.cache==='no-store'));
+});
