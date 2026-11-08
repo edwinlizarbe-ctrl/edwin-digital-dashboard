@@ -72,6 +72,7 @@
     span.textContent=label;strong.textContent=formatter.format(value);article.append(span,strong);return article;
   }
   function calculate() {
+    leads.removeAttribute('aria-invalid');percent.removeAttribute('aria-invalid');
     try {
       const x=followupEstimate({leads:leads.valueAsNumber,notContactedPercent:percent.valueAsNumber});
       results.replaceChildren(
@@ -83,6 +84,8 @@
     }catch(err) {
       results.replaceChildren();explanation.textContent='';
       error.textContent=err instanceof RangeError?err.message:'No se pudo realizar el cálculo.';
+      const invalid=!Number.isSafeInteger(leads.valueAsNumber)||leads.valueAsNumber<0||leads.valueAsNumber>100000?leads:percent;
+      invalid.setAttribute('aria-invalid','true');invalid.focus();
     }
   }
   form.addEventListener('submit',event=>{event.preventDefault();calculate();});
