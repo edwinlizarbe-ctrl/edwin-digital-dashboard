@@ -14,6 +14,13 @@
 import {MILESTONES,readMilestones,setMilestone,validScope} from './crm-activation-milestones.js';
 const business=document.querySelector('#business'),user=document.querySelector('#user'),list=document.querySelector('#list'),message=document.querySelector('#message'),progress=document.querySelector('#progress');
 let scope=null;
+// Never keep editing a previously selected scope after either identifier changes.
+function invalidateScope(){
+ scope=null;list.hidden=true;list.disabled=true;list.replaceChildren();progress.textContent='';
+ message.textContent='Los identificadores cambiaron. Abre de nuevo la lista local.';
+}
+business.addEventListener('input',invalidateScope);
+user.addEventListener('input',invalidateScope);
 function render(){
  const ids=readMilestones(localStorage,...scope);list.replaceChildren();
  for(const item of MILESTONES){const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=ids.includes(item.id);check.addEventListener('change',()=>{
