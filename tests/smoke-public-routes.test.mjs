@@ -67,3 +67,21 @@ test('isolation: invalid origins never allocate a network request',async()=>{
  await assert.rejects(()=>smokePublicRoutes('https://127.0.0.1',()=>{calls++;throw Error('network')}));
  assert.equal(calls,0);
 });
+
+test('positive: HTML MIME type is case-insensitive and permits parameters',async()=>{
+ const results=await smokePublicRoutes('https://crm.example.org',async()=>({status:200,headers:new Map([['content-type',' Text/HTML ; charset=utf-8']])}));
+ assert.ok(results.every(r=>r.ok));
+});
+test('negative: HTML-looking but invalid MIME types fail closed',async()=>{
+ for(const type of ['application/xhtml+xml','application/json; note=text/html','text/html-malicious','application/text/html','text/htmlish']){
+  const results=await smokePublicRoutes('https://crm.example.org',async()=>({status:200,headers:new Map([['content-type',type]])}));
+  assert.ok(results.every(r=>!r.ok),type);
+ }
+});
+test('isolation: MIME validation never changes safe read-only request options',async()=>{
+ const calls=[];
+ await smokePublicRoutes('https://crm.example.org',async(url,opts)=>{calls.push({url,opts});return {status:200,headers:new Map([['content-type','text/htmlish']])};});
+ assert.equal(calls.length,4);
+ assert.ok(calls.every(c=>c.opts.method==='GET'&&c.opts.credentials==='omit'&&c.opts.redirect==='manual'&&c.opts.cache==='no-store'));
+ assert.ok(calls.every(c=>new URL(c.url).hostname==='crm.example.org'));
+});
