@@ -1,5 +1,6 @@
 import {isIP} from 'node:net';
 // Read-only public-route smoke test. No credentials, cookies, POSTs or writes.
+const REQUEST_TIMEOUT_MS = 8000;
 const ROUTES = ['/', '/edwin-crm.html', '/crm-demo.html', '/crm-followup-simulator.html'];
 export function validateOrigin(value) {
   const url = new URL(value);
@@ -17,7 +18,7 @@ export async function smokePublicRoutes(origin, fetcher = fetch) {
   const results = [];
   for (const path of ROUTES) {
     try {
-      const response = await fetcher(base + path, {method:'GET', redirect:'manual', credentials:'omit', cache:'no-store', headers:{Accept:'text/html'}});
+      const response = await fetcher(base + path, {method:'GET', redirect:'manual', credentials:'omit', cache:'no-store', headers:{Accept:'text/html'}, signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS)});
       const type = response.headers.get('content-type') || '';
       const ok = response.status === 200 && /text\/html/i.test(type);
       results.push({path, status:response.status, ok});
