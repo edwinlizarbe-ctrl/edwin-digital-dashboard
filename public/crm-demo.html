@@ -62,6 +62,7 @@
         </select>
         <button id="reset" type="button">Restablecer ejemplo</button>
       </div>
+      <p id="scenario-announcement" class="fine" role="status" aria-live="polite" aria-atomic="true"></p>
       <section aria-labelledby="metrics-title">
         <h2 id="metrics-title">Resumen del embudo ficticio</h2>
         <div class="cards" id="cards" aria-label="Métricas simuladas"></div>
@@ -84,6 +85,8 @@
     const select=document.getElementById('scenario'), reset=document.getElementById('reset');
     const cards=document.getElementById('cards'), stages=document.getElementById('stages');
     const detail=document.getElementById('detail'), rates=document.getElementById('rates');
+    const announcement=document.getElementById('scenario-announcement');
+    const announceScenario=()=>{announcement.textContent='Ejemplo seleccionado: '+select.options[select.selectedIndex].textContent+'. Datos ficticios actualizados.';};
     const number = value => new Intl.NumberFormat('es-PE').format(value);
     const metric = (label,value) => {
       const article=document.createElement('article'), heading=document.createElement('span');
@@ -116,8 +119,8 @@
         rates.textContent='';
       }
     }
-    select.addEventListener('change',render);
-    reset.addEventListener('click',()=>{select.value='inicio';render();select.focus();});
+    select.addEventListener('change',()=>{render();announceScenario();});
+    reset.addEventListener('click',()=>{select.value='inicio';render();announceScenario();select.focus();});
     render();
   </script>
 </body>
