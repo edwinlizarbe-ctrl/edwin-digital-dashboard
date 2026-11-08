@@ -85,3 +85,25 @@ test('isolation: MIME validation never changes safe read-only request options',a
  assert.ok(calls.every(c=>c.opts.method==='GET'&&c.opts.credentials==='omit'&&c.opts.redirect==='manual'&&c.opts.cache==='no-store'));
  assert.ok(calls.every(c=>new URL(c.url).hostname==='crm.example.org'));
 });
+
+
+test('positive: HTML without Content-Length or with a nonzero length remains valid',async()=>{
+ for(const headers of [new Map([['content-type','text/html']]),new Map([['content-type','text/html'],['content-length','42']])]){
+  const results=await smokePublicRoutes('https://crm.example.org',async()=>({status:200,headers}));
+  assert.ok(results.every(r=>r.ok));
+ }
+});
+test('negative: explicitly empty HTML responses fail the public-route smoke check',async()=>{
+ const results=await smokePublicRoutes('https://crm.example.org',async()=>({status:200,headers:new Map([['content-type','text/html'],['content-length','0']])}));
+ assert.equal(results.length,4);
+ assert.ok(results.every(r=>!r.ok));
+});
+test('isolation: zero-length detection never changes GET safety options or makes extra requests',async()=>{
+ const calls=[];
+ await smokePublicRoutes('https://crm.example.org',async(url,opts)=>{
+  calls.push({url,opts});
+  return {status:200,headers:new Map([['content-type','text/html'],['content-length','0']])};
+ });
+ assert.equal(calls.length,4);
+ assert.ok(calls.every(({url,opts})=>new URL(url).hostname==='crm.example.org'&&opts.method==='GET'&&opts.credentials==='omit'&&opts.redirect==='manual'));
+});
