@@ -36,3 +36,34 @@ test('isolation: reject credentials, non-HTTPS, paths, query, local targets and 
   assert.equal(calls,0);
  }
 });
+
+test('positive: each public route receives its own bounded abort signal',async()=>{
+ const signals=[];
+ const results=await smokePublicRoutes('https://crm.example.org',async (_url,opts)=>{
+  assert.ok(opts.signal instanceof AbortSignal);
+  assert.equal(opts.signal.aborted,false);
+  signals.push(opts.signal);
+  return {status:200,headers:new Map([['content-type','text/html']])};
+ });
+ assert.equal(signals.length,4);
+ assert.equal(new Set(signals).size,4);
+ assert.ok(results.every(r=>r.ok));
+});
+test('negative: aborted request fails closed without stopping later route checks',async()=>{
+ let calls=0;
+ const results=await smokePublicRoutes('https://crm.example.org',async (_url,opts)=>{
+  calls++;
+  assert.ok(opts.signal instanceof AbortSignal);
+  if(calls===1)throw new DOMException('aborted','AbortError');
+  return {status:200,headers:new Map([['content-type','text/html']])};
+ });
+ assert.equal(calls,4);
+ assert.equal(results[0].ok,false);
+ assert.equal(results[0].status,null);
+ assert.ok(results.slice(1).every(r=>r.ok));
+});
+test('isolation: invalid origins never allocate a network request',async()=>{
+ let calls=0;
+ await assert.rejects(()=>smokePublicRoutes('https://127.0.0.1',()=>{calls++;throw Error('network')}));
+ assert.equal(calls,0);
+});
