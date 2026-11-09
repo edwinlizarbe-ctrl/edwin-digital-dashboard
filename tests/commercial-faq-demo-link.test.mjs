@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const html = readFileSync(new URL('../public/edwin-crm.html', import.meta.url), 'utf8');
-const faq = html.match(/<details><summary>¿Cuál es el primer paso para conocerlo?<\/summary><p>(.*?)<\/p><\/details>/)?.[1];
+const faq = html.match(/<details><summary>¿Cuál es el primer paso para conocerlo\?<\/summary><p>(.*?)<\/p><\/details>/)?.[1];
 
 test('positivo: FAQ dirige a demo ficticia existente', () => {
   assert.ok(faq);
