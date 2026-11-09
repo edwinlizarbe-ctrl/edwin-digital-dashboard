@@ -5,7 +5,9 @@ const page=readFileSync(new URL('../public/crm-followup-simulator.html',import.m
 
 test('positivo: errores enfocan el campo inválido y lo anuncian',()=>{
   assert.match(page,/role="alert"/);
-  assert.match(page,/invalid\.setAttribute\('aria-invalid','true'\);invalid\.focus\(\)/);
+  assert.match(page,/invalid\.setAttribute\('aria-invalid','true'\)/);
+  assert.match(page,/invalid\.focus\(\)/);
+  assert.match(page,/invalid\.setAttribute\('aria-describedby',invalid\.id\+'-help error'\)/);
 });
 test('negativo: distingue prospectos inválidos de porcentajes inválidos',()=>{
   assert.match(page,/!Number\.isSafeInteger\(leads\.valueAsNumber\)\|\|leads\.valueAsNumber<0\|\|leads\.valueAsNumber>100000\?leads:percent/);
