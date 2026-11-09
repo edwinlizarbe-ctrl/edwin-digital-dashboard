@@ -36,10 +36,11 @@
     .stages progress{width:100%;height:13px;accent-color:#2563eb}
     .explanation{padding:14px 16px;border-left:4px solid #286ac5;background:#f1f6ff;border-radius:5px;color:#193c71}
     .fine{font-size:13px;color:#50617a}
+    .print-context{display:none}
     @media(max-width:690px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.wrap{padding:14px 12px 30px}}
     @media(max-width:390px){.cards{grid-template-columns:1fr}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
-    @media print{button,select,.nav{display:none!important}body{background:white}main{box-shadow:none;border:0}}
+    @media print{button,select,.nav{display:none!important}.print-context{display:block!important}body{background:white}main{box-shadow:none;border:0}}
   </style>
 </head>
 <body>
@@ -62,6 +63,7 @@
         </select>
         <button id="reset" type="button">Restablecer ejemplo</button>
       </div>
+      <p id="print-scenario" class="print-context">Escenario impreso: Negocio que comienza. Datos ficticios, sin conexión con clientes reales.</p>
       <p id="scenario-announcement" class="fine" role="status" aria-live="polite" aria-atomic="true"></p>
       <section aria-labelledby="metrics-title">
         <h2 id="metrics-title">Resumen del embudo ficticio</h2>
@@ -86,6 +88,8 @@
     const cards=document.getElementById('cards'), stages=document.getElementById('stages');
     const detail=document.getElementById('detail'), rates=document.getElementById('rates');
     const announcement=document.getElementById('scenario-announcement');
+    const printScenario=document.getElementById('print-scenario');
+    const updatePrintContext=()=>{printScenario.textContent='Escenario impreso: '+select.options[select.selectedIndex].textContent+'. Datos ficticios, sin conexión con clientes reales.';};
     const announceScenario=()=>{announcement.textContent='Ejemplo seleccionado: '+select.options[select.selectedIndex].textContent+'. Datos ficticios actualizados.';};
     const number = value => new Intl.NumberFormat('es-PE').format(value);
     const metric = (label,value) => {
@@ -102,6 +106,7 @@
       li.append(row,bar);return li;
     };
     function render(){
+      updatePrintContext();
       try{
         const x=demoInsights(DEMO_BUSINESS_ID,select.value);
         cards.replaceChildren(
