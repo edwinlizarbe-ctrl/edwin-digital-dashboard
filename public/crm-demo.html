@@ -130,7 +130,7 @@
       }
     }
     select.addEventListener('change',()=>{if(render()) announceScenario();});
-    reset.addEventListener('click',()=>{select.value='inicio';render();announceScenario();select.focus();});
+    reset.addEventListener('click',()=>{select.value='inicio';if(render()) announceScenario();select.focus();});
     render();
   </script>
 </body>
