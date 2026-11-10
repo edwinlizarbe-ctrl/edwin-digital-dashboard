@@ -24,3 +24,18 @@ test('forced-colors changes do not introduce external tracking, payment or perso
   assert.doesNotMatch(html,/<script|<form|<iframe|checkout|stripe\.com|google-analytics\.com/i);
   assert.match(html,/content="noindex, nofollow"/);
 });
+
+test('recorrido comercial: al final ofrece demo y simulador sin capturar datos',()=>{
+  const finalSection=html.match(/<section class="contrast" id="piloto">([\s\S]*?)<\/section>/)?.[1];
+  assert.ok(finalSection,'debe existir el cierre comercial');
+  assert.match(finalSection,/href="\/crm-demo\.html">Ver demostración ficticia<\/a>/);
+  assert.match(finalSection,/href="\/crm-followup-simulator\.html">Estimar seguimientos pendientes<\/a>/);
+  assert.match(finalSection,/aria-label="Opciones para explorar Edwin CRM"/);
+});
+test('recorrido comercial: enlaces finales internos y sin altas, cobros o métricas inventadas',()=>{
+  const finalSection=html.match(/<section class="contrast" id="piloto">([\s\S]*?)<\/section>/)?.[1];
+  assert.ok(finalSection);
+  assert.doesNotMatch(finalSection,/<form|<script|<input|https?:\/\/|checkout|suscribirse|registrarse/i);
+  assert.match(finalSection,/demostración no utiliza clientes reales/i);
+  assert.match(html,/content="noindex, nofollow"/);
+});
