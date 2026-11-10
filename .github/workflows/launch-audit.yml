@@ -5,6 +5,7 @@ on:
       - 'public/edwin-crm.html'
       - 'public/crm-demo.html'
       - 'tests/demo-end-navigation.test.mjs'
+      - 'tests/demo-stage-mobile-wrap.test.mjs'
       - 'public/crm-demo-data.js'
       - 'public/index.html'
       - 'scripts/launch-audit.mjs'
@@ -19,6 +20,7 @@ on:
       - 'public/edwin-crm.html'
       - 'public/crm-demo.html'
       - 'tests/demo-end-navigation.test.mjs'
+      - 'tests/demo-stage-mobile-wrap.test.mjs'
       - 'public/crm-demo-data.js'
       - 'public/index.html'
       - 'scripts/launch-audit.mjs'
@@ -41,4 +43,4 @@ jobs:
       - name: Revisar 10 barreras comerciales estaticas
         run: node scripts/launch-audit.mjs
       - name: Verificar retorno de demo y aislamiento
-        run: node --test tests/demo-end-navigation.test.mjs
+        run: node --test tests/demo-end-navigation.test.mjs tests/demo-stage-mobile-wrap.test.mjs
