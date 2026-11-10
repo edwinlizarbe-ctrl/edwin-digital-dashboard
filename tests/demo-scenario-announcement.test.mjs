@@ -6,7 +6,7 @@ const html = readFileSync(new URL('../public/crm-demo.html', import.meta.url), '
 
 test('positive: scenario changes and reset announce updated fictional data', () => {
   assert.match(html, /id="scenario-announcement"[^>]*role="status"[^>]*aria-live="polite"[^>]*aria-atomic="true"/);
-  assert.match(html, /select\.addEventListener\('change',\(\)=>\{render\(\);announceScenario\(\);\}\)/);
+  assert.match(html, /select\.addEventListener\('change',\(\)=>\{if\(render\(\)\) announceScenario\(\);\}\)/);
   assert.match(html, /reset\.addEventListener\('click',\(\)=>\{select\.value='inicio';render\(\);announceScenario\(\);select\.focus\(\);\}\)/);
 });
 test('negative: no invented real performance or auto-selected scenario announcement', () => {
