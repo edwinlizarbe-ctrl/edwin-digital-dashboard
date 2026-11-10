@@ -4,6 +4,7 @@ on:
     paths:
       - 'public/edwin-crm.html'
       - 'public/crm-demo.html'
+      - 'tests/demo-end-navigation.test.mjs'
       - 'public/crm-demo-data.js'
       - 'public/index.html'
       - 'scripts/launch-audit.mjs'
@@ -17,6 +18,7 @@ on:
     paths:
       - 'public/edwin-crm.html'
       - 'public/crm-demo.html'
+      - 'tests/demo-end-navigation.test.mjs'
       - 'public/crm-demo-data.js'
       - 'public/index.html'
       - 'scripts/launch-audit.mjs'
@@ -38,3 +40,5 @@ jobs:
           node-version: '22'
       - name: Revisar 10 barreras comerciales estaticas
         run: node scripts/launch-audit.mjs
+      - name: Verificar retorno de demo y aislamiento
+        run: node --test tests/demo-end-navigation.test.mjs
