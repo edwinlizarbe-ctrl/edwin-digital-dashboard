@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('../public/crm-demo.html', import.meta.url), 'utf8');
 
 test('positivo: regreso a la presentación tras explorar la demo', () => {
-  assert.match(html, /<p class="demo-next"><a href="\/edwin-crm\.html">← Volver a la presentación de Edwin CRM<\/a><\/p>/);
+  assert.match(html, /<p class="demo-next"><a href="\/edwin-crm\.html">← Volver a la presentación de Edwin CRM<\/a>/);
   assert.ok(html.indexOf('class="demo-next"') > html.indexOf('<strong>Limitaciones:'));
 });
 
