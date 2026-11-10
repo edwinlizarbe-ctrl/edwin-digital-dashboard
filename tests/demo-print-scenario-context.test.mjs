@@ -8,7 +8,8 @@ test('impresión identifica el escenario ficticio seleccionado', () => {
   assert.match(page, /id="print-scenario" class="print-context"/);
   assert.match(page, /Escenario impreso: Negocio que comienza\. Datos ficticios/);
   assert.match(page, /const updatePrintContext=\(\)=>\{printScenario\.textContent='Escenario impreso: '\+select\.options\[select\.selectedIndex\]\.textContent/);
-  assert.match(page, /function render\(\)\{\s*updatePrintContext\(\);/);
+  assert.match(page, /rates\.textContent='De contactados a calificados: '[^;]+;\s*updatePrintContext\(\);\s*return true;/);
+  assert.doesNotMatch(page, /function render\(\)\{\s*updatePrintContext\(\);/);
   assert.match(page, /@media print\{/);
   assert.match(page, /\.print-context\{display:block!important\}/);
 });
