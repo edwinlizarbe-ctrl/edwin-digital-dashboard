@@ -20,3 +20,8 @@ Evidencia: https://github.com/edwinlizarbe-ctrl/edwin-digital-dashboard/pull/198
 
 ## Límites
 No habilitar pagos, suscripciones, datos reales, campañas ni cambios de privilegios basándose en esta guía. No se inspeccionaron logs privados de Cloudflare ni se verificó Production al redactarla.
+
+## Plantilla de evidencia por entorno
+Para cada comprobación, registrar **entorno (Preview o Production)**, **URL consultada**, **SHA exacto**, **hora UTC**, **estado del build**, **resultado HTTP**, **resultado esperado**, **resultado observado** y **referencia al registro privado**. Omitir correos, identificadores de clientes, cookies, tokens y respuestas con datos personales. Un estado `200` de una página pública no demuestra que el login, la API ni el aislamiento empresarial funcionen.
+
+Si no hay acceso autorizado al historial de Cloudflare o a dos cuentas de prueba, marcar el control **bloqueado/no verificado** y continuar con mejoras independientes. Nunca completar campos de evidencia con valores supuestos.
