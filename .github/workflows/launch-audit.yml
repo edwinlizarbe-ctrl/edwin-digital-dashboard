@@ -10,7 +10,7 @@ on:
       - 'tests/launch-audit-ten.test.mjs'
       - 'docs/PRELANZAMIENTO-PILOTO-CRM.md'
       - 'docs/50-ACCIONES-LANZAMIENTO-20261105.md'
-      - 'docs/CLOUDFLARE-BUILD-DIAGNOSTICO-20261109.md'
+      - 'docs/DIAGNOSTICO-CLOUDFLARE-BUILD-20261109.md'
       - '.github/workflows/launch-audit.yml'
   push:
     branches: [main]
@@ -23,7 +23,7 @@ on:
       - 'tests/launch-audit-ten.test.mjs'
       - 'docs/PRELANZAMIENTO-PILOTO-CRM.md'
       - 'docs/50-ACCIONES-LANZAMIENTO-20261105.md'
-      - 'docs/CLOUDFLARE-BUILD-DIAGNOSTICO-20261109.md'
+      - 'docs/DIAGNOSTICO-CLOUDFLARE-BUILD-20261109.md'
       - '.github/workflows/launch-audit.yml'
 permissions:
   contents: read
