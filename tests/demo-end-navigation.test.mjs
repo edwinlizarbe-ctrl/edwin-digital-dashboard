@@ -20,3 +20,15 @@ test('aislamiento: mantiene datos ficticios y no añade formularios ni solicitud
   assert.match(html, /demoInsights\(DEMO_BUSINESS_ID,select\.value\)/);
   assert.doesNotMatch(html, /<form\b|fetch\(|XMLHttpRequest|localStorage|sessionStorage/i);
 });
+
+test('positivo: desde la demo existe un siguiente paso hacia el simulador ficticio', () => {
+  assert.match(html, /class="demo-next"[^>]*><a href="\/edwin-crm\.html"/);
+  assert.match(html, /<a href="\/crm-followup-simulator\.html">Calcular prospectos sin contactar con otro ejemplo ficticio<\/a>/);
+});
+
+test('negativo: el siguiente paso no solicita datos ni habilita ventas', () => {
+  const next = html.match(/<p class="demo-next">([\s\S]*?)<\/p>/)?.[1];
+  assert.ok(next);
+  assert.equal((next.match(/<a /g) || []).length, 2);
+  assert.doesNotMatch(next, /<form|mailto:|tel:|checkout|https?:|target=|pagar|suscripci[oó]n/i);
+});
