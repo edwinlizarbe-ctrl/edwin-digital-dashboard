@@ -108,7 +108,6 @@
       li.append(row,bar);return li;
     };
     function render(){
-      updatePrintContext();
       try{
         const x=demoInsights(DEMO_BUSINESS_ID,select.value);
         cards.replaceChildren(
@@ -120,11 +119,13 @@
         stages.replaceChildren(...x.stages.map(stageRow));
         detail.textContent=x.nextAction+' En este escenario hay '+x.notContacted+' prospectos sin contactar. '+x.disclaimer;
         rates.textContent='De contactados a calificados: '+x.qualificationRate+'%. De calificados a ganados: '+x.closeRate+'%. Son proporciones del ejemplo, no tasas reales.';
+        updatePrintContext();
         return true;
       }catch{
         cards.replaceChildren();stages.replaceChildren();
         detail.textContent='No se pudo mostrar el ejemplo ficticio.';
         rates.textContent='';
+        printScenario.textContent='Escenario no disponible para imprimir. No se pudieron generar los datos ficticios.';
         announcement.textContent='No se pudo actualizar el ejemplo ficticio. Intenta restablecerlo.';
         return false;
       }
