@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('../public/edwin-crm.html', import.meta.url), 'utf8');
 
 test('positivo: el acceso se presenta como privado y es accesible', () => {
-  assert.match(html, /<a class="header-link" href="\/" aria-label="Acceso privado al CRM para cuentas habilitadas">Acceso privado<\/a>/);
+  assert.match(html, /<a class="header-link" href="\/" aria-label="Acceso privado al CRM para cuentas habilitadas">Entrar \(cuentas habilitadas\)<\/a>/);
   assert.match(html, /<nav class="top-nav" aria-label="Navegación comercial">/);
 });
 test('negativo: no invita al registro abierto ni anuncia acceso inmediato', () => {
