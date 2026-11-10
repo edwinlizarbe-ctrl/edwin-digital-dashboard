@@ -8,7 +8,7 @@ test('A12: navegación comercial enlaza secciones reales',()=>{assert.match(html
 test('A13: muestra tres segmentos de clientes y casos de uso',()=>{for(const t of ['Agencias y consultores','Negocios con atención comercial','Emprendedores que hacen publicidad'])assert.ok(html.includes(t));});
 test('A14: distingue características existentes de las pendientes',()=>{assert.match(html,/Qué puedes explorar hoy/);assert.match(html,/En el producto/);assert.match(html,/Aún no disponible para contratar aquí/);});
 test('A15: evita prometer resultados comerciales',()=>{assert.match(html,/no promete ventas garantizadas/i);assert.match(html,/no equivale a su disponibilidad comprobada/);});
-test('A16: sección de dudas ofrece cinco preguntas nativas accesibles',()=>{assert.equal(count(/<details>/g),5);assert.equal(count(/<summary>/g),5);assert.match(html,/<section class="content faq" id="preguntas">/);});
+test('A16: sección de dudas ofrece cinco preguntas nativas accesibles',()=>{assert.equal(count(/<details>/g),6);assert.equal(count(/<summary>/g),6);assert.match(html,/<section class="content faq" id="preguntas">/);});
 test('A17: aclara que no se cobra por la página',()=>{assert.match(html,/esta página no recibe pagos ni datos bancarios/);assert.match(html,/Pago recurrente y activación automática/);});
 test('A18: aclara permisos e integración WhatsApp',()=>{assert.match(html,/¿Puedo conectar mi WhatsApp inmediatamente/);assert.match(html,/depende de configuraciones, permisos y pruebas/);});
 test('A19: metadatos compartibles conservan noindex hasta validar lanzamiento',()=>{assert.match(html,/property="og:title"/);assert.match(html,/property="og:description"/);assert.match(html,/content="noindex, nofollow"/);});
@@ -38,4 +38,19 @@ test('recorrido comercial: enlaces finales internos y sin altas, cobros o métri
   assert.doesNotMatch(finalSection,/<form|<script|<input|https?:\/\/|checkout|suscribirse|registrarse/i);
   assert.match(finalSection,/demostración no utiliza clientes reales/i);
   assert.match(html,/content="noindex, nofollow"/);
+});
+
+test('acceso privado: el enlace se identifica como exclusivo de cuentas habilitadas',()=>{
+  assert.match(html, /href="\/" aria-label="Acceso privado al CRM para cuentas habilitadas">Entrar \(cuentas habilitadas\)<\/a>/);
+  assert.match(html, /¿Puedo crear una cuenta desde esta página\?/);
+  assert.match(html, /registro público y la activación de nuevas empresas siguen pendientes de verificación/);
+});
+test('acceso privado: no se ofrece registro, cobro ni captación pública',()=>{
+  assert.doesNotMatch(html, /<form|<script|<iframe|href="\/signup|href="\/checkout|https?:\/\//i);
+  assert.match(html, /content="noindex, nofollow"/);
+});
+test('acceso privado: demo pública sintética aislada de cuentas empresariales',()=>{
+  assert.match(html, /href="\/crm-demo\.html"/);
+  assert.match(html, /demostración utiliza datos ficticios/);
+  assert.doesNotMatch(html, /fetch\(|localStorage|sessionStorage|SUPABASE_SERVICE_ROLE_KEY/);
 });
