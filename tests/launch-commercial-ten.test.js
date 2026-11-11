@@ -71,3 +71,22 @@ test('navegación: permanece aislada de datos empresariales y tracking',()=>{
   assert.doesNotMatch(html, /<script|fetch\(|localStorage|sessionStorage|SUPABASE_SERVICE_ROLE_KEY|google-analytics\.com/i);
   assert.match(html,/demostración utiliza datos ficticios/);
 });
+
+test('FAQ de primer paso ofrece demo y simulador accesibles',()=>{
+  const faq=html.match(/<details><summary>¿Cuál es el primer paso para conocerlo\?<\/summary>([\s\S]*?)<\/details>/)?.[1];
+  assert.ok(faq,'debe existir la pregunta de orientación');
+  assert.match(faq,/href="\/crm-demo\.html">Explora el embudo con datos ficticios<\/a>/);
+  assert.match(faq,/href="\/crm-followup-simulator\.html">estima los seguimientos pendientes con el simulador<\/a>/);
+});
+test('FAQ no ofrece registro, checkout ni métricas reales',()=>{
+  const faq=html.match(/<details><summary>¿Cuál es el primer paso para conocerlo\?<\/summary>([\s\S]*?)<\/details>/)?.[1];
+  assert.ok(faq);
+  assert.doesNotMatch(faq,/<form|<input|checkout|suscripci[oó]n|https?:\/\//i);
+  assert.match(faq,/alta pública sigue pendiente de verificación/);
+});
+test('FAQ mantiene aislamiento: enlaces internos y ninguna lectura de datos empresariales',()=>{
+  const faq=html.match(/<details><summary>¿Cuál es el primer paso para conocerlo\?<\/summary>([\s\S]*?)<\/details>/)?.[1];
+  assert.ok(faq);
+  assert.match(faq,/sin crear una cuenta ni conectar datos reales/);
+  assert.doesNotMatch(html,/<script|fetch\(|localStorage|sessionStorage|SUPABASE_SERVICE_ROLE_KEY/i);
+});
