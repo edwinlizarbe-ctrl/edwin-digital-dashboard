@@ -22,7 +22,7 @@ test('A40: simulador es accesible, local, enlazado y no recolecta información',
 });
 
 test('simulador sin JavaScript ofrece alternativa accesible y sin captura',()=>{
- const fallback=page.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
+ const fallback=page.match(/<noscript><p class="notice" role="status">([\s\S]*?)<\/p><\/noscript>/)?.[1];
  assert.ok(fallback,'debe existir aviso sin JavaScript');
  assert.match(fallback,/activar JavaScript/i);
  assert.match(fallback,/href="\/crm-demo\.html"/);
