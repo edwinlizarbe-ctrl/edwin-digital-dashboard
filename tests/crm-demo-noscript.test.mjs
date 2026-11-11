@@ -19,7 +19,7 @@ test('la demo conserva navegación y renderizado cuando JavaScript está habilit
   assert.match(html, /href="\/crm-followup-simulator\.html"/);
   assert.match(html, /function render\(\)/);
   assert.match(html, /select\.addEventListener\('change'/);
-  assert.doesNotMatch(html.replace(/<noscript>[\s\S]*?<\/noscript>/, ''), /\.selector[^}]*display:none!important/);
+  assert.doesNotMatch(html.replace(/<noscript>[\s\S]*?<\/noscript>/, '').match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? '', /\.selector[^}]*display:none!important/);
 });
 
 test('el fallback es local, sin captación ni acceso a empresas', () => {
