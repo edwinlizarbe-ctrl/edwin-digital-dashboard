@@ -20,3 +20,14 @@ test('A40: simulador es accesible, local, enlazado y no recolecta información',
  assert.match(landing,/href="\/crm-followup-simulator\.html"/);
  assert.doesNotMatch(page,/(?:fetch\(|localStorage|sessionStorage|XMLHttpRequest|<script src="https?:)/i);
 });
+
+test('simulador sin JavaScript ofrece alternativa accesible y sin captura',()=>{
+ const fallback=page.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
+ assert.ok(fallback,'debe existir aviso sin JavaScript');
+ assert.match(fallback,/activar JavaScript/i);
+ assert.match(fallback,/href="\/crm-demo\.html"/);
+ assert.match(fallback,/localmente/i);
+ assert.doesNotMatch(fallback,/<form|<input|https?:\/\/|pagar|suscrib/i);
+ assert.match(page,/<form id="estimate-form" novalidate>/);
+ assert.doesNotMatch(page,/(?:fetch\(|localStorage|sessionStorage|XMLHttpRequest)/i);
+});
