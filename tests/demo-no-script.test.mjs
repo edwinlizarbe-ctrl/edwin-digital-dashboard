@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('../public/crm-demo.html', import.meta.url), 'utf8');
 test('sin JavaScript informa cómo continuar con la demo', () => {
-  assert.match(html, /<noscript><p class="explanation" role="alert">[^<]*JavaScript[^<]*<\/p><\/noscript>/);
+  assert.match(html, /<noscript>(?:<style>[\s\S]*?<\/style>)?<p class="explanation" role="alert">[^<]*JavaScript[^<]*<\/p><\/noscript>/);
   assert.match(html, /Actívalo en tu navegador o vuelve a la presentación comercial/);
 });
 test('no se ofrecen resultados reales ni formularios sin JavaScript', () => {
