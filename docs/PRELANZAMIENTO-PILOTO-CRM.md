@@ -39,3 +39,17 @@ Este documento diferencia **código fusionado**, **esquema conectado**, **prueba
 - Si falta algún paso de seguridad, mantener el piloto privado sin acceso público a cuentas empresariales.
 
 **Nota de verificación:** la inspección de Supabase fue de solo lectura. No se creó ningún usuario, se activó ningún plan, se tocaron permisos ni se hizo ningún cobro.
+
+## Protocolo de aceptación end-to-end del piloto (sin tocar clientes reales)
+
+Este protocolo **no acredita** que las pruebas ya se ejecutaron. Debe completarse por un operador autorizado, en un entorno verificado, con cuentas y empresas de prueba. Conservar fecha, URL, commit, proyecto Supabase (identificador no secreto), resultado y evidencia de cada caso. Si falla cualquier caso de aislamiento, detener la apertura a clientes.
+
+| Caso | Prueba positiva | Prueba negativa / error | Aislamiento y evidencia mínima |
+|---|---|---|---|
+| Cloudflare Production | Consultar dominio real y rutas `/`, `/edwin-crm.html`, `/crm-demo.html`; confirmar versión del despliegue y SHA contra `main` | Registrar 404, redirecciones inesperadas, caché o SHA distinto como fallo | Captura de panel de despliegues y respuestas HTTP fechadas, sin tokens |
+| Auth y alta | Con cuenta sintética autorizada, confirmar correo, iniciar sesión y completar onboarding | Probar correo no confirmado, token caducado y reintento fallido sin filtrar detalles | Registrar sólo identificadores anonimizados y estados, nunca enlaces de confirmación ni credenciales |
+| Empresas y RLS | Usuario A crea oportunidad y seguimiento en empresa A; reportes muestran sólo sus datos | Usuario B intenta acceder a recurso A por URL y API; debe ser denegado sin cambios | Dos empresas de prueba A/B: lectura, escritura, listado, búsqueda, exportación y reportes; evidencia de denegación y ausencia de contaminación cruzada |
+| Flujo CRM | Crear oportunidad ficticia, mover etapa, registrar seguimiento y ver reporte coherente | Datos inválidos, reintento y fallo de red no deben duplicar oportunidades | Comparar conteos y IDs sintéticos antes/después, sin información de clientes |
+| Cobros y comunicaciones | Verificar que el piloto privado no ofrece activación automática ni envíos no autorizados | Intentar ruta pública de checkout/activación: no debe cobrar ni habilitar plan | Registrar ausencia de transacciones, campañas y mensajes reales; no ejecutar pagos de prueba sin autorización |
+
+**Criterio de salida:** todos los casos aprobados con evidencia revisable, dominio productivo confirmado y responsable de autorización identificado. Un check verde de GitHub o una vista previa de Cloudflare **no sustituye** esta validación. Si el proveedor de pagos no está habilitado, el cobro y la suscripción pública continúan bloqueados incluso con el resto de las pruebas aprobadas.
