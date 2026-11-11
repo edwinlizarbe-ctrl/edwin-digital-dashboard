@@ -7,7 +7,8 @@ const faq = html.match(/<details><summary>¿Cuál es el primer paso para conocer
 
 test('positivo: FAQ dirige a demo ficticia existente', () => {
   assert.ok(faq);
-  assert.match(faq, /<a href="\/crm-demo.html">Abre la demostración ficticia<\/a>/);
+  assert.match(faq, /<a href="\/crm-demo\.html">[^<]+<\/a>/);
+  assert.match(faq, /<a href="\/crm-followup-simulator\.html">[^<]+<\/a>/);
 });
 test('negativo: FAQ no dirige a registro o checkout', () => {
   assert.doesNotMatch(faq, /signup|checkout|suscrib|pagar|href="\/"/i);
