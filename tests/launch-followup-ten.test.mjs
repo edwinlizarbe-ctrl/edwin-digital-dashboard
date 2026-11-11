@@ -22,7 +22,7 @@ test('A40: simulador es accesible, local, enlazado y no recolecta información',
 });
 
 test('simulador sin JavaScript ofrece alternativa accesible y sin captura',()=>{
- const fallback=page.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
+ const fallback=page.match(/<noscript><p class="notice" role="status">([\s\S]*?)<\/p><\/noscript>/)?.[1];
  assert.ok(fallback,'debe existir aviso sin JavaScript');
  assert.match(fallback,/activar JavaScript/i);
  assert.match(fallback,/href="\/crm-demo\.html"/);
@@ -30,4 +30,14 @@ test('simulador sin JavaScript ofrece alternativa accesible y sin captura',()=>{
  assert.doesNotMatch(fallback,/<form|<input|https?:\/\/|pagar|suscrib/i);
  assert.match(page,/<form id="estimate-form" novalidate>/);
  assert.doesNotMatch(page,/(?:fetch\(|localStorage|sessionStorage|XMLHttpRequest)/i);
+});
+
+
+test('sin JavaScript no se muestra un formulario que no puede calcular',()=>{
+ const noJsStyle=page.match(/<noscript><style>([\s\S]*?)<\/style><\/noscript>/)?.[1];
+ assert.ok(noJsStyle,'el formulario inoperante debe ocultarse sin JavaScript');
+ assert.match(noJsStyle,/#estimate-form\s*\{\s*display\s*:\s*none\s*\}/);
+ assert.match(page,/<noscript><p class="notice" role="status">/);
+ assert.match(page,/<form id="estimate-form" novalidate>/);
+ assert.doesNotMatch(noJsStyle,/fetch|script\s+src|https?:|localStorage|sessionStorage/i);
 });
