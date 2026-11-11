@@ -36,7 +36,9 @@ test('simulador sin JavaScript ofrece alternativa accesible y sin captura',()=>{
 test('sin JavaScript no se muestra un formulario que no puede calcular',()=>{
  const noJsStyle=page.match(/<noscript><style>([\s\S]*?)<\/style><\/noscript>/)?.[1];
  assert.ok(noJsStyle,'el formulario inoperante debe ocultarse sin JavaScript');
- assert.match(noJsStyle,/#estimate-form\s*\{\s*display\s*:\s*none\s*\}/);
+ assert.match(noJsStyle,/#estimate-form,#estimate-results\s*\{\s*display\s*:\s*none\s*\}/);
+ assert.match(page,/<section id="estimate-results" aria-labelledby="results-title">/);
+ assert.doesNotMatch(noJsStyle,/#error|\.notice|main\s*\{/);
  assert.match(page,/<noscript><p class="notice" role="status">/);
  assert.match(page,/<form id="estimate-form" novalidate>/);
  assert.doesNotMatch(noJsStyle,/fetch|script\s+src|https?:|localStorage|sessionStorage/i);
