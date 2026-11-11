@@ -54,3 +54,20 @@ test('acceso privado: demo pública sintética aislada de cuentas empresariales'
   assert.match(html, /demostración utiliza datos ficticios/);
   assert.doesNotMatch(html, /fetch\(|localStorage|sessionStorage|SUPABASE_SERVICE_ROLE_KEY/);
 });
+
+test('navegación: el simulador es accesible desde la cabecera',()=>{
+  const nav=html.match(/<nav class="top-nav" aria-label="Navegación comercial">([\s\S]*?)<\/nav>/)?.[1];
+  assert.ok(nav,'debe existir navegación comercial');
+  assert.match(nav, /href="\/crm-followup-simulator\.html">Simulador<\/a>/);
+  assert.match(nav, /href="\/crm-demo\.html">Ver demo<\/a>/);
+});
+test('navegación: no introduce alta pública, pagos ni captación',()=>{
+  const nav=html.match(/<nav class="top-nav" aria-label="Navegación comercial">([\s\S]*?)<\/nav>/)?.[1];
+  assert.ok(nav);
+  assert.doesNotMatch(nav, /<form|<input|checkout|signup|https?:\/\//i);
+  assert.match(html,/content="noindex, nofollow"/);
+});
+test('navegación: permanece aislada de datos empresariales y tracking',()=>{
+  assert.doesNotMatch(html, /<script|fetch\(|localStorage|sessionStorage|SUPABASE_SERVICE_ROLE_KEY|google-analytics\.com/i);
+  assert.match(html,/demostración utiliza datos ficticios/);
+});
