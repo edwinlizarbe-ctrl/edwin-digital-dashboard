@@ -53,3 +53,16 @@ Este protocolo **no acredita** que las pruebas ya se ejecutaron. Debe completars
 | Cobros y comunicaciones | Verificar que el piloto privado no ofrece activación automática ni envíos no autorizados | Intentar ruta pública de checkout/activación: no debe cobrar ni habilitar plan | Registrar ausencia de transacciones, campañas y mensajes reales; no ejecutar pagos de prueba sin autorización |
 
 **Criterio de salida:** todos los casos aprobados con evidencia revisable, dominio productivo confirmado y responsable de autorización identificado. Un check verde de GitHub o una vista previa de Cloudflare **no sustituye** esta validación. Si el proveedor de pagos no está habilitado, el cobro y la suscripción pública continúan bloqueados incluso con el resto de las pruebas aprobadas.
+
+## Puerta adicional para integraciones GA4 multiempresa (riesgo de concurrencia)
+
+**Estado: pendiente, no validado en producción.** El PR #76 documentó un riesgo de asignación simultánea de una misma propiedad GA4 a dos empresas: comprobar la propiedad antes del guardado no garantiza exclusividad cuando dos solicitudes compiten. Este apartado es un criterio de aceptación, no una corrección de la base de datos ni autorización para cambiar RLS o conexiones.
+
+| Caso | Acción en entorno autorizado con datos sintéticos | Resultado exigido | Evidencia |
+|---|---|---|---|
+| Positivo | Empresa A vincula una propiedad de prueba no asignada | A puede consultar su vínculo; B no obtiene sus datos | Respuestas anonimizadas, fecha y commit |
+| Negativo | Empresa B intenta vincular secuencialmente la propiedad ya asignada a A | Rechazo sin sobrescritura ni divulgación de identificadores ajenos | Código HTTP, ausencia de escritura y auditoría sin tokens |
+| Concurrencia / aislamiento | A y B intentan vincular **a la vez** la misma propiedad sintética, con barrera de sincronización | Como máximo una asignación persiste; la otra falla de forma segura | Registro de ambas respuestas y consulta posterior de las dos empresas |
+| Fallo del proveedor | Simular error de lectura o escritura en entorno de prueba | Denegación segura, sin estado parcial ni permisos ampliados | Registro redactado del error y estado final |
+
+**Bloqueo:** si el caso concurrente produce doble asignación o no puede demostrarse el control atómico, no habilitar GA4 multiempresa. Evaluar una restricción transaccional/única con revisión y autorización separadas; nunca aplicar una migración o alterar conexiones de clientes desde esta matriz. No confundir CI verde con prueba concurrente en un entorno conectado.
