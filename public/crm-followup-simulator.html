@@ -92,6 +92,16 @@
       invalid.setAttribute('aria-describedby',invalid.id+'-help error');invalid.focus();
     }
   }
+  // Invalidate the previous estimate immediately: changed inputs must not leave stale figures visible.
+  const invalidateEstimate=()=>{
+    results.replaceChildren();
+    explanation.textContent='Los valores cambiaron. Pulsa «Calcular ejemplo» para actualizar la estimación.';
+    error.textContent='';
+    leads.removeAttribute('aria-invalid');percent.removeAttribute('aria-invalid');
+    leads.setAttribute('aria-describedby','leads-help');percent.setAttribute('aria-describedby','percent-help');
+  };
+  leads.addEventListener('input',invalidateEstimate);
+  percent.addEventListener('input',invalidateEstimate);
   form.addEventListener('submit',event=>{event.preventDefault();calculate();});
   form.addEventListener('reset',()=>{queueMicrotask(calculate);});
   calculate();
