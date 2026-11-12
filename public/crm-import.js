@@ -73,7 +73,14 @@
     let skipped=0;
     if(table.length-1>MAX_ROWS) throw new Error('Por seguridad, importa máximo 500 contactos por archivo. Divide el CSV en partes.');
     for(let i=1;i<table.length;i++) {
-      const line=table[i],get=k=>columns[k]>=0?String(line[columns[k]]||'').trim():'';
+      const line=table[i];
+      // Extra fields usually indicate an unquoted delimiter: never shift lead data silently.
+      if (line.length > table[0].length) {
+        skipped++;
+        if (warnings.length < 3) warnings.push('Fila '+(i+1)+': contiene más columnas que la cabecera.');
+        continue;
+      }
+      const get=k=>columns[k]>=0?String(line[columns[k]]||'').trim():'';
       const name=(get('name') || [get('first'),get('last')].filter(Boolean).join(' ')).slice(0,121);
       const email=get('email'),phone=get('phone'),campaign=get('campaign'),notes=get('notes');
       const amountRaw=get('amount'), currency=get('currency').toUpperCase() || 'PEN', stageRaw=norm(get('stage'));
