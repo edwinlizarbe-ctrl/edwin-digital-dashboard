@@ -68,6 +68,16 @@
     const table=formats[0].rows;
     if (!table.length || table[0].length < 2) throw new Error('El archivo debe contener columnas CSV separadas por coma, punto y coma o tabulador.');
     const columns=positions(table[0]);
+    // Ambiguous mapped headers must not silently discard a second column.
+    const mappedHeaderFields = table[0].map(header => {
+      const normalized = norm(header);
+      return Object.entries(aliases).filter(([, keys]) => keys.some(key => norm(key) === normalized)).map(([field]) => field);
+    });
+    for (const [field, index] of Object.entries(columns)) {
+      if (index < 0) continue;
+      const matches = mappedHeaderFields.filter(fields => fields.includes(field)).length;
+      if (matches > 1) throw new Error('El archivo contiene columnas duplicadas para «' + field + '». Renombra o elimina la columna repetida.');
+    }
     if(columns.name<0 && columns.first<0) throw new Error('No encontramos columna de nombre. Usa «Nombre», «Name», «Full Name» o «First Name».');
     const rows=[], warnings=[], visited=new Set();
     let skipped=0;
