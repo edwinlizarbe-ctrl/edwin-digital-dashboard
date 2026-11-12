@@ -59,3 +59,31 @@ test('onboarding no envía nombres engañosos a Supabase ni revela cookies ajena
   assert.equal(response.headers.get('cache-control'),'no-store');
  });
 });
+
+test('Auth signup disables automatic upstream redirects while preserving successful registration',async()=>{
+ const old=globalThis.fetch;let options;
+ globalThis.fetch=async (_url,opts)=>{options=opts;return new Response(JSON.stringify({id:'synthetic-user'}),{status:201});};
+ try{const r=await handleSignup(req('/api/auth/signup',good),env);assert.equal(r.status,200);assert.equal(options.redirect,'error');assert.equal(r.headers.get('set-cookie'),null);}
+ finally{globalThis.fetch=old;}
+});
+test('Auth signup fails closed if upstream attempts a redirect',async()=>{
+ const old=globalThis.fetch;let calls=0;
+ globalThis.fetch=async (_url,opts)=>{calls++;assert.equal(opts.redirect,'error');throw new TypeError('redirect rejected');};
+ try{const r=await handleSignup(req('/api/auth/signup',good),env);assert.equal(r.status,502);assert.equal(calls,1);assert.equal(r.headers.get('set-cookie'),null);}
+ finally{globalThis.fetch=old;}
+});
+test('Auth onboarding disables upstream redirects for bearer tokens',async()=>{
+ const old=globalThis.fetch;let options;
+ globalThis.fetch=async (_url,opts)=>{options=opts;return new Response(JSON.stringify({id:'business-1',name:'Mi Tienda',slug:'mi-tienda',created:true}),{status:200});};
+ try{const r=await handleOnboardingBusiness(req('/api/onboarding/business',{name:'Mi Tienda'}),env,session);assert.equal(r.status,200);assert.equal(options.redirect,'error');}
+ finally{globalThis.fetch=old;}
+});
+test('Auth onboarding rejects upstream redirects without exposing session',async()=>{
+ const old=globalThis.fetch;let calls=0;
+ globalThis.fetch=async (_url,opts)=>{calls++;assert.equal(opts.redirect,'error');throw new TypeError('redirect rejected');};
+ try{const r=await handleOnboardingBusiness(req('/api/onboarding/business',{name:'Mi Tienda'}),env,session);assert.equal(r.status,502);assert.equal(calls,1);assert.doesNotMatch(await r.text(),/test-jwt/);}
+ finally{globalThis.fetch=old;}
+});
+test('Foreign origin cannot reach upstream Auth even with redirect protection',async()=>{
+ await withoutFetch(async()=>{const r=await handleSignup(req('/api/auth/signup',good,{origin:'https://foreign.example'}),env);assert.equal(r.status,403);});
+});
