@@ -90,7 +90,8 @@ export async function handleSignup(req, env) {
     if (/validation|email_address_invalid/.test(code)) return reply({ error: 'Escribe un correo electrónico válido.' }, 400);
     return reply({ error: 'No se pudo completar el registro. Revisa los datos e inténtalo de nuevo.' }, 400);
   }
-  if (res.status >= 400) return reply({ error: 'No se pudo completar el registro. Inténtalo de nuevo.' }, 400);
+  // Sólo una respuesta 2xx del proveedor puede acreditar el registro; nunca aceptar 3xx con JSON plausible.
+  if (!res.ok) return reply({ error: 'No se pudo completar el registro. Inténtalo de nuevo.' }, 502);
   // Respuesta idéntica exista o no el correo (anti-enumeración). Nunca se emiten cookies.
   // A malformed or empty upstream response is not evidence that a confirmation email was sent.
   const data = await res.json().catch(() => null);
