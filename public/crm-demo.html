@@ -68,7 +68,7 @@
       <p id="scenario-announcement" class="fine" role="status" aria-live="polite" aria-atomic="true"></p>
       <section aria-labelledby="metrics-title">
         <h2 id="metrics-title">Resumen del embudo ficticio</h2>
-        <div class="cards" id="cards" aria-label="Métricas simuladas"></div>
+        <div class="cards" id="cards" role="list" aria-label="Métricas simuladas"></div>
       </section>
       <section aria-labelledby="stages-title">
         <h2 id="stages-title">Oportunidades por etapa</h2>
@@ -97,7 +97,7 @@
     const metric = (label,value) => {
       const article=document.createElement('article'), heading=document.createElement('span');
       const strong=document.createElement('strong');heading.textContent=label;strong.textContent=number(value);
-      article.append(heading,strong);return article;
+      article.setAttribute('role','listitem');article.append(heading,strong);return article;
     };
     const stageRow = stage => {
       const li=document.createElement('li'), row=document.createElement('div'), left=document.createElement('strong');
