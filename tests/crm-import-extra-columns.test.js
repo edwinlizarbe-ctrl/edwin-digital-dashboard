@@ -8,7 +8,7 @@ vm.runInContext(readFileSync(new URL('../public/crm-import.js', import.meta.url)
 const parse = context.edwinCsvImport.parseLeadsCsv;
 
 test('skips malformed row with extra unquoted delimiter instead of shifting lead fields', () => {
-  const parsed = parse('Nombre,Correo,Notas\\nAna,ana@example.com,ok\\nLuis,luis@example.com,nota,extra');
+  const parsed = parse('Nombre,Correo,Notas\nAna,ana@example.com,ok\nLuis,luis@example.com,nota,extra');
   assert.equal(parsed.rows.length, 1);
   assert.equal(parsed.rows[0].name, 'Ana');
   assert.equal(parsed.skipped, 1);
@@ -16,7 +16,7 @@ test('skips malformed row with extra unquoted delimiter instead of shifting lead
 });
 
 test('keeps quoted delimiters and short rows valid', () => {
-  const parsed = parse('Nombre,Correo,Notas\\nAna,ana@example.com,"hola, mundo"\\nLuis,luis@example.com');
+  const parsed = parse('Nombre,Correo,Notas\nAna,ana@example.com,"hola, mundo"\nLuis,luis@example.com');
   assert.equal(parsed.rows.length, 2);
   assert.equal(parsed.rows[0].notes, 'hola, mundo');
   assert.equal(parsed.rows[1].notes, '');
@@ -24,5 +24,5 @@ test('keeps quoted delimiters and short rows valid', () => {
 });
 
 test('rejects files where every data row has surplus fields', () => {
-  assert.throws(() => parse('Nombre,Correo\\nAna,ana@example.com,extra'), /No hay contactos válidos/);
+  assert.throws(() => parse('Nombre,Correo\nAna,ana@example.com,extra'), /No hay contactos válidos/);
 });
