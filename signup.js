@@ -76,6 +76,7 @@ export async function handleSignup(req, env) {
   try {
     res = await fetch(`${String(env.SUPABASE_URL).replace(/\/$/, '')}/auth/v1/signup?redirect_to=${encodeURIComponent(origin + '/')}`, {
       method: 'POST',
+      redirect: 'error', // Never forward Auth credentials/JWT across an upstream redirect.
       headers: { apikey: env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ email: v.email, password: v.password }),
     });
@@ -120,6 +121,7 @@ export async function handleOnboardingBusiness(req, env, s) {
   try {
     res = await fetch(`${String(env.SUPABASE_URL).replace(/\/$/, '')}/rest/v1/rpc/ed_onboard_business`, {
       method: 'POST',
+      redirect: 'error', // Never forward Auth credentials/JWT across an upstream redirect.
       headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${s.access}`, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ p_name: v.name }),
     });
