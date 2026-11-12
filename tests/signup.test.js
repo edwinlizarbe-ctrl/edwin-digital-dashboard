@@ -62,7 +62,7 @@ test('signup response is identical for new and existing emails (anti-enumeration
     assert.deepEqual(await a.json(), await b.json());
   });
   // Si Supabase devolviera sesión (confirmación desactivada), jamás se reenvían tokens ni cookies.
-  await withFetch(() => json({ access_token: 'tok', refresh_token: 'r', user: {} }), async () => {
+  await withFetch(() => json({ id: 'u3', access_token: 'tok', refresh_token: 'r', user: { id: 'u3' } }), async () => {
     const r = await handleSignup(req('/api/auth/signup', good), env);
     const text = JSON.stringify(await r.json());
     assert.equal(r.status, 503, 'Si confirm email está desactivado, el registro NO debe informar éxito');

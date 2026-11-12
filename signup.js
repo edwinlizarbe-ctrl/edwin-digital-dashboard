@@ -92,8 +92,12 @@ export async function handleSignup(req, env) {
   }
   if (res.status >= 400) return reply({ error: 'No se pudo completar el registro. Inténtalo de nuevo.' }, 400);
   // Respuesta idéntica exista o no el correo (anti-enumeración). Nunca se emiten cookies.
-  const data = res.ok ? await res.json().catch(() => ({})) : {};
-  if (data && data.access_token) {
+  // A malformed or empty upstream response is not evidence that a confirmation email was sent.
+  const data = await res.json().catch(() => null);
+  if (!data || typeof data !== 'object' || Array.isArray(data) || typeof data.id !== 'string' || !data.id.trim()) {
+    return reply({ error: 'No se pudo confirmar el registro. Inténtalo más tarde.' }, 502);
+  }
+  if (data.access_token) {
     console.error('SUPABASE AUTH: Confirm email no está activo; no habilitar onboarding hasta activarlo.');
     return reply({ error: 'La confirmación de correo aún no está configurada. Contacta al administrador antes de continuar.' }, 503);
   }
