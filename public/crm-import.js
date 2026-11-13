@@ -98,8 +98,10 @@
       const stage=stageRaw ? stageMap[stageRaw] : 'new';
       // Prevent a row from silently losing an amount if its format is ambiguous.
       const amount=amountRaw ? Number(amountRaw.replace(/\s/g,'').replace(/,(?=\d{1,2}$)/,'.').replace(/(?<=\d)[,.](?=\d{3}(?:[,.]|$))/g,'')) : null;
+      // Only plain decimals or consistently grouped thousands with an optional decimal part.
+      const validAmountFormat = /^(?:[0-9]+(?:[.,][0-9]{1,2})?|[0-9]{1,3}([.,])[0-9]{3}(?:\1[0-9]{3})*(?:[.,][0-9]{1,2})?)$/.test(amountRaw);
       const bad=!stage||name.length<2||name.length>120||email.length>160||phone.length>35||campaign.length>150||notes.length>500||
-        (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) || (amountRaw && (!/^[0-9][0-9.,\s]*$/.test(amountRaw)||!Number.isFinite(amount)||amount<0||amount>1e10)) ||
+        (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) || (amountRaw && (!validAmountFormat||!Number.isFinite(amount)||amount<0||amount>1e10)) ||
         !/^[A-Z]{3}$/.test(currency);
       if(bad){skipped++;if(warnings.length<3)warnings.push('Fila '+(i+1)+': datos incompletos o inválidos.');continue;}
       const item={name,email,phone,campaign,notes,amount,currency,stage};
