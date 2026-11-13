@@ -117,3 +117,12 @@ test('UI y Worker: importador accesible sin modificar login ni autenticación',(
  assert.ok(worker.includes("path === '/api/crm/leads/import'"));
  assert.ok(app.includes('id="login-form"'));
 });
+
+test('CSV: rechaza separadores monetarios mal formados sin alterar filas válidas',()=>{
+ const csv='Nombre;Importe\nAna Torres;1.2.3\nLuis Perez;1,23,45\nMaria Lopez;1.234,56\nPedro Soto;1234,50\n';
+ const result=parse(csv);
+ assert.equal(result.skipped,2);
+ assert.equal(result.rows.length,2);
+ assert.equal(result.rows[0].amount,1234.56);
+ assert.equal(result.rows[1].amount,1234.5);
+});
