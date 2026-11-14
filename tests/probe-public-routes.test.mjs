@@ -123,7 +123,7 @@ test('ignora títulos falsos en comentarios, scripts y plantillas HTML', async (
     status: 200, headers: new Headers({ 'content-type': 'text/html' }),
     text: async () => {
       const title = titles[index++];
-      return '<head><!-- <title>Login</title> --><script>const example = "<title>Login</title>";</script><template><title>Login</title></template><title>' + title + '</title>';
+      return '<head><!-- <title>Login</title> --><script>const example = "<title>Login</title>";</script><template><title>Login</title></template><title>' + title + '</title></head><body></body>';
     }
   }));
   assert.equal(result.passed, true);
@@ -143,7 +143,7 @@ test('ignora títulos HTML falsos dentro de style y textarea', async () => {
   let index = 0;
   const result = await probePublicRoutes('https://crm.example', async () => ({
     status: 200, headers: new Headers({ 'content-type': 'text/html' }),
-    text: async () => '<head><style>/* <title>Login</title> */</style><textarea><title>Login</title></textarea><title>' + titles[index++] + '</title></head><body><textarea><title>Login</title></textarea></body>'
+    text: async () => '<head><style>/* <title>Login</title> */</style><title>' + titles[index++] + '</title></head><body><textarea><title>Login</title></textarea></body>'
   }));
   assert.equal(result.passed, true);
 });
