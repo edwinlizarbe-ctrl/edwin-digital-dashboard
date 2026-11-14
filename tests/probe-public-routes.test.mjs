@@ -61,7 +61,7 @@ test('rechaza HTML declarado demasiado grande sin leer el cuerpo', async () => {
   let reads = 0;
   const result = await probePublicRoutes('https://crm.example', async () => ({
     status: 200, headers: new Headers({'content-type':'text/html','content-length':'999999'}),
-    text: async () => { reads++; return '<title>'+titles[0]+'</title>'; }
+    text: async () => { reads++; return '<title>'+titles[0]+'</title></head><body></body>'; }
   }));
   assert.equal(result.passed, false);
   assert.equal(reads, 0);
@@ -143,7 +143,7 @@ test('ignora títulos HTML falsos dentro de style y textarea', async () => {
   let index = 0;
   const result = await probePublicRoutes('https://crm.example', async () => ({
     status: 200, headers: new Headers({ 'content-type': 'text/html' }),
-    text: async () => '<head><style>/* <title>Login</title> */</style><textarea><title>Login</title></textarea><title>' + titles[index++] + '</title>'
+    text: async () => '<head><style>/* <title>Login</title> */</style><textarea><title>Login</title></textarea><title>' + titles[index++] + '</title></head><body><textarea><title>Login</title></textarea></body>'
   }));
   assert.equal(result.passed, true);
 });
