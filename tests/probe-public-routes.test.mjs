@@ -116,3 +116,25 @@ test('rechaza dominios reservados y redes locales sin consultar destinos', async
   assert.equal(validateBaseUrl('https://edwincrm.com'), 'https://edwincrm.com');
   assert.ok(!JSON.stringify({ requests }).includes('business_id'));
 });
+
+test('ignora títulos falsos en comentarios, scripts y plantillas HTML', async () => {
+  let index = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => ({
+    status: 200, headers: new Headers({ 'content-type': 'text/html' }),
+    text: async () => {
+      const title = titles[index++];
+      return '<!-- <title>Login</title> --><script>const example = "<title>Login</title>";</script><template><title>Login</title></template><title>' + title + '</title>';
+    }
+  }));
+  assert.equal(result.passed, true);
+});
+
+test('rechaza títulos que solo aparecen en contenido inerte', async () => {
+  let index = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => ({
+    status: 200, headers: new Headers({ 'content-type': 'text/html' }),
+    text: async () => '<!-- <title>' + titles[index++] + '</title> --><title>Login</title>'
+  }));
+  assert.equal(result.passed, false);
+  assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
+});
