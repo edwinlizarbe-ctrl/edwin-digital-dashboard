@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { probePublicRoutes, validateBaseUrl } from '../scripts/probe-public-routes.mjs';
 const titles = ['Edwin CRM · Panel', 'Edwin CRM | Cada prospecto cuenta', 'Edwin CRM · Demostración de seguimiento comercial'];
-const response = (status = 200, type = 'text/html; charset=utf-8', title = titles[0]) => ({ status, headers: new Headers({ 'content-type': type }), text: async () => '<!doctype html><title>' + title + '</title>' });
+const response = (status = 200, type = 'text/html; charset=utf-8', title = titles[0]) => ({ status, headers: new Headers({ 'content-type': type }), text: async () => '<!doctype html><html><head><title>' + title + '</title></head><body></body></html>' });
 test('rutas públicas correctas: 3 respuestas HTML y sin datos empresariales', async () => {
   const urls = [];
   const result = await probePublicRoutes('https://crm.example', async (url, options) => { urls.push([url, options.method, options.redirect]); return response(200, 'text/html; charset=utf-8', titles[urls.length - 1]); });
@@ -61,7 +61,7 @@ test('rechaza HTML declarado demasiado grande sin leer el cuerpo', async () => {
   let reads = 0;
   const result = await probePublicRoutes('https://crm.example', async () => ({
     status: 200, headers: new Headers({'content-type':'text/html','content-length':'999999'}),
-    text: async () => { reads++; return '<title>'+titles[0]+'</title>'; }
+    text: async () => { reads++; return '<title>'+titles[0]+'</title></head><body></body>'; }
   }));
   assert.equal(result.passed, false);
   assert.equal(reads, 0);
@@ -83,7 +83,7 @@ test('acepta títulos HTML equivalentes con espacios, atributos y mayúsculas', 
   let index = 0;
   const result = await probePublicRoutes('https://crm.example', async () => ({
     status: 200, headers: new Headers({ 'content-type': 'text/html' }),
-    text: async () => '<TITLE data-source="static">  ' + titles[index++] + '  </TITLE>'
+    text: async () => '<html><HEAD><TITLE data-source="static">  ' + titles[index++] + '  </TITLE></HEAD></html>'
   }));
   assert.equal(result.passed, true);
 });
@@ -91,7 +91,7 @@ test('rechaza títulos duplicados o títulos parecidos para evitar falsos positi
   let index = 0;
   const result = await probePublicRoutes('https://crm.example', async () => ({
     status: 200, headers: new Headers({ 'content-type': 'text/html' }),
-    text: async () => '<title>' + titles[index++] + '</title><title>Login</title>'
+    text: async () => '<head><title>' + titles[index++] + '</title><title>Login</title></head>'
   }));
   assert.equal(result.passed, false);
   assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
@@ -123,7 +123,7 @@ test('ignora títulos falsos en comentarios, scripts y plantillas HTML', async (
     status: 200, headers: new Headers({ 'content-type': 'text/html' }),
     text: async () => {
       const title = titles[index++];
-      return '<!-- <title>Login</title> --><script>const example = "<title>Login</title>";</script><template><title>Login</title></template><title>' + title + '</title>';
+      return '<head><!-- <title>Login</title> --><script>const example = "<title>Login</title>";</script><template><title>Login</title></template><title>' + title + '</title></head><body></body>';
     }
   }));
   assert.equal(result.passed, true);
@@ -143,7 +143,7 @@ test('ignora títulos HTML falsos dentro de style y textarea', async () => {
   let index = 0;
   const result = await probePublicRoutes('https://crm.example', async () => ({
     status: 200, headers: new Headers({ 'content-type': 'text/html' }),
-    text: async () => '<style>/* <title>Login</title> */</style><textarea><title>Login</title></textarea><title>' + titles[index++] + '</title>'
+    text: async () => '<head><style>/* <title>Login</title> */</style><title>' + titles[index++] + '</title></head><body><textarea><title>Login</title></textarea></body>'
   }));
   assert.equal(result.passed, true);
 });

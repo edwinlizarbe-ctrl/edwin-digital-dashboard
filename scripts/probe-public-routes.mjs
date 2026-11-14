@@ -21,7 +21,8 @@ function hasExpectedTitle(html, expected) {
   // Allow harmless HTML formatting while requiring exactly one matching page title.
   // A title in a comment, script, style, textarea or template is not the document's page title.
   const visibleMarkup = html.replace(/<!--[\s\S]*?-->|<script\b[^>]*>[\s\S]*?<\/script\s*>|<template\b[^>]*>[\s\S]*?<\/template\s*>|<style\b[^>]*>[\s\S]*?<\/style\s*>|<textarea\b[^>]*>[\s\S]*?<\/textarea\s*>/gi, '');
-  const titles = [...visibleMarkup.matchAll(/<title(?:\s[^>]*)?>([^<]*)<\/title\s*>/gi)];
+  const head = visibleMarkup.match(/<head(?:\s[^>]*)?>([\s\S]*?)<\/head\s*>/i)?.[1] || '';
+  const titles = [...head.matchAll(/<title(?:\s[^>]*)?>([^<]*)<\/title\s*>/gi)];
   return titles.length === 1 && titles[0][1].trim() === expected;
 }
 export async function probePublicRoutes(base, fetcher = fetch) {
