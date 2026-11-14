@@ -138,3 +138,21 @@ test('rechaza títulos que solo aparecen en contenido inerte', async () => {
   assert.equal(result.passed, false);
   assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
 });
+
+test('ignora títulos HTML falsos dentro de style y textarea', async () => {
+  let index = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => ({
+    status: 200, headers: new Headers({ 'content-type': 'text/html' }),
+    text: async () => '<style>/* <title>Login</title> */</style><textarea><title>Login</title></textarea><title>' + titles[index++] + '</title>'
+  }));
+  assert.equal(result.passed, true);
+});
+test('no acepta títulos presentes únicamente dentro de style o textarea', async () => {
+  let index = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => ({
+    status: 200, headers: new Headers({ 'content-type': 'text/html' }),
+    text: async () => '<style><title>' + titles[index++] + '</title></style><title>Login</title>'
+  }));
+  assert.equal(result.passed, false);
+  assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
+});
