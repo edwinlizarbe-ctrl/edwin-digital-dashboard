@@ -32,7 +32,7 @@ export async function probePublicRoutes(base, fetcher = fetch) {
     try {
       const response = await fetcher(origin + route, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(8000), headers: { Accept: 'text/html' } });
       const type = response.headers.get('content-type') || '';
-      const htmlOk = response.status === 200 && /^text\/html(?:\s*;|$)/i.test(type);
+      const htmlOk = response.status === 200 && /^text\/html\s*(?:;|$)/i.test(type);
       // Avoid loading an arbitrarily large HTML response into memory during diagnostics.
       const declaredBytes = Number(response.headers.get('content-length'));
       const oversized = htmlOk && Number.isFinite(declaredBytes) && declaredBytes > 0 && declaredBytes > 262144;
