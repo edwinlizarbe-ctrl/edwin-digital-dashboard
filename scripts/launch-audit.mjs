@@ -18,11 +18,19 @@ const noPersonalForms=html=>!/<(?:form|input|textarea)\b/i.test(html);
 const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|credit_card)|checkout\.stripe\.com)/i.test(html);
 const noTracking=html=>!/(?:<script[^>]*src="https?:\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html);
 
+export const hasCommercialHeading=html=>{
+  const visible=html.replace(/<!--[\\s\\S]*?-->/g,'');
+  const head=visible.match(/<head\\b[^>]*>([\\s\\S]*?)<\\/head\\s*>/i)?.[1] ?? '';
+  const title=head.match(/<title\\b[^>]*>\\s*([^<]+)<\\/title\\s*>/i)?.[1] ?? '';
+  const body=visible.match(/<body\\b[^>]*>([\\s\\S]*?)<\\/body\\s*>/i)?.[1] ?? '';
+  return /Edwin CRM/i.test(title) && /<h1(?:\\s[^>]*)?>[\\s\\S]*?<\\/h1\\s*>/i.test(body);
+};
+
 export function auditLaunch() {
   const landing=read('edwin-crm.html'),demo=read('crm-demo.html'),index=read('index.html'),data=read('crm-demo-data.js');
   const checks=[
     ['A21','Landing permanece noindex antes del lanzamiento público',has(landing,/name="robots" content="noindex, nofollow"/)],
-    ['A22','Propuesta comercial identifica el CRM y usa título visible',has(landing,/<title>Edwin CRM/) && has(landing,/<h1>/)],
+    ['A22','Propuesta comercial identifica el CRM y usa título visible',hasCommercialHeading(landing)],
     ['A23','La demostración declara datos ficticios sin atribución',has(demo,/100% FICTICIOS/) && has(demo,/no existe atribución publicitaria/i)],
     ['A24','No hay solicitudes de datos reales ni almacenamiento en la demo',!/\bfetch\s*\(|\blocalStorage\b|\bsessionStorage\b|XMLHttpRequest|document\.cookie/.test(demo)],
     ['A25','Accesos complementarios agrupados en menú nativo',has(index,/<details class="crm-quicklinks">/) && has(index,/<nav aria-label=/)],
