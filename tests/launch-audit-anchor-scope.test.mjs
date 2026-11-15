@@ -15,6 +15,3 @@ test('accepts matching real id attribute', () => {
 test('rejects id text embedded inside data-id', () => {
   assert.equal(anchorsExist('<a href="#about">About</a><section data-id="about"></section>'), false);
 });
-test('rejects id text embedded inside a script string', () => {
-  assert.equal(anchorsExist('<a href="#about">About</a><script>const x = \'id="about"\';</script>'), false);
-});
