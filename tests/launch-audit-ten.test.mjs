@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {auditLaunch, anchorsExist, fileLinksExist} from '../scripts/launch-audit.mjs';
+import {auditLaunch, anchorsExist, fileLinksExist, hasCommercialHeading} from '../scripts/launch-audit.mjs';
 const controls=auditLaunch();
 test('el auditor declara exactamente A21-A30 sin duplicados',()=>{
   assert.deepEqual(controls.map(x=>x.id),Array.from({length:10},(_,i)=>'A'+(i+21)));
@@ -23,4 +23,16 @@ test('A27 rechaza destino ausente y no confunde data-id con id',()=>{
 test('A26 acepta ruta pública conocida y rechaza ruta inexistente',()=>{
   assert.equal(fileLinksExist("<a href='/edwin-crm.html'>CRM</a>"),true);
   assert.equal(fileLinksExist("<a href='/archivo-inexistente-auditoria-20261115.html'>Falla</a>"),false);
+});
+
+test('A22 acepta title en head y h1 visible en body',()=>{
+  assert.equal(hasCommercialHeading('<html><head><title>Edwin CRM | Gestión</title></head><body><h1 class="hero">CRM para empresas</h1></body></html>'),true);
+});
+test('A22 rechaza título fuera de head o h1 falso',()=>{
+  assert.equal(hasCommercialHeading('<html><head></head><body><title>Edwin CRM</title><h1>CRM</h1></body></html>'),false);
+  assert.equal(hasCommercialHeading('<html><head><title>Edwin CRM</title></head><body><div data-h1="x">CRM</div></body></html>'),false);
+});
+test('A22 ignora encabezados dentro de comentarios y fuera de body',()=>{
+  assert.equal(hasCommercialHeading('<html><head><title>Edwin CRM</title></head><body><!-- <h1>falso</h1> --></body></html>'),false);
+  assert.equal(hasCommercialHeading('<html><head><title>Edwin CRM</title><h1>falso</h1></head><body></body></html>'),false);
 });
