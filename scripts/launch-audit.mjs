@@ -9,7 +9,10 @@ const read=name=>readFileSync(resolve(publicDir,name),'utf8');
 const has=(text,expression)=>expression.test(text);
 const localLinks=html=>[...html.matchAll(/href="(\/[^"#?]*)(?:#[^"]*)?"/g)].map(m=>m[1]);
 const anchors=html=>[...html.matchAll(/href="#([^"]+)"/g)].map(m=>m[1]);
-const anchorsExist=html=>anchors(html).every(anchor=>html.includes('id="'+anchor+'"'));
+const anchorsExist=html=>{
+  const ids=new Set([...html.matchAll(/\\sid="([^"]+)"/g)].map(match=>match[1]));
+  return anchors(html).every(anchor=>ids.has(anchor));
+};
 const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!href.includes('..')&&existsSync(resolve(publicDir,href.slice(1)))));
 const noPersonalForms=html=>!/<(?:form|input|textarea)\b/i.test(html);
 const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|credit_card)|checkout\.stripe\.com)/i.test(html);
