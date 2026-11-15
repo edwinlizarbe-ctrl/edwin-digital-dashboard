@@ -7,13 +7,13 @@ const base=dirname(fileURLToPath(import.meta.url));
 const publicDir=resolve(base,'../public');
 const read=name=>readFileSync(resolve(publicDir,name),'utf8');
 const has=(text,expression)=>expression.test(text);
-const localLinks=html=>[...html.matchAll(/href="(\/[^"#?]*)(?:#[^"]*)?"/g)].map(m=>m[1]);
+const localLinks=html=>[...html.matchAll(/\bhref=([\x22\x27])(\/[^\x22\x27#?]*)(?:#[^\x22\x27]*)?\1/g)].map(m=>m[2]);
 const anchors=html=>[...html.matchAll(/\bhref=(["'])(#[^"'<>]+)\1/g)].map(m=>m[2].slice(1));
 export const anchorsExist=html=>{
   const ids=new Set([...html.matchAll(/\sid=(["'])([^"'<>]+)\1/g)].map(match=>match[2]));
   return anchors(html).every(anchor=>ids.has(anchor));
 };
-const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!href.includes('..')&&existsSync(resolve(publicDir,href.slice(1)))));
+export const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!href.includes('..')&&existsSync(resolve(publicDir,href.slice(1)))));
 const noPersonalForms=html=>!/<(?:form|input|textarea)\b/i.test(html);
 const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|credit_card)|checkout\.stripe\.com)/i.test(html);
 const noTracking=html=>!/(?:<script[^>]*src="https?:\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html);
