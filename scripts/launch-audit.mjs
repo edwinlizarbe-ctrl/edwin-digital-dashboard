@@ -10,7 +10,7 @@ const has=(text,expression)=>expression.test(text);
 const localLinks=html=>[...html.matchAll(/href="(\/[^"#?]*)(?:#[^"]*)?"/g)].map(m=>m[1]);
 const anchors=html=>[...html.matchAll(/href="#([^"]+)"/g)].map(m=>m[1]);
 const anchorsExist=html=>{
-  const ids=new Set([...html.matchAll(/\\sid="([^"]+)"/g)].map(match=>match[1]));
+  const ids=new Set([...html.matchAll(/\sid="([^"]+)"/g)].map(match=>match[1]));
   return anchors(html).every(anchor=>ids.has(anchor));
 };
 const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!href.includes('..')&&existsSync(resolve(publicDir,href.slice(1)))));
