@@ -13,7 +13,7 @@ export const anchorsExist=html=>{
   const ids=new Set([...html.matchAll(/\sid=(["'])([^"'<>]+)\1/g)].map(match=>match[2]));
   return anchors(html).every(anchor=>ids.has(anchor));
 };
-const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!href.includes('..')&&existsSync(resolve(publicDir,href.slice(1)))));
+export const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!href.includes('..')&&existsSync(resolve(publicDir,href.slice(1)))));
 const noPersonalForms=html=>!/<(?:form|input|textarea)\b/i.test(html);
 const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|credit_card)|checkout\.stripe\.com)/i.test(html);
 const noTracking=html=>!/(?:<script[^>]*src="https?:\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html);
