@@ -13,6 +13,7 @@ on:
       - 'scripts/launch-audit.mjs'
       - 'tests/launch-audit-ten.test.mjs'
       - 'tests/launch-demo-ten.test.mjs'
+      - 'tests/launch-commercial-ten.test.js'
       - 'docs/PRELANZAMIENTO-PILOTO-CRM.md'
       - 'docs/50-ACCIONES-LANZAMIENTO-20261105.md'
       - 'docs/DIAGNOSTICO-CLOUDFLARE-BUILD-20261109.md'
@@ -31,6 +32,7 @@ on:
       - 'scripts/launch-audit.mjs'
       - 'tests/launch-audit-ten.test.mjs'
       - 'tests/launch-demo-ten.test.mjs'
+      - 'tests/launch-commercial-ten.test.js'
       - 'docs/PRELANZAMIENTO-PILOTO-CRM.md'
       - 'docs/50-ACCIONES-LANZAMIENTO-20261105.md'
       - 'docs/DIAGNOSTICO-CLOUDFLARE-BUILD-20261109.md'
@@ -50,6 +52,8 @@ jobs:
         run: node scripts/launch-audit.mjs
       - name: Ejecutar regresiones positivas y negativas del auditor A21-A30
         run: node --test tests/launch-audit-ten.test.mjs
+      - name: Ejecutar regresiones comerciales A11-A20
+        run: node --test tests/launch-commercial-ten.test.js
       - name: Ejecutar regresiones de demo A01-A10
         run: node --test tests/launch-demo-ten.test.mjs
       - name: Verificar retorno de demo y aislamiento
