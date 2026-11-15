@@ -19,11 +19,11 @@ const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|
 const noTracking=html=>!/(?:<script[^>]*src="https?:\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html);
 
 export const hasCommercialHeading=html=>{
-  const visible=html.replace(/<!--[\\s\\S]*?-->/g,'');
-  const head=visible.match(/<head\\b[^>]*>([\\s\\S]*?)<\\/head\\s*>/i)?.[1] ?? '';
-  const title=head.match(/<title\\b[^>]*>\\s*([^<]+)<\\/title\\s*>/i)?.[1] ?? '';
-  const body=visible.match(/<body\\b[^>]*>([\\s\\S]*?)<\\/body\\s*>/i)?.[1] ?? '';
-  return /Edwin CRM/i.test(title) && /<h1(?:\\s[^>]*)?>[\\s\\S]*?<\\/h1\\s*>/i.test(body);
+  const visible=html.replace(/<!--[\s\S]*?-->/g,'');
+  const head=visible.match(/<head\b[^>]*>([\s\S]*?)<\/head\s*>/i)?.[1] ?? '';
+  const title=head.match(/<title\b[^>]*>\s*([^<]+)<\/title\s*>/i)?.[1] ?? '';
+  const body=visible.match(/<body\b[^>]*>([\s\S]*?)<\/body\s*>/i)?.[1] ?? '';
+  return /Edwin CRM/i.test(title) && /<h1(?:\s[^>]*)?>[\s\S]*?<\/h1\s*>/i.test(body);
 };
 
 export function auditLaunch() {
