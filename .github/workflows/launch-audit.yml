@@ -46,5 +46,7 @@ jobs:
           node-version: '22'
       - name: Revisar 10 barreras comerciales estaticas
         run: node scripts/launch-audit.mjs
+      - name: Ejecutar regresiones positivas y negativas del auditor A21-A30
+        run: node --test tests/launch-audit-ten.test.mjs
       - name: Verificar retorno de demo y aislamiento
         run: node --test tests/demo-end-navigation.test.mjs tests/demo-stage-mobile-wrap.test.mjs tests/demo-error-announcement.test.mjs tests/demo-print-error-context.test.mjs
