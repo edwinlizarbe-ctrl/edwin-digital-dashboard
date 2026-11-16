@@ -156,3 +156,26 @@ test('no acepta títulos presentes únicamente dentro de style o textarea', asyn
   assert.equal(result.passed, false);
   assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
 });
+
+test('acepta títulos HTML con referencias numéricas y entidades equivalentes', async () => {
+  const encoded = [
+    'Edwin CRM &middot; Panel',
+    'Edwin CRM &#124; Cada prospecto cuenta',
+    'Edwin CRM &#xB7; Demostración de seguimiento comercial'
+  ];
+  let index = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => response(200, 'text/html', encoded[index++]));
+  assert.equal(result.passed, true);
+});
+
+test('rechaza entidades que cambian el título y referencias Unicode inválidas', async () => {
+  const encoded = [
+    'Edwin CRM &amp; Panel',
+    'Edwin CRM &#x110000; Cada prospecto cuenta',
+    'Edwin CRM &#xD800; Demostración de seguimiento comercial'
+  ];
+  let index = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => response(200, 'text/html', encoded[index++]));
+  assert.equal(result.passed, false);
+  assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
+});
