@@ -50,3 +50,14 @@ test('A29 detecta src con espacios y preserva bloqueo de dominios de seguimiento
   assert.equal(noTracking("<script defer src = '//cdn.example.org/pixel.js'></script>"),false);
   assert.equal(noTracking('<img src="https://www.googletagmanager.com/gtm.js">'),false);
 });
+
+test('A29 rechaza iframes remotos con variantes de comillas y protocolo',()=>{
+  for(const src of ["'https://example.org/embed'",'"http://example.org/embed"'," '//example.org/embed'","https://example.org/embed"]){
+    assert.equal(noTracking('<iframe title="Ejemplo" src='+src+'></iframe>'),false,src);
+  }
+});
+test('A29 permite iframe local y no confunde data-src con src',()=>{
+  assert.equal(noTracking('<iframe title="Local" src="/crm-demo.html"></iframe>'),true);
+  assert.equal(noTracking('<iframe title="Local" src="./crm-demo.html"></iframe>'),true);
+  assert.equal(noTracking('<div data-src="https://example.org/embed"></div>'),true);
+});
