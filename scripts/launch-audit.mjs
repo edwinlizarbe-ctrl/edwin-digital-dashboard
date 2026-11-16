@@ -17,7 +17,7 @@ export const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!hre
 const noPersonalForms=html=>!/<(?:form|input|textarea)\b/i.test(html);
 const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|credit_card)|checkout\.stripe\.com)/i.test(html);
 export const noTracking=html=>
-  !/(?:<(?:script|iframe)\b[^>]*\ssrc\s*=\s*(?:"\s*|\x27\s*|\s*)(?:https?:)?\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html);
+  !/(?:<(?:script|iframe|img)\b[^>]*\ssrc\s*=\s*(?:"\s*|\x27\s*|\s*)(?:https?:)?\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html);
 
 export const hasCommercialHeading=html=>{
   const visible=html.replace(/<!--[\s\S]*?-->/g,'');

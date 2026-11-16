@@ -61,3 +61,15 @@ test('A29 permite iframe local y no confunde data-src con src',()=>{
   assert.equal(noTracking('<iframe title="Local" src="./crm-demo.html"></iframe>'),true);
   assert.equal(noTracking('<div data-src="https://example.org/embed"></div>'),true);
 });
+
+// Regresión de privacidad: una imagen remota también inicia una solicitud externa.
+test('A29 rechaza imágenes remotas incluso sin dominios de tracking conocidos',()=>{
+  for (const src of ['"https://images.example.org/pixel.png"',"'//images.example.org/banner.webp'",'https://images.example.org/a.png']) {
+    assert.equal(noTracking('<img alt="Ejemplo" src='+src+'>'),false,src);
+  }
+});
+test('A29 permite imágenes locales y no confunde data-src con src',()=>{
+  assert.equal(noTracking('<img src="/logo.svg" alt="Logo">'),true);
+  assert.equal(noTracking("<img src='./asset.png' alt='Ejemplo'>"),true);
+  assert.equal(noTracking('<img data-src="https://images.example.org/preview.png" alt="Vista previa">'),true);
+});
