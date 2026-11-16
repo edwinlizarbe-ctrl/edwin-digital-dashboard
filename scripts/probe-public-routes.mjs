@@ -23,7 +23,16 @@ function hasExpectedTitle(html, expected) {
   const visibleMarkup = html.replace(/<!--[\s\S]*?-->|<script\b[^>]*>[\s\S]*?<\/script\s*>|<template\b[^>]*>[\s\S]*?<\/template\s*>|<style\b[^>]*>[\s\S]*?<\/style\s*>|<textarea\b[^>]*>[\s\S]*?<\/textarea\s*>/gi, '');
   const head = visibleMarkup.match(/<head(?:\s[^>]*)?>([\s\S]*?)<\/head\s*>/i)?.[1] || '';
   const titles = [...head.matchAll(/<title(?:\s[^>]*)?>([^<]*)<\/title\s*>/gi)];
-  return titles.length === 1 && titles[0][1].trim() === expected;
+  // HTML character references are decoded by browsers in document.title.
+  // Decode only references needed for the expected static titles, not arbitrary markup.
+  const decodeTitle = (value) => value.replace(/&#(x[0-9a-f]+|[0-9]+);|&(middot|vert|amp|nbsp);/gi, (match, numeric, named) => {
+    if (numeric) {
+      const codePoint = numeric[0].toLowerCase() === 'x' ? parseInt(numeric.slice(1), 16) : parseInt(numeric, 10);
+      return codePoint > 0 && codePoint <= 0x10ffff && !(codePoint >= 0xd800 && codePoint <= 0xdfff) ? String.fromCodePoint(codePoint) : match;
+    }
+    return ({ middot: '·', vert: '|', amp: '&', nbsp: String.fromCharCode(160) })[named.toLowerCase()];
+  });
+  return titles.length === 1 && decodeTitle(titles[0][1]).trim() === expected;
 }
 export async function probePublicRoutes(base, fetcher = fetch) {
   const origin = validateBaseUrl(base);
