@@ -30,7 +30,7 @@ function hasExpectedTitle(html, expected) {
       const codePoint = numeric[0].toLowerCase() === 'x' ? parseInt(numeric.slice(1), 16) : parseInt(numeric, 10);
       return codePoint > 0 && codePoint <= 0x10ffff && !(codePoint >= 0xd800 && codePoint <= 0xdfff) ? String.fromCodePoint(codePoint) : match;
     }
-    return ({ middot: '·', vert: '|', amp: '&', nbsp: '\\u00a0' })[named.toLowerCase()];
+    return ({ middot: '·', vert: '|', amp: '&', nbsp: String.fromCharCode(160) })[named.toLowerCase()];
   });
   return titles.length === 1 && decodeTitle(titles[0][1]).trim() === expected;
 }
