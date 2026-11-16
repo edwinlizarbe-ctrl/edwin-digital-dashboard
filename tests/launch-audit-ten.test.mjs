@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {auditLaunch, anchorsExist, fileLinksExist, hasCommercialHeading} from '../scripts/launch-audit.mjs';
+import {auditLaunch, anchorsExist, fileLinksExist, hasCommercialHeading, noTracking} from '../scripts/launch-audit.mjs';
 const controls=auditLaunch();
 test('el auditor declara exactamente A21-A30 sin duplicados',()=>{
   assert.deepEqual(controls.map(x=>x.id),Array.from({length:10},(_,i)=>'A'+(i+21)));
@@ -35,4 +35,18 @@ test('A22 rechaza título fuera de head o h1 falso',()=>{
 test('A22 ignora encabezados dentro de comentarios y fuera de body',()=>{
   assert.equal(hasCommercialHeading('<html><head><title>Edwin CRM</title></head><body><!-- <h1>falso</h1> --></body></html>'),false);
   assert.equal(hasCommercialHeading('<html><head><title>Edwin CRM</title><h1>falso</h1></head><body></body></html>'),false);
+});
+
+test('A29 permite scripts locales sin introducir rastreo externo',()=>{
+  assert.equal(noTracking('<script src="/crm-demo-data.js"></script>'),true);
+  assert.equal(noTracking("<script src='./local.js'></script>"),true);
+});
+test('A29 rechaza scripts remotos con comillas simples, dobles o URL relativa al protocolo',()=>{
+  for(const src of ["'https://example.org/track.js'",'"https://example.org/track.js"',"'//example.org/track.js'",'"//example.org/track.js"','https://example.org/track.js']){
+    assert.equal(noTracking('<script src='+src+'></script>'),false,src);
+  }
+});
+test('A29 detecta src con espacios y preserva bloqueo de dominios de seguimiento',()=>{
+  assert.equal(noTracking("<script defer src = '//cdn.example.org/pixel.js'></script>"),false);
+  assert.equal(noTracking('<img src="https://www.googletagmanager.com/gtm.js">'),false);
 });
