@@ -179,3 +179,14 @@ test('rechaza entidades que cambian el título y referencias Unicode inválidas'
   assert.equal(result.passed, false);
   assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
 });
+
+
+test('rechaza un head falso dentro del body aunque el título coincida', async () => {
+  let index = 0;
+  const result = await probePublicRoutes('https://crm.example', async () => ({
+    status: 200, headers: new Headers({ 'content-type': 'text/html' }),
+    text: async () => '<!doctype html><html><body><head><title>' + titles[index++] + '</title></head></body></html>'
+  }));
+  assert.equal(result.passed, false);
+  assert.ok(result.results.every((entry) => entry.error === 'unexpected_page'));
+});
