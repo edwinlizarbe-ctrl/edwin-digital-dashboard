@@ -25,7 +25,10 @@ function hasExpectedTitle(html, expected) {
   const bodyStart = visibleMarkup.search(/<body(?:\s|>)/i);
   const headStart = visibleMarkup.search(/<head(?:\s|>)/i);
   if (headStart < 0 || (bodyStart >= 0 && headStart > bodyStart)) return false;
-  const head = visibleMarkup.match(/<head(?:\s[^>]*)?>([\s\S]*?)<\/head\s*>/i)?.[1] || '';
+  const headMatch = /<head(?:\s[^>]*)?>([\s\S]*?)<\/head\s*>/i.exec(visibleMarkup);
+  // A body opening before the closing head invalidates the apparent document head.
+  if (!headMatch || (bodyStart >= 0 && headMatch.index + headMatch[0].length > bodyStart)) return false;
+  const head = headMatch[1];
   const titles = [...head.matchAll(/<title(?:\s[^>]*)?>([^<]*)<\/title\s*>/gi)];
   // HTML character references are decoded by browsers in document.title.
   // Decode only references needed for the expected static titles, not arbitrary markup.
