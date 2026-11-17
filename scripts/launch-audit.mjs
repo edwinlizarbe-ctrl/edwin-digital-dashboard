@@ -19,7 +19,9 @@ const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|
 const remoteSrcset=html=>[...html.matchAll(/<(?:img|source)\b[^>]*\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)]
   .some(match=>/(?:https?:)?\/\//i.test(match[1]??match[2]??match[3]??''));
 export const noTracking=html=>
-  !/(?:<(?:script|iframe|img)\b[^>]*\ssrc\s*=\s*(?:"\s*|\x27\s*|\s*)(?:https?:)?\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html) && !remoteSrcset(html);
+  !/(?:<(?:script|iframe|img|video|audio|source)\b[^>]*\ssrc\s*=\s*(?:"\s*|\x27\s*|\s*)(?:https?:)?\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html) && !remoteSrcset(html)
+  && !/<video\b[^>]*\sposter\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(html)
+  && !/<object\b[^>]*\sdata\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(html);
 
 export const hasCommercialHeading=html=>{
   const visible=html.replace(/<!--[\s\S]*?-->/g,'');
