@@ -85,3 +85,23 @@ test('A29 permite srcset local y atributos inertes',()=>{
   assert.equal(noTracking('<source srcset="./a.webp 480w, ./b.webp 960w">'),true);
   assert.equal(noTracking('<img data-srcset="https://example.org/not-requested.png">'),true);
 });
+
+test('A29 bloquea medios remotos y poster/object externos',()=>{
+  for (const html of [
+    '<video src="https://cdn.example.org/clip.mp4"></video>',
+    "<audio src='//cdn.example.org/clip.mp3'></audio>",
+    '<video><source src="https://cdn.example.org/clip.webm"></video>',
+    '<video poster="https://cdn.example.org/poster.jpg"></video>',
+    '<object data="//cdn.example.org/widget.svg"></object>'
+  ]) assert.equal(noTracking(html),false,html);
+});
+test('A29 conserva medios locales y atributos inertes',()=>{
+  for (const html of [
+    '<video src="/clip.mp4" poster="./poster.jpg"></video>',
+    '<audio src="./clip.mp3"></audio>',
+    '<source src="/clip.webm">',
+    '<object data="/widget.svg"></object>',
+    '<video data-poster="https://cdn.example.org/inert.jpg"></video>',
+    '<object data-src="https://cdn.example.org/inert.svg"></object>'
+  ]) assert.equal(noTracking(html),true,html);
+});
