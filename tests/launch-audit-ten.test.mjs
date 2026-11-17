@@ -105,3 +105,23 @@ test('A29 conserva medios locales y atributos inertes',()=>{
     '<object data-src="https://cdn.example.org/inert.svg"></object>'
   ]) assert.equal(noTracking(html),true,html);
 });
+
+test('A29 bloquea hojas de estilo remotas con atributos en cualquier orden',()=>{
+  for(const html of [
+    '<link rel="stylesheet" href="https://cdn.example.org/site.css">',
+    '<link href="//cdn.example.org/site.css" rel="stylesheet">',
+    "<link rel='preload stylesheet' href='http://cdn.example.org/site.css'>"
+  ]) assert.equal(noTracking(html),false,html);
+});
+test('A29 permite estilos locales y enlaces externos no cargados como stylesheet',()=>{
+  for(const html of [
+    '<link rel="stylesheet" href="/site.css">',
+    '<link href="./site.css" rel="stylesheet">',
+    '<a href="https://example.org/docs">Documentación</a>',
+    '<link rel="canonical" href="https://example.org/page">',
+    '<link data-href="https://example.org/inert.css" rel="stylesheet">'
+  ]) assert.equal(noTracking(html),true,html);
+});
+test('A29 mantiene aislamiento de controles de demo sin recursos externos',()=>{
+  assert.equal(noTracking('<main><img src="/logo.svg"><link rel="stylesheet" href="/site.css"></main>'),true);
+});
