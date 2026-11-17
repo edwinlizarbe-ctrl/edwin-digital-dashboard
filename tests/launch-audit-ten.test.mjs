@@ -73,3 +73,15 @@ test('A29 permite imágenes locales y no confunde data-src con src',()=>{
   assert.equal(noTracking("<img src='./asset.png' alt='Ejemplo'>"),true);
   assert.equal(noTracking('<img data-src="https://images.example.org/preview.png" alt="Vista previa">'),true);
 });
+
+// Regresión: srcset puede solicitar imágenes remotas aunque src sea local.
+test('A29 rechaza srcset remoto en img y source',()=>{
+  assert.equal(noTracking('<img src="/local.png" srcset="/local.png 1x, https://cdn.example.org/pixel.png 2x">'),false);
+  assert.equal(noTracking("<source srcset='//cdn.example.org/remote.webp 2x'>"),false);
+  assert.equal(noTracking('<img srcset=https://cdn.example.org/pixel.png>'),false);
+});
+test('A29 permite srcset local y atributos inertes',()=>{
+  assert.equal(noTracking('<img srcset="/a.png 1x, /b.png 2x">'),true);
+  assert.equal(noTracking('<source srcset="./a.webp 480w, ./b.webp 960w">'),true);
+  assert.equal(noTracking('<img data-srcset="https://example.org/not-requested.png">'),true);
+});
