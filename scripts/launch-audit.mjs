@@ -16,8 +16,10 @@ export const anchorsExist=html=>{
 export const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!href.includes('..')&&existsSync(resolve(publicDir,href.slice(1)))));
 const noPersonalForms=html=>!/<(?:form|input|textarea)\b/i.test(html);
 const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|credit_card)|checkout\.stripe\.com)/i.test(html);
+const remoteSrcset=html=>[...html.matchAll(/<(?:img|source)\b[^>]*\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)]
+  .some(match=>/(?:https?:)?\/\//i.test(match[1]??match[2]??match[3]??''));
 export const noTracking=html=>
-  !/(?:<(?:script|iframe|img)\b[^>]*\ssrc\s*=\s*(?:"\s*|\x27\s*|\s*)(?:https?:)?\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html);
+  !/(?:<(?:script|iframe|img)\b[^>]*\ssrc\s*=\s*(?:"\s*|\x27\s*|\s*)(?:https?:)?\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html) && !remoteSrcset(html);
 
 export const hasCommercialHeading=html=>{
   const visible=html.replace(/<!--[\s\S]*?-->/g,'');
