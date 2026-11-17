@@ -21,7 +21,8 @@ const remoteSrcset=html=>[...html.matchAll(/<(?:img|source)\b[^>]*\ssrcset\s*=\s
 export const noTracking=html=>
   !/(?:<(?:script|iframe|img|video|audio|source)\b[^>]*\ssrc\s*=\s*(?:"\s*|\x27\s*|\s*)(?:https?:)?\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html) && !remoteSrcset(html)
   && !/<video\b[^>]*\sposter\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(html)
-  && !/<object\b[^>]*\sdata\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(html);
+  && !/<object\b[^>]*\sdata\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(html)
+  && !/<link\b(?=[^>]*\brel\s*=\s*(?:["'][^"']*\bstylesheet\b[^"']*["']|stylesheet\b))(?=[^>]*\shref\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\/)[^>]*>/i.test(html);
 
 export const hasCommercialHeading=html=>{
   const visible=html.replace(/<!--[\s\S]*?-->/g,'');
