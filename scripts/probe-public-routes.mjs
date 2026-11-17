@@ -21,6 +21,10 @@ function hasExpectedTitle(html, expected) {
   // Allow harmless HTML formatting while requiring exactly one matching page title.
   // A title in a comment, script, style, textarea or template is not the document's page title.
   const visibleMarkup = html.replace(/<!--[\s\S]*?-->|<script\b[^>]*>[\s\S]*?<\/script\s*>|<template\b[^>]*>[\s\S]*?<\/template\s*>|<style\b[^>]*>[\s\S]*?<\/style\s*>|<textarea\b[^>]*>[\s\S]*?<\/textarea\s*>/gi, '');
+  // A fake <head> injected after <body> must not pass as the document head.
+  const bodyStart = visibleMarkup.search(/<body(?:\s|>)/i);
+  const headStart = visibleMarkup.search(/<head(?:\s|>)/i);
+  if (headStart < 0 || (bodyStart >= 0 && headStart > bodyStart)) return false;
   const head = visibleMarkup.match(/<head(?:\s[^>]*)?>([\s\S]*?)<\/head\s*>/i)?.[1] || '';
   const titles = [...head.matchAll(/<title(?:\s[^>]*)?>([^<]*)<\/title\s*>/gi)];
   // HTML character references are decoded by browsers in document.title.
