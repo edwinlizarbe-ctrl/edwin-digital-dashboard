@@ -157,3 +157,23 @@ test('isolation: malformed DNS labels fail before any network request', async()=
 test('positive: valid hyphenated DNS labels remain accepted',()=>{
  assert.equal(validateOrigin('https://my-crm.example.org'),'https://my-crm.example.org');
 });
+
+test('negative: HTTP 200 HTML with an empty streamed body fails even without Content-Length',async()=>{
+ const results=await smokePublicRoutes('https://crm.example.org',async()=>new Response('',{status:200,headers:{'content-type':'text/html'}}));
+ assert.equal(results.length,4);
+ assert.ok(results.every(r=>!r.ok));
+});
+test('positive: HTTP 200 HTML with actual streamed bytes passes',async()=>{
+ const results=await smokePublicRoutes('https://crm.example.org',async()=>new Response('<!doctype html><title>CRM</title>',{status:200,headers:{'content-type':'text/html'}}));
+ assert.ok(results.every(r=>r.ok));
+});
+test('isolation: stream validation preserves GET and never follows redirects',async()=>{
+ const calls=[];
+ const results=await smokePublicRoutes('https://crm.example.org',async(url,opts)=>{
+  calls.push({url,opts});
+  return new Response('',{status:200,headers:{'content-type':'text/html'}});
+ });
+ assert.ok(results.every(r=>!r.ok));
+ assert.equal(calls.length,4);
+ assert.ok(calls.every(({opts})=>opts.method==='GET'&&opts.redirect==='manual'&&opts.credentials==='omit'));
+});
