@@ -137,3 +137,23 @@ test('isolation: reserved and single-label DNS names never trigger network reque
   assert.equal(calls,0,origin);
  }
 });
+
+test('isolation: malformed DNS labels fail before any network request', async()=>{
+ const invalid=[
+  'https://bad_name.example.org',
+  'https://-bad.example.org',
+  'https://bad-.example.org',
+  'https://a..example.org',
+  'https://'+'a'.repeat(64)+'.example.org',
+  'https://' + Array(5).fill('a'.repeat(60)).join('.') + '.org'
+ ];
+ for(const origin of invalid){
+  assert.throws(()=>validateOrigin(origin),origin);
+  let calls=0;
+  await assert.rejects(()=>smokePublicRoutes(origin,()=>{calls++;throw Error('unexpected network request')}));
+  assert.equal(calls,0,origin);
+ }
+});
+test('positive: valid hyphenated DNS labels remain accepted',()=>{
+ assert.equal(validateOrigin('https://my-crm.example.org'),'https://my-crm.example.org');
+});
