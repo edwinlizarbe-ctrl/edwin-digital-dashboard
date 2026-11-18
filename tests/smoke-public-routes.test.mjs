@@ -128,3 +128,12 @@ test('isolation: rejected length does not alter safe GET options or cause extra 
  assert.ok(results.every(r=>!r.ok));
  assert.ok(calls.every(({url,opts})=>new URL(url).hostname==='crm.example.org'&&opts.method==='GET'&&opts.credentials==='omit'&&opts.redirect==='manual'&&opts.cache==='no-store'));
 });
+
+test('isolation: reserved and single-label DNS names never trigger network requests', async()=>{
+ for (const origin of ['https://intranet','https://service.lan','https://gateway.home.arpa','https://hidden.onion','https://demo.test','https://not-real.invalid','https://CRM.TEST.']) {
+  assert.throws(()=>validateOrigin(origin), origin);
+  let calls=0;
+  await assert.rejects(()=>smokePublicRoutes(origin,()=>{calls++;throw Error('unexpected network request')}));
+  assert.equal(calls,0,origin);
+ }
+});
