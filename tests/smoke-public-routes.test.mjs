@@ -130,7 +130,7 @@ test('isolation: rejected length does not alter safe GET options or cause extra 
 });
 
 test('isolation: reserved and single-label DNS names never trigger network requests', async()=>{
- for (const origin of ['https://intranet','https://service.lan','https://gateway.home.arpa','https://hidden.onion','https://demo.test','https://not-real.invalid','https://CRM.TEST.']) {
+ for (const origin of ['https://intranet','https://service.lan','https://gateway.home.arpa','https://hidden.onion','https://demo.test','https://not-real.invalid','https://CRM.TEST.', 'https://preview.example', 'https://reverse.arpa', 'https://host.EXAMPLE.']) {
   assert.throws(()=>validateOrigin(origin), origin);
   let calls=0;
   await assert.rejects(()=>smokePublicRoutes(origin,()=>{calls++;throw Error('unexpected network request')}));
