@@ -146,3 +146,22 @@ test('A29 permite CSS local y URLs inertes fuera de CSS',()=>{
 test('A29 aísla CSS local de referencias remotas en enlaces informativos',()=>{
   assert.equal(noTracking('<style>.hero{background:url(/local.png)}</style><a href="https://example.org">Ayuda</a>'),true);
 });
+
+// Un elemento embed carga recursos externos aunque no use iframe u object.
+test('A29 rechaza embed externo con URL absoluta o relativa al protocolo',()=>{
+  for(const html of [
+    '<embed src="https://cdn.example.org/widget.svg">',
+    "<embed type='image/svg+xml' src='//cdn.example.org/widget.svg'>",
+    '<embed src=http://cdn.example.org/widget.svg>'
+  ]) assert.equal(noTracking(html),false,html);
+});
+test('A29 acepta embed local y atributos inertes sin solicitudes remotas',()=>{
+  for(const html of [
+    '<embed src="/widget.svg">',
+    '<embed src="./widget.svg">',
+    '<embed data-src="https://cdn.example.org/inert.svg">'
+  ]) assert.equal(noTracking(html),true,html);
+});
+test('A29 aísla embed local y enlaces informativos externos',()=>{
+  assert.equal(noTracking('<embed src="/widget.svg"><a href="https://example.org/docs">Ayuda</a>'),true);
+});
