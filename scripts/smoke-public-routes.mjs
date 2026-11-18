@@ -25,7 +25,14 @@ export async function smokePublicRoutes(origin, fetcher = fetch) {
       const length = response.headers.get('content-length');
       // A declared empty document is not a usable landing page; absent length is normal for chunked responses.
       const nonempty = length == null || (/^(?:0|[1-9][0-9]*)$/.test(length.trim()) && BigInt(length.trim()) > 0n);
-      const ok = response.status === 200 && /^text\/html(?:\s*;|\s*$)/i.test(type.trim()) && nonempty;
+      let ok = response.status === 200 && /^text\/html(?:\s*;|\s*$)/i.test(type.trim()) && nonempty;
+      // Fetch responses expose a stream: verify at least one actual byte, even when
+      // Content-Length is absent or incorrect. Read only one chunk, then cancel.
+      if (ok && response.body) {
+        const reader = response.body.getReader();
+        try { const first = await reader.read(); ok = !first.done && first.value?.byteLength > 0; }
+        finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+      }
       results.push({path, status:response.status, ok});
     } catch {
       results.push({path, status:null, ok:false});
