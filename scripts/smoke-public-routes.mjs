@@ -8,7 +8,9 @@ export function validateOrigin(value) {
     throw new Error('Provide an HTTPS origin only, without credentials, path, port or query');
   }
   const host = url.hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '');
-  if (isIP(host) || !host.includes('.') || host === 'localhost' || ['.localhost', '.local', '.internal', '.lan', '.home.arpa', '.onion', '.test', '.invalid', '.example', '.arpa'].some(suffix => host.endsWith(suffix))) {
+  // Reject malformed DNS labels before making any network request (including DNS lookups).
+  const validDns = host.length <= 253 && host.split('.').every(label => label.length > 0 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label));
+  if (!validDns || isIP(host) || !host.includes('.') || host === 'localhost' || ['.localhost', '.local', '.internal', '.lan', '.home.arpa', '.onion', '.test', '.invalid', '.example', '.arpa'].some(suffix => host.endsWith(suffix))) {
     throw new Error('IP literals and local/internal hostnames are not permitted');
   }
   return url.origin;
