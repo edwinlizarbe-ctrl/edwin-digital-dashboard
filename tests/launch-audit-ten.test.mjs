@@ -125,3 +125,24 @@ test('A29 permite estilos locales y enlaces externos no cargados como stylesheet
 test('A29 mantiene aislamiento de controles de demo sin recursos externos',()=>{
   assert.equal(noTracking('<main><img src="/logo.svg"><link rel="stylesheet" href="/site.css"></main>'),true);
 });
+
+// CSS remoto puede iniciar solicitudes incluso sin elementos multimedia.
+test('A29 bloquea referencias remotas dentro de style y atributos style',()=>{
+  for(const html of [
+    '<style>@import "https://cdn.example.org/a.css";</style>',
+    '<style>@import url(//cdn.example.org/a.css);</style>',
+    '<style>.hero{background:url("https://cdn.example.org/a.png")}</style>',
+    '<div style="background:url(//cdn.example.org/a.png)"></div>'
+  ]) assert.equal(noTracking(html),false,html);
+});
+test('A29 permite CSS local y URLs inertes fuera de CSS',()=>{
+  for(const html of [
+    '<style>@import "/css/local.css"; .hero{background:url(./a.png)}</style>',
+    '<div style="background:url(/local.png)"></div>',
+    '<a href="https://example.org/docs">Documentación</a>',
+    '<div data-style="background:url(https://example.org/inert.png)"></div>'
+  ]) assert.equal(noTracking(html),true,html);
+});
+test('A29 aísla CSS local de referencias remotas en enlaces informativos',()=>{
+  assert.equal(noTracking('<style>.hero{background:url(/local.png)}</style><a href="https://example.org">Ayuda</a>'),true);
+});

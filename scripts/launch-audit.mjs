@@ -16,12 +16,18 @@ export const anchorsExist=html=>{
 export const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!href.includes('..')&&existsSync(resolve(publicDir,href.slice(1)))));
 const noPersonalForms=html=>!/<(?:form|input|textarea)\b/i.test(html);
 const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|credit_card)|checkout\.stripe\.com)/i.test(html);
+const remoteCss=html=>{
+  const blocks=[...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)].map(m=>m[1]);
+  const inline=[...html.matchAll(/\sstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)].map(m=>m[1]??m[2]);
+  return [...blocks,...inline].some(css=>/(?:@import\s+(?:url\(\s*)?|url\(\s*)["']?\s*(?:https?:)?\/\//i.test(css));
+};
 const remoteSrcset=html=>[...html.matchAll(/<(?:img|source)\b[^>]*\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)]
   .some(match=>/(?:https?:)?\/\//i.test(match[1]??match[2]??match[3]??''));
 export const noTracking=html=>
   !/(?:<(?:script|iframe|img|video|audio|source)\b[^>]*\ssrc\s*=\s*(?:"\s*|\x27\s*|\s*)(?:https?:)?\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html) && !remoteSrcset(html)
   && !/<video\b[^>]*\sposter\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(html)
   && !/<object\b[^>]*\sdata\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(html)
+  && !remoteCss(html)
   && !/<link\b(?=[^>]*\brel\s*=\s*(?:["'][^"']*\bstylesheet\b[^"']*["']|stylesheet\b))(?=[^>]*\shref\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\/)[^>]*>/i.test(html);
 
 export const hasCommercialHeading=html=>{
