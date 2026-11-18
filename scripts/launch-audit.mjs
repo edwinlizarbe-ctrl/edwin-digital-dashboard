@@ -17,9 +17,9 @@ export const fileLinksExist=html=>localLinks(html).every(href=>href==='/'||(!hre
 const noPersonalForms=html=>!/<(?:form|input|textarea)\b/i.test(html);
 const noPayment=html=>!/(?:<form[^>]*(?:payment|card)|<input[^>]*(?:cvv|tarjeta|credit_card)|checkout\.stripe\.com)/i.test(html);
 const remoteCss=html=>{
-  const blocks=[...html.matchAll(/<style\\b[^>]*>([\\s\\S]*?)<\\/style\\s*>/gi)].map(m=>m[1]);
-  const inline=[...html.matchAll(/\\sstyle\\s*=\\s*(?:"([^"]*)"|'([^']*)')/gi)].map(m=>m[1]??m[2]);
-  return [...blocks,...inline].some(css=>/(?:@import\\s+(?:url\\(\\s*)?|url\\(\\s*)["']?\\s*(?:https?:)?\\/\\//i.test(css));
+  const blocks=[...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)].map(m=>m[1]);
+  const inline=[...html.matchAll(/\sstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)].map(m=>m[1]??m[2]);
+  return [...blocks,...inline].some(css=>/(?:@import\s+(?:url\(\s*)?|url\(\s*)["']?\s*(?:https?:)?\/\//i.test(css));
 };
 const remoteSrcset=html=>[...html.matchAll(/<(?:img|source)\b[^>]*\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)]
   .some(match=>/(?:https?:)?\/\//i.test(match[1]??match[2]??match[3]??''));
