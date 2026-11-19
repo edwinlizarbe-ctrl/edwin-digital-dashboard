@@ -177,3 +177,20 @@ test('isolation: stream validation preserves GET and never follows redirects',as
  assert.equal(calls.length,4);
  assert.ok(calls.every(({opts})=>opts.method==='GET'&&opts.redirect==='manual'&&opts.credentials==='omit'));
 });
+
+test('negative: HTTP 200 HTML with null body is not considered a healthy page',async()=>{
+ const results=await smokePublicRoutes('https://crm.example.org',async()=>({
+  status:200,headers:new Map([['content-type','text/html']]),body:null
+ }));
+ assert.equal(results.length,4);
+ assert.ok(results.every(r=>!r.ok));
+});
+test('isolation: null-body rejection preserves read-only request options',async()=>{
+ const calls=[];
+ await smokePublicRoutes('https://crm.example.org',async(url,opts)=>{
+  calls.push({url,opts});
+  return {status:200,headers:new Map([['content-type','text/html']]),body:null};
+ });
+ assert.equal(calls.length,4);
+ assert.ok(calls.every(({opts})=>opts.method==='GET'&&opts.redirect==='manual'&&opts.credentials==='omit'&&opts.cache==='no-store'));
+});
