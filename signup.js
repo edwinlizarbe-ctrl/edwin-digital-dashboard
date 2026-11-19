@@ -138,6 +138,11 @@ export async function handleOnboardingBusiness(req, env, s) {
   }
   const row = await res.json().catch(() => null);
   const out = Array.isArray(row) ? row[0] : row;
-  if (!out || typeof out !== 'object' || !out.id) return reply({ error: 'No se pudo confirmar la empresa creada.' }, 502, cookies);
+  if (!out || typeof out !== 'object' || Array.isArray(out) ||
+      typeof out.id !== 'string' || !out.id.trim() ||
+      typeof out.name !== 'string' || !out.name.trim() ||
+      typeof out.slug !== 'string' || !out.slug.trim()) {
+    return reply({ error: 'No se pudo confirmar la empresa creada.' }, 502, cookies);
+  }
   return reply({ ok: true, business: { id: out.id, name: out.name, slug: out.slug }, created: !!out.created }, 200, cookies);
 }
