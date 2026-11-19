@@ -64,13 +64,13 @@
   return '\uFEFF'+rows.map(r=>r.map(csvCell).join(';')).join('\r\n')+'\r\n';
  }
  let scope='',days=30,visible=null;
- function render({leads,businessId,userId,loading=false,error='',partial=false}={}){
+ function render({leads,businessId,userId,loading=false,error='',partial=false,now=new Date()}={}){
   const key=String(userId||'')+'|'+String(businessId||'');
   if(scope!==key){scope=key;days=30;visible=null;}
   if(!validBusiness.test(String(businessId||''))||!userId)return '';
   if(loading){visible=null;return '<section class="card ed-sales-report"><h2>Reporte comercial</h2><p role="status">Consultando oportunidades de esta empresa…</p></section>';}
   if(error){visible=null;return '<section class="card ed-sales-report"><h2>Reporte comercial</h2><p role="status">No se pudieron comprobar las oportunidades. No se generará un informe incompleto.</p></section>';}
-  const report=summarize(leads,businessId,{days,partial});visible=report;
+  const report=summarize(leads,businessId,{days,partial,now});visible=report;
   const formatted=n=>count(n).toLocaleString('es-PE');
   const select=[7,30,90].map(n=>'<option value="'+n+'" '+(days===n?'selected':'')+'>'+n+' días</option>').join('');
   const rows=Object.entries(sources).filter(([key])=>report.current.sources[key]>0).map(([key,label])=>
