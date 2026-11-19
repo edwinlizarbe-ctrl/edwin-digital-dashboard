@@ -28,6 +28,7 @@ export async function smokePublicRoutes(origin, fetcher = fetch) {
       let ok = response.status === 200 && /^text\/html(?:\s*;|\s*$)/i.test(type.trim()) && nonempty;
       // Fetch responses expose a stream: verify at least one actual byte, even when
       // Content-Length is absent or incorrect. Read only one chunk, then cancel.
+      if (ok && 'body' in response && response.body === null) ok = false;
       if (ok && response.body) {
         const reader = response.body.getReader();
         try { const first = await reader.read(); ok = !first.done && first.value?.byteLength > 0; }
