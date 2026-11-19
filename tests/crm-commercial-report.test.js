@@ -89,7 +89,7 @@ test('C44 disables unreliable comparisons when the list is partial or any record
 });
 
 test('C45 states data source, UTC date range, universe and limits in the visible commercial report',()=>{
- const html=render({leads,businessId:a,userId:user,partial:false});
+ const html=render({leads:leads.filter(lead=>lead.created_at>='2026-10-29'),businessId:a,userId:user,partial:false,now});
  assert.match(html,/Informe comercial por origen y etapa/);
  assert.match(html,/Fuente: oportunidades registradas en Edwin CRM/);
  assert.match(html,/Fechas de creación en UTC/);
@@ -97,11 +97,11 @@ test('C45 states data source, UTC date range, universe and limits in the visible
  assert.match(html,/Orígenes declarados manualmente/);
  assert.match(html,/etapas reflejan el estado actual/);
  assert.match(html,/Comparación porcentual no disponible/);
- const complete=render({leads:[...leads,row('2026-09-20T09:00:00Z','new')],businessId:a,userId:user,partial:false});
+ const complete=render({leads:[...leads,row('2026-09-20T09:00:00Z','new')],businessId:a,userId:user,partial:false,now});
  assert.match(complete,/Período anterior:/);
  assert.match(html,/data-ed-sales-report-export/);
  assert.doesNotMatch(html,/PRIVATE CUSTOMER|secret@example.com|999888777/);
- const partial=render({leads,businessId:a,userId:user,partial:true});
+ const partial=render({leads,businessId:a,userId:user,partial:true,now});
  assert.match(partial,/Datos parciales/);
  assert.match(partial,/Comparación porcentual no disponible/);
  assert.doesNotMatch(partial,/Variación del volumen registrado/);
