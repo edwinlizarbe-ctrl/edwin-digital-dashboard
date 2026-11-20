@@ -16,6 +16,7 @@ on:
       - 'tests/launch-commercial-ten.test.js'
       - 'tests/launch-followup-ten.test.mjs'
       - 'tests/launch-signup-ten.test.js'
+      - 'tests/onboarding-rpc-shape.test.mjs'
       - 'public/crm-followup-simulator.html'
       - 'public/crm-followup-estimate.js'
       - 'signup.js'
@@ -40,6 +41,7 @@ on:
       - 'tests/launch-commercial-ten.test.js'
       - 'tests/launch-followup-ten.test.mjs'
       - 'tests/launch-signup-ten.test.js'
+      - 'tests/onboarding-rpc-shape.test.mjs'
       - 'public/crm-followup-simulator.html'
       - 'public/crm-followup-estimate.js'
       - 'signup.js'
@@ -70,5 +72,7 @@ jobs:
         run: node --test tests/launch-followup-ten.test.mjs
       - name: Ejecutar regresiones de registro y onboarding A41-A50
         run: node --test tests/launch-signup-ten.test.js
+      - name: Verificar respuesta RPC de onboarding valida, malformada y sin sesion
+        run: node --test tests/onboarding-rpc-shape.test.mjs
       - name: Verificar retorno de demo y aislamiento
         run: node --test tests/demo-end-navigation.test.mjs tests/demo-stage-mobile-wrap.test.mjs tests/demo-error-announcement.test.mjs tests/demo-print-error-context.test.mjs
