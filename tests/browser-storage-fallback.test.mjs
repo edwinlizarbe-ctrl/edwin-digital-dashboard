@@ -52,3 +52,18 @@ test('quota and privacy errors are contained', () => {
   assert.equal(storage.setItem('ed-sidebar-v7', 'navy'), false);
   assert.equal(storage.removeItem('ed-sidebar-v7'), false);
 });
+
+test('profile success requires persisted browser storage', () => {
+  assert.match(source, /if\(!safeStorage\.setItem\('ed-profile-name:'\+state\.user\.id,fullName\)\)throw Error/);
+  assert.match(source, /state\.profileSaved=false;[\s\S]*?No se pudo guardar el nombre en este navegador/);
+});
+
+test('company logo failure is surfaced instead of reporting success', () => {
+  assert.match(source, /const logoStored=logo_data\?safeStorage\.setItem\(logoStoreKey\(\),logo_data\):safeStorage\.removeItem\(logoStoreKey\(\)\)/);
+  assert.match(source, /if\(!logoStored\)throw Error\('El perfil se guardó, pero el navegador no pudo conservar el logotipo\.'\)/);
+});
+
+test('storage fallback remains scoped to browser preferences', () => {
+  assert.doesNotMatch(source, /safeStorage\.setItem\('ed-session/);
+  assert.doesNotMatch(source, /safeStorage\.setItem\('access_token/);
+});
