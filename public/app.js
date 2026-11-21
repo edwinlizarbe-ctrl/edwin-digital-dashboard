@@ -2,20 +2,27 @@
 /* E Digital — nombre provisional del CRM | los datos mostrados proceden de APIs autorizadas. */
 (() => {
   'use strict';
+  // Browser storage can throw (privacy settings, sandboxed frames, disabled cookies).
+  // Preferences are optional; keep the CRM usable without persistent storage.
+  const safeStorage = {
+    getItem(key) { try { return window.localStorage.getItem(key); } catch { return null; } },
+    setItem(key, value) { try { window.localStorage.setItem(key, value); return true; } catch { return false; } },
+    removeItem(key) { try { window.localStorage.removeItem(key); return true; } catch { return false; } },
+  };
   const root = document.getElementById('app');
   let pendingInvite = null;
   const state = {
     user: null, businesses: [], sites: [], businessId: '', siteId: '',
-    page: 'overview', analyticMetric: 'totalUsers', period: '7', theme: localStorage.getItem('ed-theme-v3') === 'dark' ? 'dark' : 'light',
+    page: 'overview', analyticMetric: 'totalUsers', period: '7', theme: safeStorage.getItem('ed-theme-v3') === 'dark' ? 'dark' : 'light',
     loading: true, gaLoading: false, hmLoading: false, ga: null, hm: null,
     gaError: '', hmError: '', startupError: '', loginError: '', loginBusy: false, authMode: 'login', resetEmail: '', resetError: '', resetDone: '', resetBusy: false, signupError: '', signupDone: '', signupBusy: false, signupEmail: '', onboardError: '', onboardBusy: false, onboardName: '',
-    mobileOpen: false, campaignsMenuOpen: false, salesMenuOpen: false, salesSource: 'overview', sidebarCollapsed: localStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
+    mobileOpen: false, campaignsMenuOpen: false, salesMenuOpen: false, salesSource: 'overview', sidebarCollapsed: safeStorage.getItem('ed-sidebar-collapsed') === '1', adminQuery: '', search: '', requestId: 0, tableSort: '', tableDesc: true,
     passwordBusy: false, passwordError: '', profileNotice: '', profileSaved: false, loginNotice: '',
     meta: null, metaReport: null, metaLoading: false, metaError: '',
     metaCampaigns: null, adsLoading: false, adsError: '', adsPlatform: 'meta', adsLevel: 'campaign', adsBestOnly: false, adsPeriod: '30', adsCustomStart:'', adsCustomEnd:'', adsAccount:'', adsStatus:'', adsObjective:'', adsSearch:'', adsFilterError:'', campaignConnectionOpen: false, campaignConnectorProvider: 'meta', campaignAccountSaving: false, campaignAccountNotice: '', metaPopup:null, campaignWizardStage:'accounts', campaignWizardSelectedIds:null,
     companyBusy: false, companyError: '', companyNotice: '', siteBusy: false, siteError: '', siteNotice: '', editSiteId: '',
     emailBusy: false, emailError: '', emailNotice: '',
-    accent: (localStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(localStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: localStorage.getItem('ed-sidebar-v7')==='white' ? 'white' : 'navy',
+    accent: (safeStorage.getItem('ed-accent-v7')||'blue')==='purple'?'blue':(safeStorage.getItem('ed-accent-v7')||'blue'), sidebarTone: safeStorage.getItem('ed-sidebar-v7')==='white' ? 'white' : 'navy',
     adminHealth: null, adminHealthError: '', adminSetupNotice: '',
     adminFeatureBusiness:'', adminEntitlements:null, adminFeatureLoading:false, adminFeatureBusy:false, adminFeatureError:'', adminFeatureNotice:'', clientEntitlements:null, adminPlans:{}, adminPlansLoaded:false,
     adminLifecycle:{businesses:{},accounts:{}}, adminDirectory:null, directoryLoading:false, directoryError:'', adminAccounts: [], inviteBusy: false, accountsLoaded: false, accountsLoading: false, accountsConfigured: null, accountsError: '', accountNotice: '', emailHistoryUserId:'', emailHistoryData:[], emailHistoryError:'', emailHistoryLoading:false, temporaryAccess: null, temporaryPasswordVisible: false, accountPasswordEdit: null, accountPasswordBusy: false, accountPasswordError: '',
@@ -31,7 +38,7 @@
   const business = () => state.businesses.find(b => b.id === state.businessId);
   const companyPrefs = () => state.user?.business_preferences?.[state.businessId] || {};
   const logoStoreKey = () => 'ed-company-logo-v7:'+state.user?.id+':'+state.businessId;
-  const getCompanyLogo = () => {try{return localStorage.getItem(logoStoreKey())||'';}catch{return '';}};
+  const getCompanyLogo = () => {try{return safeStorage.getItem(logoStoreKey())||'';}catch{return '';}};
   const displayBusiness = () => business()?.name || 'Mi empresa';
   const companyImage = (size=34) => {
     const logo=getCompanyLogo();
@@ -410,7 +417,7 @@
     const hour=new Date().getHours();
     const greeting=hour<12?'Buenos días':hour<19?'Buenas tardes':'Buenas noches';
     const user=state.user||{};
-    const savedName=user.id?localStorage.getItem('ed-profile-name:'+user.id):'';
+    const savedName=user.id?safeStorage.getItem('ed-profile-name:'+user.id):'';
     const possibleNames=[savedName,user.full_name,user.name,user.user_metadata?.full_name,user.user_metadata?.name,user.profile?.full_name];
     const name=possibleNames.find(n=>typeof n==='string'&&n.trim())?.trim().split(/\s+/)[0]||'';
     const subtitle=isAdmin()?'Consulta el estado de tu plataforma.':'Aquí tienes los resultados más importantes de tu negocio.';
@@ -476,7 +483,7 @@
   }
   function executiveHero(){
     const hour=new Date().getHours(),greeting=hour<12?'Buenos días':hour<19?'Buenas tardes':'Buenas noches';
-    const user=state.user||{},saved=user.id?localStorage.getItem('ed-profile-name:'+user.id):'';
+    const user=state.user||{},saved=user.id?safeStorage.getItem('ed-profile-name:'+user.id):'';
     const name=[saved,user.full_name,user.name,user.user_metadata?.full_name,user.user_metadata?.name,user.profile?.full_name].find(n=>typeof n==='string'&&n.trim())?.trim().split(/\s+/)[0]||'';
     const pr=edPriority();
     const status=gaReady()?'Google Analytics conectado':state.gaLoading?'Cargando Analytics…':'GA4 pendiente';
@@ -1878,7 +1885,7 @@ ${state.businesses.map(b=>`<option value="${clean(b.id)}">${clean(b.name)} (${cl
  const picker=(key,choices,selected)=>`<div class="preference-choice" role="group">${choices.map(([v,t])=>`<button class="pref-option ${selected===v?'selected':''}" type="button" data-act="set-pref" data-key="${key}" data-value="${v}" aria-pressed="${selected===v}">${key==='accent'?`<i class="accent-swatch swatch-${v}" aria-hidden="true"></i>`:''}${t}</button>`).join('')}</div>`;
  return `${heading('Preferencias','Mi cuenta y seguridad','Acceso, contraseña y colores del panel en un mismo lugar.')}
  <div class="content-grid account-grid">
- <div class="col-12">${card('Mi perfil','Personaliza cómo te saludamos en el panel',`<form id="user-profile-form" class="security-form"><label class="form-label" for="user-profile-name">Nombre y apellidos</label><input id="user-profile-name" class="simple-input" type="text" name="fullName" minlength="2" maxlength="100" required autocomplete="name" value="${clean(state.user?.id?localStorage.getItem('ed-profile-name:'+state.user.id)||'':'')}" placeholder="Ej. Edwin Lizarbe" /><p class="fine-print">Este nombre se usa en tu saludo y se guarda solo en este navegador. No modifica el nombre de tu empresa.</p><button class="button button-primary profile-save-button ${state.profileSaved?'is-saved':''}" type="submit" aria-live="polite">${state.profileSaved?`${icon('check',17)} Guardado`:'Guardar mi nombre'}</button>${state.profileNotice?`<p class="fine-print" role="status" aria-live="polite">${clean(state.profileNotice)}</p>`:""}</form>`)}</div>
+ <div class="col-12">${card('Mi perfil','Personaliza cómo te saludamos en el panel',`<form id="user-profile-form" class="security-form"><label class="form-label" for="user-profile-name">Nombre y apellidos</label><input id="user-profile-name" class="simple-input" type="text" name="fullName" minlength="2" maxlength="100" required autocomplete="name" value="${clean(state.user?.id?safeStorage.getItem('ed-profile-name:'+state.user.id)||'':'')}" placeholder="Ej. Edwin Lizarbe" /><p class="fine-print">Este nombre se usa en tu saludo y se guarda solo en este navegador. No modifica el nombre de tu empresa.</p><button class="button button-primary profile-save-button ${state.profileSaved?'is-saved':''}" type="submit" aria-live="polite">${state.profileSaved?`${icon('check',17)} Guardado`:'Guardar mi nombre'}</button>${state.profileNotice?`<p class="fine-print" role="status" aria-live="polite">${clean(state.profileNotice)}</p>`:""}</form>`)}</div>
  <div class="col-7">${card('Cambiar mi contraseña','Tu seguridad, siempre a la vista',`<form id="change-password-form" class="security-form" autocomplete="off">
   <label class="form-label" for="current-pass">Contraseña actual</label><div class="form-input">${icon('lock',17)}<input id="current-pass" type="password" name="currentPassword" autocomplete="current-password" required maxlength="512"/></div>
   <label class="form-label" for="next-pass">Nueva contraseña</label><div class="form-input">${icon('lock',17)}<input id="next-pass" type="password" name="newPassword" autocomplete="new-password" minlength="10" maxlength="128" required/></div>
@@ -1887,7 +1894,7 @@ ${state.businesses.map(b=>`<option value="${clean(b.id)}">${clean(b.name)} (${cl
   <button class="button button-primary security-submit" type="submit" ${state.passwordBusy?'disabled':''}>${state.passwordBusy?'Actualizando…':`${icon('lock',16)} Actualizar contraseña`}</button>
   <p class="fine-print">Usa al menos 10 caracteres. Tendrás que iniciar sesión de nuevo cuando se guarde.</p>
  </form>`)}</div>
- <div class="col-5">${card('Información de mi cuenta','Identidad de acceso',`<div class="settings-line"><span>Nombre</span><b>${clean((state.user?.id&&localStorage.getItem('ed-profile-name:'+state.user.id))||state.user?.full_name||'Sin configurar')}</b></div><div class="settings-line"><span>Correo</span><b>${clean(state.user.email)}</b></div>
+ <div class="col-5">${card('Información de mi cuenta','Identidad de acceso',`<div class="settings-line"><span>Nombre</span><b>${clean((state.user?.id&&safeStorage.getItem('ed-profile-name:'+state.user.id))||state.user?.full_name||'Sin configurar')}</b></div><div class="settings-line"><span>Correo</span><b>${clean(state.user.email)}</b></div>
  <div class="settings-line"><span>Acceso</span><b>${isAdmin()?'Superadministrador':'Cliente'}</b></div>
  <div class="settings-line"><span>Mi empresa</span><b>${isAdmin()?'Plataforma':clean(displayBusiness())}</b></div>
  ${!isAdmin()?`<button class="button button-outline" data-act="nav" data-page="company">${icon('building',15)} Editar mi empresa</button>`:''}
@@ -2130,7 +2137,7 @@ function sidebar(){
     body:JSON.stringify({business_id:id,display_name,category,country})});
   if(state.businessId!==id)return;
   state.user.business_preferences={...(state.user.business_preferences||{}),[id]:result.profile};
-  try{if(logo_data)localStorage.setItem(logoStoreKey(),logo_data);else localStorage.removeItem(logoStoreKey());}
+  try{if(logo_data)safeStorage.setItem(logoStoreKey(),logo_data);else safeStorage.removeItem(logoStoreKey());}
   catch{throw Error('El perfil se guardó, pero el navegador no pudo conservar el logotipo.');}
   state.companyLogoClear=false;state.companyLogoDraft=null;
   state.companyNotice='Categoría y país guardados.'+(logo_data?' El logotipo se guardó en este navegador.':'');
@@ -2175,15 +2182,15 @@ function sidebar(){
   document.addEventListener('click', async e=>{
     const b=e.target.closest('[data-act]');if(!b)return;
     const action=b.dataset.act;
-    if(action==='theme'){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('ed-theme-v3',state.theme);render();}
+    if(action==='theme'){state.theme=state.theme==='light'?'dark':'light';safeStorage.setItem('ed-theme-v3',state.theme);render();}
     else if(action==='set-pref'){
       const key=b.dataset.key,value=b.dataset.value;
-      if(key==='theme'&&['light','dark'].includes(value)){state.theme=value;localStorage.setItem('ed-theme-v3',value);}
-      else if(key==='accent'&&['purple','blue','teal','coral','amber','rose','graphite'].includes(value)){state.accent=value;localStorage.setItem('ed-accent-v7',value);}
-      else if(key==='sidebar'&&['white','navy'].includes(value)){state.sidebarTone=value;localStorage.setItem('ed-sidebar-v7',value);}
+      if(key==='theme'&&['light','dark'].includes(value)){state.theme=value;safeStorage.setItem('ed-theme-v3',value);}
+      else if(key==='accent'&&['purple','blue','teal','coral','amber','rose','graphite'].includes(value)){state.accent=value;safeStorage.setItem('ed-accent-v7',value);}
+      else if(key==='sidebar'&&['white','navy'].includes(value)){state.sidebarTone=value;safeStorage.setItem('ed-sidebar-v7',value);}
       render();
     }
-    else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
+    else if(action==='collapse-sidebar'){state.sidebarCollapsed=!state.sidebarCollapsed;safeStorage.setItem('ed-sidebar-collapsed',state.sidebarCollapsed?'1':'0');render();}
     else if(action==='menu'){state.mobileOpen=!state.mobileOpen;render();}
     else if(action==='sales-menu'){state.salesMenuOpen=!state.salesMenuOpen;render();}
     else if(action==='sales-select'){const source=b.dataset.source;if(!['overview','shopify','hotmart'].includes(source))return;state.salesSource=source;state.page='sales';state.mobileOpen=false;render();window.scrollTo(0,0);}
@@ -2758,7 +2765,7 @@ function sidebar(){
       const fullName=String(new FormData(e.target).get('fullName')||'').trim().replace(/\s+/g,' ');
       if(fullName.length<2||fullName.length>100)return;
       try {
-        localStorage.setItem('ed-profile-name:'+state.user.id,fullName);
+        safeStorage.setItem('ed-profile-name:'+state.user.id,fullName);
         state.profileSaved=true;
         state.profileNotice='Nombre guardado: '+fullName+'. Ve a Resumen general para ver tu saludo.';
       } catch (error) {
