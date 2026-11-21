@@ -2137,8 +2137,8 @@ function sidebar(){
     body:JSON.stringify({business_id:id,display_name,category,country})});
   if(state.businessId!==id)return;
   state.user.business_preferences={...(state.user.business_preferences||{}),[id]:result.profile};
-  try{if(logo_data)safeStorage.setItem(logoStoreKey(),logo_data);else safeStorage.removeItem(logoStoreKey());}
-  catch{throw Error('El perfil se guardó, pero el navegador no pudo conservar el logotipo.');}
+  const logoStored=logo_data?safeStorage.setItem(logoStoreKey(),logo_data):safeStorage.removeItem(logoStoreKey());
+  if(!logoStored)throw Error('El perfil se guardó, pero el navegador no pudo conservar el logotipo.');
   state.companyLogoClear=false;state.companyLogoDraft=null;
   state.companyNotice='Categoría y país guardados.'+(logo_data?' El logotipo se guardó en este navegador.':'');
  }catch(e){state.companyError=e.message||'No se pudieron guardar los cambios.';}
@@ -2765,7 +2765,7 @@ function sidebar(){
       const fullName=String(new FormData(e.target).get('fullName')||'').trim().replace(/\s+/g,' ');
       if(fullName.length<2||fullName.length>100)return;
       try {
-        safeStorage.setItem('ed-profile-name:'+state.user.id,fullName);
+        if(!safeStorage.setItem('ed-profile-name:'+state.user.id,fullName))throw Error('Storage unavailable');
         state.profileSaved=true;
         state.profileNotice='Nombre guardado: '+fullName+'. Ve a Resumen general para ver tu saludo.';
       } catch (error) {
