@@ -1,54 +1,8 @@
 name: Edwin CRM - barreras de lanzamiento
 on:
   pull_request:
-    paths:
-      - 'public/edwin-crm.html'
-      - 'public/crm-demo.html'
-      - 'tests/demo-end-navigation.test.mjs'
-      - 'tests/demo-stage-mobile-wrap.test.mjs'
-      - 'tests/demo-error-announcement.test.mjs'
-      - 'tests/demo-print-error-context.test.mjs'
-      - 'public/crm-demo-data.js'
-      - 'public/index.html'
-      - 'scripts/launch-audit.mjs'
-      - 'tests/launch-audit-ten.test.mjs'
-      - 'tests/launch-demo-ten.test.mjs'
-      - 'tests/launch-commercial-ten.test.js'
-      - 'tests/launch-followup-ten.test.mjs'
-      - 'tests/launch-signup-ten.test.js'
-      - 'tests/onboarding-rpc-shape.test.mjs'
-      - 'public/crm-followup-simulator.html'
-      - 'public/crm-followup-estimate.js'
-      - 'signup.js'
-      - 'docs/PRELANZAMIENTO-PILOTO-CRM.md'
-      - 'docs/50-ACCIONES-LANZAMIENTO-20261105.md'
-      - 'docs/DIAGNOSTICO-CLOUDFLARE-BUILD-20261109.md'
-      - '.github/workflows/launch-audit.yml'
   push:
     branches: [main]
-    paths:
-      - 'public/edwin-crm.html'
-      - 'public/crm-demo.html'
-      - 'tests/demo-end-navigation.test.mjs'
-      - 'tests/demo-stage-mobile-wrap.test.mjs'
-      - 'tests/demo-error-announcement.test.mjs'
-      - 'tests/demo-print-error-context.test.mjs'
-      - 'public/crm-demo-data.js'
-      - 'public/index.html'
-      - 'scripts/launch-audit.mjs'
-      - 'tests/launch-audit-ten.test.mjs'
-      - 'tests/launch-demo-ten.test.mjs'
-      - 'tests/launch-commercial-ten.test.js'
-      - 'tests/launch-followup-ten.test.mjs'
-      - 'tests/launch-signup-ten.test.js'
-      - 'tests/onboarding-rpc-shape.test.mjs'
-      - 'public/crm-followup-simulator.html'
-      - 'public/crm-followup-estimate.js'
-      - 'signup.js'
-      - 'docs/PRELANZAMIENTO-PILOTO-CRM.md'
-      - 'docs/50-ACCIONES-LANZAMIENTO-20261105.md'
-      - 'docs/DIAGNOSTICO-CLOUDFLARE-BUILD-20261109.md'
-      - '.github/workflows/launch-audit.yml'
 permissions:
   contents: read
 jobs:
