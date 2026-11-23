@@ -23,11 +23,15 @@ const remoteCss=html=>{
 };
 const remoteSrcset=html=>[...html.matchAll(/<(?:img|source)\b[^>]*\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)]
   .some(match=>/(?:https?:)?\/\//i.test(match[1]??match[2]??match[3]??''));
+const remoteConnectionHint=html=>[...html.matchAll(/<link\b[^>]*>/gi)].some(([tag])=>
+  /\brel\s*=\s*(?:["'][^"']*\b(?:preconnect|dns-prefetch)\b[^"']*["']|(?:preconnect|dns-prefetch)\b)/i.test(tag)
+  && /\bhref\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(tag));
+const externalRefresh=html=>/<meta\b(?=[^>]*\bhttp-equiv\s*=\s*(?:["']\s*refresh\s*["']|refresh\b))(?=[^>]*\bcontent\s*=\s*["'][^"']*\burl\s*=\s*(?:https?:)?\/\/)[^>]*>/i.test(html);
 export const noTracking=html=>
   !/(?:<(?:script|iframe|img|video|audio|source|embed)\b[^>]*\ssrc\s*=\s*(?:"\s*|\x27\s*|\s*)(?:https?:)?\/\/|connect\.facebook\.net|googletagmanager\.com|google-analytics\.com)/i.test(html) && !remoteSrcset(html)
   && !/<video\b[^>]*\sposter\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(html)
   && !/<object\b[^>]*\sdata\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(html)
-  && !remoteCss(html)
+  && !remoteCss(html) && !remoteConnectionHint(html) && !externalRefresh(html)
   && !/<link\b(?=[^>]*\brel\s*=\s*(?:["'][^"']*\bstylesheet\b[^"']*["']|stylesheet\b))(?=[^>]*\shref\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\/)[^>]*>/i.test(html);
 
 export const hasCommercialHeading=html=>{
