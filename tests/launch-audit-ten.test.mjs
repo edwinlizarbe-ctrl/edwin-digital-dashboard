@@ -165,3 +165,25 @@ test('A29 acepta embed local y atributos inertes sin solicitudes remotas',()=>{
 test('A29 aísla embed local y enlaces informativos externos',()=>{
   assert.equal(noTracking('<embed src="/widget.svg"><a href="https://example.org/docs">Ayuda</a>'),true);
 });
+
+// Las pistas de precarga pueden emitir solicitudes externas antes de interacción.
+test('A29 bloquea precarga y prerender externos sin importar orden de atributos',()=>{
+  for(const html of [
+    '<link rel="modulepreload" href="https://cdn.example.org/app.js">',
+    '<link href="//cdn.example.org/app.js" rel="preload" as="script">',
+    "<link rel='prefetch' href='https://cdn.example.org/next.html'>",
+    '<link href="https://cdn.example.org/next.html" rel="prerender">'
+  ]) assert.equal(noTracking(html),false,html);
+});
+test('A29 permite precargas locales y enlaces informativos externos',()=>{
+  for(const html of [
+    '<link rel="modulepreload" href="/app.js">',
+    '<link rel="preload" as="style" href="./app.css">',
+    '<link rel="prefetch" href="/next.html">',
+    '<link rel="canonical" href="https://example.org/info">',
+    '<a href="https://example.org/info">Ayuda</a>'
+  ]) assert.equal(noTracking(html),true,html);
+});
+test('A29 no interpreta atributos data-rel como precarga activa',()=>{
+  assert.equal(noTracking('<link data-rel="preload" href="https://example.org/inert">'),true);
+});
