@@ -24,7 +24,7 @@ const remoteCss=html=>{
 const remoteSrcset=html=>[...html.matchAll(/<(?:img|source)\b[^>]*\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)]
   .some(match=>/(?:https?:)?\/\//i.test(match[1]??match[2]??match[3]??''));
 const remoteConnectionHint=html=>[...html.matchAll(/<link\b[^>]*>/gi)].some(([tag])=>
-  /\brel\s*=\s*(?:["'][^"']*\b(?:preconnect|dns-prefetch)\b[^"']*["']|(?:preconnect|dns-prefetch)\b)/i.test(tag)
+  /\brel\s*=\s*(?:["'][^"']*\b(?:preconnect|dns-prefetch|preload|modulepreload|prefetch|prerender)\b[^"']*["']|(?:preconnect|dns-prefetch|preload|modulepreload|prefetch|prerender)\b)/i.test(tag)
   && /\bhref\s*=\s*(?:["']\s*|\s*)(?:https?:)?\/\//i.test(tag));
 const externalRefresh=html=>/<meta\b(?=[^>]*\bhttp-equiv\s*=\s*(?:["']\s*refresh\s*["']|refresh\b))(?=[^>]*\bcontent\s*=\s*["'][^"']*\burl\s*=\s*(?:https?:)?\/\/)[^>]*>/i.test(html);
 export const noTracking=html=>
