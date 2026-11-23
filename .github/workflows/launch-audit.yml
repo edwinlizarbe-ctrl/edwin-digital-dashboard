@@ -8,12 +8,14 @@ permissions:
 jobs:
   launch-guardrails:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Ejecutar suite unitaria completa (regresiones positivas, negativas y aislamiento)
+        run: npm run test:unit
       - name: Revisar 10 barreras comerciales estaticas
         run: node scripts/launch-audit.mjs
       - name: Ejecutar regresiones positivas y negativas del auditor A21-A30
